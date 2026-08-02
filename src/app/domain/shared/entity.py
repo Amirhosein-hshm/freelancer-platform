@@ -9,13 +9,14 @@ if TYPE_CHECKING:
     from app.domain.shared.events import DomainEvent
 
 
-@dataclass(eq=False)
+@dataclass(eq=False, kw_only=True)
 class Entity(ABC):  # noqa: B024 - intentionally abstract base, no abstract members
     """Base entity: identity is defined solely by ``id``.
 
-    Subclasses must be declared with ``@dataclass(eq=False)`` so that equality and
-    hashing are inherited from this base (identity-based) instead of being regenerated
-    over all fields.
+    Keyword-only fields let subclasses declare their business fields without tripping
+    dataclass default-ordering rules. Subclasses must be declared with
+    ``@dataclass(eq=False)`` so that equality/hashing are inherited from this base
+    (identity-based) instead of being regenerated over all fields.
     """
 
     id: EntityId
@@ -31,7 +32,7 @@ class Entity(ABC):  # noqa: B024 - intentionally abstract base, no abstract memb
         return hash(self.id)
 
 
-@dataclass(eq=False)
+@dataclass(eq=False, kw_only=True)
 class AggregateRoot(Entity):  # noqa: B024 - intentionally abstract base
     _domain_events: list["DomainEvent"] = field(default_factory=list, init=False, repr=False)
 

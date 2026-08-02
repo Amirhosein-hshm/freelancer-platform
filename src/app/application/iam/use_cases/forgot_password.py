@@ -1,0 +1,25 @@
+from app.application.iam.dto import ForgotPasswordCommand, ForgotPasswordResult
+from app.application.shared.ports import IIdGenerator, INotificationService
+from app.application.shared.use_case import UseCase
+from app.domain.iam.repositories import IUserRepository
+from app.domain.iam.value_objects import Email
+
+
+class ForgotPasswordUseCase(UseCase[ForgotPasswordCommand, ForgotPasswordResult]):
+    def __init__(
+        self,
+        user_repo: IUserRepository,
+        id_generator: IIdGenerator,
+        notification_service: INotificationService,
+    ) -> None:
+        self._user_repo = user_repo
+        self._id_generator = id_generator
+        self._notification_service = notification_service
+
+    def execute(self, request: ForgotPasswordCommand) -> ForgotPasswordResult:
+        request.validate()
+        email = Email(request.email)
+        self._user_repo.get_by_email(email)
+        token = self._id_generator.new_id()
+        self._notification_service.send_password_reset_email(email.value, token)
+        return ForgotPasswordResult(email=email.value)

@@ -19,22 +19,22 @@ example, `project` requires `freelancer`, `category`, and `form`).
 
 ### Domain
 
-- [ ] Value Objects: `Email`, `PasswordHash`, `PhoneNumber`
-- [ ] Enum: `UserStatus`
-- [ ] Entities: `User`, `Role`, `Permission`, `UserRole`, `RolePermission`, `RefreshToken`
-- [ ] IAM-specific Exceptions
-- [ ] Repository Interfaces: `IUserRepository`, `IRoleRepository`, `IPermissionRepository`,
+- [x] Value Objects: `Email`, `PasswordHash`, `PhoneNumber`
+- [x] Enum: `UserStatus`
+- [x] Entities: `User`, `Role`, `Permission`, `UserRole`, `RolePermission`, `RefreshToken`
+- [x] IAM-specific Exceptions
+- [x] Repository Interfaces: `IUserRepository`, `IRoleRepository`, `IPermissionRepository`,
       `IUserRoleRepository`, `IRolePermissionRepository`, `IRefreshTokenRepository`
-- [ ] Unit tests for all Entities (happy-path + all exception paths)
+- [x] Unit tests for all Entities (happy-path + all exception paths)
 
 ### Application
 
-- [ ] DTOs (`dto.py`)
-- [ ] Use Cases: RegisterUser, LoginUser, LogoutUser, RefreshToken, ChangePassword,
+- [x] DTOs (`dto.py`)
+- [x] Use Cases: RegisterUser, LoginUser, LogoutUser, RefreshToken, ChangePassword,
       ForgotPassword, BlockUser, ActivateUser, AssignRole, RemoveRole, GrantPermission,
       RevokePermission
-- [ ] IAM Fake Repositories in `tests/fakes/`
-- [ ] Use Case tests (happy-path + every Exception)
+- [x] IAM Fake Repositories in `tests/fakes/`
+- [x] Use Case tests (happy-path + every Exception)
 
 ## Phase 2 — Category
 
