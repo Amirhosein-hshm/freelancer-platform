@@ -48,7 +48,7 @@ example, `project` requires `freelancer`, `category`, and `form`).
 
 - [x] Use Cases: CreateCategory, UpdateCategory, DeleteCategory, AssignSupervisor,
       RemoveSupervisor, GetCategories
-- [ ] GetCategoryProjects (deferred — requires `IProjectRepository`, completed after Phase 5)
+- [x] GetCategoryProjects (deferred — requires `IProjectRepository`, completed after Phase 5)
 - [x] Use Case tests
 
 ## Phase 3 — Freelancer Management
@@ -90,23 +90,24 @@ example, `project` requires `freelancer`, `category`, and `form`).
 
 ### Domain
 
-- [ ] Enums (Status, Visibility, Priority, BudgetType, ApplicationStatus,
+- [x] Enums (Status, Visibility, Priority, BudgetType, ApplicationStatus,
       DeliveryStatus, RevisionRequestStatus)
-- [ ] Value Objects: `Budget`, `ProjectCode`
-- [ ] Entities: `Project`, `ProjectApplication`, `ProjectDelivery`,
+- [x] Value Objects: `Budget`, `ProjectCode`
+- [x] Entities: `Project`, `ProjectApplication`, `ProjectDelivery`,
       `ProjectRevisionRequest`, `ProjectStatusHistory`
-- [ ] Domain Services: `RevisionPolicy`, `FreelancerEligibilityPolicy`
-- [ ] Repository Interfaces + Exceptions
-- [ ] Complete unit tests for project state machine (all valid/invalid transitions)
+- [x] Domain Services: `RevisionPolicy`, `FreelancerEligibilityPolicy`
+- [x] Repository Interfaces + Exceptions
+- [x] Complete unit tests for project state machine (all valid/invalid transitions)
 
 ### Application
 
-- [ ] Core Flow Use Cases: CreateProject, PublishProject, CancelProject,
+- [x] Core Flow Use Cases: CreateProject, PublishProject, CancelProject,
       ApplyForProject, WithdrawApplication, ViewApplications, AcceptFreelancer,
       RejectFreelancer, StartProject, SubmitDelivery, RequestRevision, CompleteProject,
       GetProjectDetails, GetMyProjects, GetAvailableProjects
-- [ ] Use Case tests (including End-to-End scenario with Fakes: Create → Publish → Apply →
+- [x] Use Case tests (including End-to-End scenario with Fakes: Create → Publish → Apply →
       Accept → Start → SubmitDelivery → RequestRevision → SubmitDelivery → Complete)
+- [x] `GetCategoryProjects` (deferred from Phase 2) implemented once `IProjectRepository` existed
 
 ## Phase 6 — Quality Assurance / Supervisor Review
 
