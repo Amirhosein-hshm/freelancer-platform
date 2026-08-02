@@ -19,6 +19,7 @@ from app.domain.project.enums import (
     RevisionRequestStatus,
 )
 from app.domain.project.exceptions import MaxRevisionsExceededError
+from app.domain.review.enums import ReviewStatus
 
 
 def add_application(application_repo, app_id: str = "app-1", now=None) -> ProjectApplication:
@@ -67,7 +68,15 @@ def add_delivery(
 
 
 def build_submit(
-    project_repo, application_repo, delivery_repo, status_history_repo, profile_repo, id_generator, clock, uow
+    project_repo,
+    application_repo,
+    delivery_repo,
+    status_history_repo,
+    profile_repo,
+    review_repo,
+    id_generator,
+    clock,
+    uow,
 ) -> SubmitDeliveryUseCase:
     return SubmitDeliveryUseCase(
         project_repo=project_repo,
@@ -75,6 +84,7 @@ def build_submit(
         delivery_repo=delivery_repo,
         status_history_repo=status_history_repo,
         profile_repo=profile_repo,
+        review_repo=review_repo,
         id_generator=id_generator,
         clock=clock,
         uow=uow,
@@ -89,6 +99,7 @@ class TestSubmitDeliveryUseCase:
         delivery_repo,
         status_history_repo,
         profile_repo,
+        review_repo,
         id_generator,
         clock,
         uow,
@@ -99,7 +110,15 @@ class TestSubmitDeliveryUseCase:
         make_profile(profile_id="profile-1", user_id="freelancer-1")
         add_application(application_repo, now=clock.now())
         use_case = build_submit(
-            project_repo, application_repo, delivery_repo, status_history_repo, profile_repo, id_generator, clock, uow
+            project_repo,
+            application_repo,
+            delivery_repo,
+            status_history_repo,
+            profile_repo,
+            review_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         result = use_case.execute(
@@ -109,6 +128,10 @@ class TestSubmitDeliveryUseCase:
         assert result.version_no == 1
         assert result.project_status == ProjectStatus.UNDER_SUPERVISOR_REVIEW
         assert delivery_repo.get_by_id(result.delivery_id).status == DeliveryStatus.UNDER_REVIEW
+        review = review_repo.find_by_delivery(result.delivery_id)
+        assert review is not None
+        assert review.supervisor_user_id == "supervisor-1"
+        assert review.decision == ReviewStatus.PENDING
         assert uow.committed is True
 
     def test_delivery_without_supervisor_goes_to_customer(
@@ -118,6 +141,7 @@ class TestSubmitDeliveryUseCase:
         delivery_repo,
         status_history_repo,
         profile_repo,
+        review_repo,
         id_generator,
         clock,
         uow,
@@ -133,7 +157,15 @@ class TestSubmitDeliveryUseCase:
         make_profile(profile_id="profile-1", user_id="freelancer-1")
         add_application(application_repo, now=clock.now())
         use_case = build_submit(
-            project_repo, application_repo, delivery_repo, status_history_repo, profile_repo, id_generator, clock, uow
+            project_repo,
+            application_repo,
+            delivery_repo,
+            status_history_repo,
+            profile_repo,
+            review_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         result = use_case.execute(
@@ -150,6 +182,7 @@ class TestSubmitDeliveryUseCase:
         delivery_repo,
         status_history_repo,
         profile_repo,
+        review_repo,
         id_generator,
         clock,
         uow,
@@ -161,7 +194,15 @@ class TestSubmitDeliveryUseCase:
         add_application(application_repo, now=clock.now())
         add_delivery(delivery_repo, now=clock.now(), status=DeliveryStatus.REVISED)
         use_case = build_submit(
-            project_repo, application_repo, delivery_repo, status_history_repo, profile_repo, id_generator, clock, uow
+            project_repo,
+            application_repo,
+            delivery_repo,
+            status_history_repo,
+            profile_repo,
+            review_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         result = use_case.execute(
@@ -181,6 +222,7 @@ class TestSubmitDeliveryUseCase:
         delivery_repo,
         status_history_repo,
         profile_repo,
+        review_repo,
         id_generator,
         clock,
         uow,
@@ -191,7 +233,15 @@ class TestSubmitDeliveryUseCase:
         make_profile(profile_id="profile-1", user_id="freelancer-1")
         add_application(application_repo, now=clock.now())
         use_case = build_submit(
-            project_repo, application_repo, delivery_repo, status_history_repo, profile_repo, id_generator, clock, uow
+            project_repo,
+            application_repo,
+            delivery_repo,
+            status_history_repo,
+            profile_repo,
+            review_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(PermissionDeniedError):

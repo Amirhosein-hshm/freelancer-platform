@@ -26,6 +26,7 @@ from tests.fakes.fake_project_delivery_repository import FakeProjectDeliveryRepo
 from tests.fakes.fake_project_repository import FakeProjectRepository
 from tests.fakes.fake_project_revision_request_repository import FakeProjectRevisionRequestRepository
 from tests.fakes.fake_project_status_history_repository import FakeProjectStatusHistoryRepository
+from tests.fakes.fake_supervisor_review_repository import FakeSupervisorReviewRepository
 
 NOW = datetime(2026, 8, 2, tzinfo=UTC)
 
@@ -151,6 +152,11 @@ def revision_repo() -> FakeProjectRevisionRequestRepository:
 @pytest.fixture
 def status_history_repo() -> FakeProjectStatusHistoryRepository:
     return FakeProjectStatusHistoryRepository()
+
+
+@pytest.fixture
+def review_repo() -> FakeSupervisorReviewRepository:
+    return FakeSupervisorReviewRepository()
 
 
 @pytest.fixture

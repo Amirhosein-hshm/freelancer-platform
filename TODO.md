@@ -113,16 +113,20 @@ example, `project` requires `freelancer`, `category`, and `form`).
 
 ### Domain
 
-- [ ] Enum: `ReviewStatus`
-- [ ] Entity: `SupervisorReview`
-- [ ] Repository Interface + Exceptions
-- [ ] Unit tests
+- [x] Enum: `ReviewStatus`
+- [x] Entity: `SupervisorReview`
+- [x] Repository Interface + Exceptions
+- [x] Unit tests
 
 ### Application
 
-- [ ] Use Cases: GetSupervisorProjects, GetPendingReviews, ReviewDelivery,
+- [x] Use Cases: GetSupervisorProjects, GetPendingReviews, ReviewDelivery,
       ApproveDelivery, RejectDelivery
-- [ ] Use Case tests (including validation constraint: "only the supervisor of the same category")
+- [x] Use Case tests (including validation constraint: "only the supervisor of the same category")
+
+Note: `ISupervisorReviewRepository` gained an `update` method (deviation — a pre-existing
+PENDING review must be persisted after being decided). `SubmitDeliveryUseCase` pre-creates the
+PENDING `SupervisorReview` when a delivery is routed to supervisor review.
 
 ## Phase 7 — Feedback & Rating
 

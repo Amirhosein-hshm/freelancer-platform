@@ -15,6 +15,9 @@ from app.domain.project.repositories import (
     IProjectRepository,
     IProjectStatusHistoryRepository,
 )
+from app.domain.review.entities import SupervisorReview
+from app.domain.review.enums import ReviewStatus
+from app.domain.review.repositories import ISupervisorReviewRepository
 
 
 class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]):
@@ -25,6 +28,7 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
         delivery_repo: IProjectDeliveryRepository,
         status_history_repo: IProjectStatusHistoryRepository,
         profile_repo: IFreelancerProfileRepository,
+        review_repo: ISupervisorReviewRepository,
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
@@ -34,6 +38,7 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
         self._delivery_repo = delivery_repo
         self._status_history_repo = status_history_repo
         self._profile_repo = profile_repo
+        self._review_repo = review_repo
         self._id_generator = id_generator
         self._clock = clock
         self._uow = uow
@@ -91,6 +96,20 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
                 project.move_to_supervisor_review()
                 delivery.mark_under_review()
                 self._delivery_repo.update(delivery)
+                assert project.assigned_supervisor_user_id is not None
+                self._review_repo.add(
+                    SupervisorReview(
+                        id=self._id_generator.new_id(),
+                        project_delivery_id=delivery.id,
+                        project_id=project.id,
+                        supervisor_user_id=project.assigned_supervisor_user_id,
+                        decision=ReviewStatus.PENDING,
+                        reject_reason=None,
+                        notes=None,
+                        reviewed_at=None,
+                        created_at=now,
+                    )
+                )
                 target = ProjectStatus.UNDER_SUPERVISOR_REVIEW
             else:
                 project.move_to_customer_review()
