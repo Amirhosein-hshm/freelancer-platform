@@ -132,14 +132,19 @@ PENDING `SupervisorReview` when a delivery is routed to supervisor review.
 
 ### Domain
 
-- [ ] Entities: `CustomerReview`, `Rating`
-- [ ] Repository Interfaces + Exceptions
-- [ ] Unit tests (including score range validation from 1 to 5)
+- [x] Entities: `CustomerReview`, `Rating`
+- [x] Repository Interfaces + Exceptions
+- [x] Unit tests (including score range validation from 1 to 5)
 
 ### Application
 
-- [ ] Use Cases: SubmitReview, SubmitRating, GetFreelancerRatings, GetProjectRating
-- [ ] Tests (including validation: "only after Completion")
+- [x] Use Cases: SubmitReview, SubmitRating, GetFreelancerRatings, GetProjectRating
+- [x] Tests (including validation: "only after Completion")
+
+Note: `SubmitReviewUseCase` decides the project directly (APPROVED -> COMPLETED via
+`Project.complete`, REJECTED -> opens a `ProjectRevisionRequest` and moves to
+REVISION_REQUESTED). `SubmitRatingUseCase` requires the project to be COMPLETED and a
+`CustomerReview` to exist (rating references the review).
 
 ## Phase 8 — Communication / Ticketing
 
