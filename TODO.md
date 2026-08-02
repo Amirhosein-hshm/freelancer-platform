@@ -75,16 +75,16 @@ example, `project` requires `freelancer`, `category`, and `form`).
 
 ### Domain
 
-- [ ] Enums: `FormFieldType`, `FormTemplateStatus`
-- [ ] Entities: `FormTemplate`, `FormField`, `FormFieldOption`
-- [ ] Repository Interface + Exceptions
-- [ ] Unit tests
+- [x] Enums: `FormFieldType`, `FormTemplateStatus`
+- [x] Entities: `FormTemplate`, `FormField`, `FormFieldOption`
+- [x] Repository Interface + Exceptions
+- [x] Unit tests
 
 ### Application
 
-- [ ] Use Cases: CreateFormTemplate, UpdateFormTemplate, PublishFormTemplate, AddField,
+- [x] Use Cases: CreateFormTemplate, UpdateFormTemplate, PublishFormTemplate, AddField,
       UpdateField, RemoveField, AddFieldOption, GetFormTemplate
-- [ ] Use Case tests
+- [x] Use Case tests
 
 ## Phase 5 — Project Management (Core Domain)
 
