@@ -55,19 +55,21 @@ example, `project` requires `freelancer`, `category`, and `form`).
 
 ### Domain
 
-- [ ] Enums: `FreelancerApprovalStatus`, `FreelancerLevelAccessType`
-- [ ] Entities: `FreelancerLevel`, `FreelancerProfile`, `FreelancerLevelHistory`,
+- [x] Enums: `FreelancerApprovalStatus`, `FreelancerLevelAccessType`
+- [x] Entities: `FreelancerLevel`, `FreelancerProfile`, `FreelancerLevelHistory`,
       `Resume`, `PortfolioItem`
-- [ ] Repository Interfaces + Exceptions
-- [ ] Unit tests
+- [x] Repository Interfaces + Exceptions
+- [x] Unit tests
 
 ### Application
 
-- [ ] Use Cases: CreateFreelancerProfile, UpdateFreelancerProfile, UploadResume,
+- [x] Use Cases: CreateFreelancerProfile, UpdateFreelancerProfile, UploadResume,
       UpdateResume, AddPortfolioItem, UpdatePortfolioItem, DeletePortfolioItem,
       SubmitFreelancerApproval, ApproveFreelancer, RejectFreelancer,
-      AssignFreelancerLevel, GetFreelancerProfile, GetFreelancerStatistics
-- [ ] Use Case tests
+      AssignFreelancerLevel, GetFreelancerProfile
+- [ ] GetFreelancerStatistics (deferred — requires `IRatingRepository` and
+      `IProjectRepository`/`IProjectApplicationRepository`, completed after Phase 7)
+- [x] Use Case tests
 
 ## Phase 4 — Dynamic Form Engine
 
