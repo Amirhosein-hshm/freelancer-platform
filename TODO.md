@@ -40,16 +40,16 @@ example, `project` requires `freelancer`, `category`, and `form`).
 
 ### Domain
 
-- [ ] Entities: `Category`, `CategorySupervisor`
-- [ ] Repository Interfaces + Exceptions
-- [ ] Unit tests
+- [x] Entities: `Category`, `CategorySupervisor`
+- [x] Repository Interfaces + Exceptions
+- [x] Unit tests
 
 ### Application
 
-- [ ] Use Cases: CreateCategory, UpdateCategory, DeleteCategory, AssignSupervisor,
-      RemoveSupervisor, GetCategories, GetCategoryProjects (the last one will be completed
-      after the Project phase because it requires `IProjectRepository`)
-- [ ] Use Case tests
+- [x] Use Cases: CreateCategory, UpdateCategory, DeleteCategory, AssignSupervisor,
+      RemoveSupervisor, GetCategories
+- [ ] GetCategoryProjects (deferred — requires `IProjectRepository`, completed after Phase 5)
+- [x] Use Case tests
 
 ## Phase 3 — Freelancer Management
 
