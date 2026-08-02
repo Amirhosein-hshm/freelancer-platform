@@ -67,8 +67,8 @@ example, `project` requires `freelancer`, `category`, and `form`).
       UpdateResume, AddPortfolioItem, UpdatePortfolioItem, DeletePortfolioItem,
       SubmitFreelancerApproval, ApproveFreelancer, RejectFreelancer,
       AssignFreelancerLevel, GetFreelancerProfile
-- [ ] GetFreelancerStatistics (deferred — requires `IRatingRepository` and
-      `IProjectRepository`/`IProjectApplicationRepository`, completed after Phase 7)
+- [x] GetFreelancerStatistics (deferred — implemented in Phase 9 via
+      `IReportingReadRepository`)
 - [x] Use Case tests
 
 ## Phase 4 — Dynamic Form Engine
@@ -170,15 +170,15 @@ participants on assignment.
 
 ### Domain
 
-- [ ] Read Models: `DashboardStatistics`, `ProjectStatistics`, `UserStatistics`,
-      `FreelancerStatistics`, `CustomerStatistics`
-- [ ] Repository Interface: `IReportingReadRepository`
+- [x] Read Models: `DashboardStatistics`, `ProjectStatistics`, `UserStatistics`,
+      `FreelancerStatistics`, `CustomerStatistics` (+ `SystemAnalytics`)
+- [x] Repository Interface: `IReportingReadRepository`
 
 ### Application
 
-- [ ] Use Cases: GetDashboardStatistics, GetUserStatistics, GetProjectStatistics,
+- [x] Use Cases: GetDashboardStatistics, GetUserStatistics, GetProjectStatistics,
       GetFreelancerStatistics, GetCustomerStatistics, GetSystemAnalytics
-- [ ] Tests with Fake Read Repository
+- [x] Tests with Fake Read Repository
 
 ## Phase 10 — Phase One Finalization
 
