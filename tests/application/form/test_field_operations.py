@@ -142,6 +142,34 @@ class TestUpdateFieldUseCase:
 
         assert template_repo.get_by_id("template-1").get_field("field-1").options == []
 
+    def test_update_all_attributes(self, template_repo, make_template):
+        template = make_template(template_id="template-1")
+        seed_field(template)
+        use_case = UpdateFieldUseCase(template_repo=template_repo)
+
+        use_case.execute(
+            UpdateFieldCommand(
+                template_id="template-1",
+                field_id="field-1",
+                description="Pick a category",
+                field_type=FormFieldType.TEXT,
+                is_repeatable=True,
+                is_unique=True,
+                sort_order=5,
+                validation_rules={"min_length": 3},
+                is_active=False,
+            )
+        )
+
+        field = template_repo.get_by_id("template-1").get_field("field-1")
+        assert field.description == "Pick a category"
+        assert field.field_type == FormFieldType.TEXT
+        assert field.is_repeatable is True
+        assert field.is_unique is True
+        assert field.sort_order == 5
+        assert field.validation_rules == {"min_length": 3}
+        assert field.is_active is False
+
     def test_update_unknown_field_raises(self, template_repo, make_template):
         make_template(template_id="template-1")
         use_case = UpdateFieldUseCase(template_repo=template_repo)

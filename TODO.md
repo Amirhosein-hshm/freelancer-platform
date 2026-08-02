@@ -182,14 +182,17 @@ participants on assignment.
 
 ## Phase 10 — Phase One Finalization
 
-- [ ] Complete Coverage Review (>=90% on domain and application)
-- [ ] Review `mypy --strict`
-- [ ] Review that there are no forbidden imports in domain/application
+- [x] Complete Coverage Review (>=90% on domain and application) — final: 99% total,
+      161/180 files at 100%
+- [x] Review `mypy --strict` — passes on 176 source files
+- [x] Review that there are no forbidden imports in domain/application
       (`grep -R "^import fastapi\|^import sqlalchemy\|^import pydantic" src/app/domain src/app/application`)
-- [ ] Final documentation: Update `ARCHITECTURE.md`/`DOMAIN.md`/`APPLICATION.md` with any
-      actual deviations from the initial plan
-- [ ] Prepare the exact list of Interfaces that Phase 2 (`infrastructure`/`presentation`) must
+      — clean (no matches)
+- [x] Final documentation: Update `ARCHITECTURE.md`/`DOMAIN.md`/`APPLICATION.md` with any
+      actual deviations from the initial plan — see `ARCHITECTURE.md` §6
+- [x] Prepare the exact list of Interfaces that Phase 2 (`infrastructure`/`presentation`) must
       implement (automatic output: all `I*` classes in `domain`/`application`)
+      — recorded in `ARCHITECTURE.md` §5.1
 
 ## Phase 2 (Later — Out of Current Scope)
 

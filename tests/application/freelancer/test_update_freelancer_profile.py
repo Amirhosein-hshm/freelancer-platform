@@ -38,6 +38,25 @@ class TestUpdateFreelancerProfileUseCase:
         assert result.hourly_rate_min == Decimal("20")
         assert result.hourly_rate_max == Decimal("40")
 
+    def test_update_text_fields_without_rates(self, profile_repo, make_profile):
+        make_profile(user_id="user-1")
+        use_case = build_use_case(profile_repo)
+
+        result = use_case.execute(
+            UpdateFreelancerProfileCommand(
+                user_id="user-1",
+                headline="Senior Python Engineer",
+                country_code="IR",
+                timezone="Asia/Tehran",
+            )
+        )
+
+        assert result.headline == "Senior Python Engineer"
+        assert result.country_code == "IR"
+        assert result.timezone == "Asia/Tehran"
+        assert result.hourly_rate_min is None
+        assert result.hourly_rate_max is None
+
     def test_partial_rate_update_keeps_other_bound(self, profile_repo, make_profile):
         make_profile(user_id="user-1", hourly_rate_min=Decimal("20"), hourly_rate_max=Decimal("40"))
         use_case = build_use_case(profile_repo)

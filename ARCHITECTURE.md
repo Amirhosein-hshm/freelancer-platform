@@ -205,4 +205,50 @@ packaging clean (`pip install -e .`).
   (mapping to application DTOs, not replacing them), dependency injection wiring
   (for example with `punq`/`dependency-injector` or FastAPI `Depends`), middleware for
   global auth/error handling.
-```
+
+### 5.1. Complete list of interfaces Phase 2 must implement (all `I*` classes)
+
+`domain` repositories / services:
+`ICategoryRepository`, `ICategorySupervisorRepository`, `IUserRepository`,
+`IUserRoleRepository`, `IRoleRepository`, `IRolePermissionRepository`,
+`IPermissionRepository`, `IRefreshTokenRepository`, `IFreelancerProfileRepository`,
+`IFreelancerLevelRepository`, `IFreelancerLevelHistoryRepository`,
+`IResumeRepository`, `IPortfolioItemRepository`, `IFormTemplateRepository`,
+`IProjectRepository`, `IProjectApplicationRepository`, `IProjectDeliveryRepository`,
+`IProjectRevisionRequestRepository`, `IProjectStatusHistoryRepository`,
+`ISupervisorReviewRepository`, `ICustomerReviewRepository`, `IRatingRepository`,
+`ITicketRepository`, `ITicketMessageRepository`, `ITicketParticipantRepository`,
+`IReportingReadRepository`.
+
+`application` shared services (implemented in `infrastructure/security`, `storage`, ...):
+`IPasswordHasher`, `ITokenService`, `IIdGenerator`, `IClock`, `IProjectCodeGenerator`,
+`ITicketCodeGenerator`, `IUnitOfWork`, `IEventPublisher`, `INotificationService`,
+`IFileStorageService`, `IAuthorizationService`.
+
+## 6. Deviations from the Initial Plan (Recorded During Phase 1)
+
+- **No event bus in Phase 1 flows**: `CompleteProjectUseCase` and `SubmitReviewUseCase`
+  perform their downstream decisions (e.g. opening a revision request, completing the
+  project) directly inside the same use case / unit of work. `IEventPublisher` exists in
+  `domain/shared` but is not wired to any flow in Phase 1.
+- **`IFreelancerLevelHistoryRepository`** was added to `domain/freelancer` (used by
+  `AssignFreelancerLevelUseCase`) although it was not listed in `DOMAIN.md`.
+- **`ISupervisorReviewRepository.update`** was added during Phase 6 (Phase 6) to persist
+  the supervisor's decision — not in the original interface list.
+- **`ITicketCodeGenerator`** was added to `application/shared/ports.py` during Phase 8
+  (with `FakeTicketCodeGenerator` in tests), mirroring `IProjectCodeGenerator`.
+- **Timing of deferred use cases**: `GetCategoryProjects` was implemented in Phase 5 once
+  `IProjectRepository` existed; `GetFreelancerStatistics` was implemented in Phase 9 via
+  `IReportingReadRepository` instead of joining rating/project repositories directly.
+- **Reporting read models**: statistics read models use `Decimal` for `total_revenue` and
+  `average_rating`; `average_rating` is typed `Decimal | None`. A composite
+  `SystemAnalytics` read model was added for `GetSystemAnalyticsUseCase` (not in
+  `DOMAIN.md`). All reporting use cases take `ReportingQuery(actor_id)` and enforce the
+  `reporting.read` permission via `IAuthorizationService`.
+- **Tool paths**: the Definition-of-Done commands in `AGENTS.md` target `app/domain` /
+  `app/application`; with the `src/` layout they are configured as
+  `src/app/domain` / `src/app/application` in `Makefile` / `pyproject.toml`.
+- **Enum values** use `UPPER_SNAKE` (e.g. `ProjectStatus.COMPLETED`,
+  `UserStatus.ACTIVE`) per the DBML-aligned convention.
+- **GetSystemAnalytics** composes all five `IReportingReadRepository` reads; no dedicated
+  repository method was added for it.

@@ -226,6 +226,10 @@ require_permission("user.assign_role") → role = `role_repo.get_by_key` →
   `IProjectApplicationRepository`/`IProjectRepository` آمار می‌گیرد (aggregation ساده در
   Use Case چون Cross-Repository است).
 
+  > **تغییر نسبت به برنامه اولیه:** در فاز ۹، این Use Case به صورت
+  > `GetFreelancerStatisticsUseCase` در context گزارش‌گیری پیاده شد و آمار را از
+  > `IReportingReadRepository` می‌گیرد (نه aggregation مستقیم).
+
 ---
 
 ## 6. Category — Use Caseها (فاز ۱)
@@ -237,6 +241,9 @@ require_permission("user.assign_role") → role = `role_repo.get_by_key` →
 - `RemoveSupervisorUseCase`.
 - `GetCategoriesUseCase` / `GetCategoryProjectsUseCase` (این یکی از `IProjectRepository`
   هم استفاده می‌کند).
+
+  > **تغییر نسبت به برنامه اولیه:** `GetCategoryProjects` در فاز ۵ (بعد از ایجاد
+  > `IProjectRepository`) پیاده شد، نه در فاز ۲.
 
 ---
 
