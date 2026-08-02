@@ -23,6 +23,7 @@ __all__ = [
     "INotificationService",
     "IPasswordHasher",
     "IProjectCodeGenerator",
+    "ITicketCodeGenerator",
     "ITokenService",
     "IUnitOfWork",
 ]
@@ -136,6 +137,13 @@ class IProjectCodeGenerator(ABC):
     The real implementation (Phase 2) will read a per-year sequence from the database;
     the Phase 1 fake returns deterministic values for tests.
     """
+
+    @abstractmethod
+    def next_code(self, year: int) -> str: ...
+
+
+class ITicketCodeGenerator(ABC):
+    """Generates a ticket business code such as ``TCK-2026-001``."""
 
     @abstractmethod
     def next_code(self, year: int) -> str: ...

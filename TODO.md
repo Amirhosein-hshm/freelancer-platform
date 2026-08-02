@@ -150,17 +150,21 @@ REVISION_REQUESTED). `SubmitRatingUseCase` requires the project to be COMPLETED 
 
 ### Domain
 
-- [ ] Enums: `TicketStatus`, `TicketPriority`, `TicketMessageType`,
+- [x] Enums: `TicketStatus`, `TicketPriority`, `TicketMessageType`,
       `TicketParticipantRole`
-- [ ] Entities: `Ticket`, `TicketParticipant`, `TicketMessage`
-- [ ] Repository Interfaces + Exceptions
-- [ ] Unit tests
+- [x] Entities: `Ticket`, `TicketParticipant`, `TicketMessage`
+- [x] Repository Interfaces + Exceptions
+- [x] Unit tests
 
 ### Application
 
-- [ ] Use Cases: CreateTicket, AssignTicket, SendMessage, GetTicketMessages,
+- [x] Use Cases: CreateTicket, AssignTicket, SendMessage, GetTicketMessages,
       CloseTicket, GetUserTickets
-- [ ] Tests
+- [x] Tests
+
+Note: added `ITicketCodeGenerator` port (shared) for `TCK-<year>-<seq>` codes. SendMessage
+and CloseTicket require the actor to be a ticket participant; assignees are added as
+participants on assignment.
 
 ## Phase 9 — Reporting & Analytics (Read-Only)
 
