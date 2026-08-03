@@ -182,8 +182,9 @@ class RegisterUserUseCase(UseCase[RegisterUserCommand, RegisterUserResult]):
 
 `ChangePasswordUseCase(user_id, old_password, new_password)`:
 verify رمز قدیم → hash جدید → `user.change_password(...)` → `update`.
-`ForgotPasswordUseCase(email)`: تولید توکن یک‌بار مصرف (خارج از scope RefreshToken —
-می‌تواند از `ITokenService` یا سرویس جدا استفاده کند) → ارسال ایمیل.
+`ForgotPasswordUseCase(email)`: برای جلوگیری از User-enumeration، فقط اگر
+`exists_by_email(email)` باشد توکن یک‌بارمصرف تولید و ایمیل ارسال می‌شود؛ در هر دو حالت نتیجه
+موفقیت یکسان برگردانده می‌شود.
 
 ### BlockUser / ActivateUser
 
@@ -196,10 +197,19 @@ verify رمز قدیم → hash جدید → `user.change_password(...)` → `up
 require_permission("user.assign_role") → role = `role_repo.get_by_key` →
 اگر `user_role_repo.find_active` موجود بود → `RoleAlreadyAssignedError` →
 `UserRole` جدید → `add`.
+`RemoveRoleUseCase`: require_permission("user.remove_role") → role = `get_by_key` →
+اگر `role.is_system` → `SystemRoleImmutableError` → کاربری نقش فعال نداشت →
+`UserRoleNotFoundError`.
 
 ### GrantPermission / RevokePermission
 
-مشابه بالا روی `RolePermission`.
+`GrantPermissionUseCase`: require_permission("user.grant_permission") →
+role = `role_repo.get_by_id` و permission = `permission_repo.get_by_id` →
+اگر permission قبلاً به نقش داده شده (`list_permissions_for_role`) →
+`PermissionAlreadyGrantedError` → `RolePermission` جدید → `add`.
+`RevokePermissionUseCase`: require_permission("user.revoke_permission") →
+role = `role_repo.get_by_id`؛ اگر `role.is_system` → `SystemRoleImmutableError` →
+`permission_repo.get_by_id` چک وجود → `role_permission_repo.remove`.
 
 ---
 
@@ -268,6 +278,7 @@ require_permission("user.assign_role") → role = `role_repo.get_by_key` →
 ```python
 @dataclass(frozen=True)
 class CreateProjectCommand:
+    actor_id: EntityId            # احراز هویت
     customer_user_id: EntityId
     category_id: EntityId
     title: str
@@ -306,24 +317,28 @@ class CreateProjectUseCase(UseCase[CreateProjectCommand, ProjectResult]):
 
 ### CancelProject
 
-`require_permission` یا چک مالکیت (`project.customer_user_id == actor_id` یا نقش admin) →
-`project.cancel(now, reason)` → `project_status_history_repo.add(...)`.
+`authorize_owned_action(authz, actor_id, project.customer_user_id,
+"project.manage_own", "project.manage_any")` → `project.cancel(now, reason)` →
+`project_status_history_repo.add(...)`.
 
 ### ApplyForProject
 
 وابستگی‌ها: `IProjectRepository`, `IProjectApplicationRepository`,
-`IFreelancerProfileRepository`, `IFreelancerLevelRepository`, `IUnitOfWork`.
+`IFreelancerProfileRepository`, `IFreelancerLevelRepository`, `IAuthorizationService`,
+`IUnitOfWork`.
 جریان:
 
+0. `authorization_service.require_permission(actor_id, "project.apply")`.
 1. `project = project_repo.get_by_id` → چک `project.can_accept_applications()`.
-2. `profile = freelancer_profile_repo.get_by_user_id(actor_id)` → چک `is_approved()`
+2. چک `project.is_application_deadline_passed(now)` → `ApplicationDeadlineExpiredError`.
+3. `profile = freelancer_profile_repo.get_by_user_id(actor_id)` → چک `is_approved()`
    وگرنه `FreelancerNotApprovedError`.
-3. چک تکراری با `find_by_project_and_freelancer` → `DuplicateApplicationError`.
-4. `level = level_repo.get_by_id(profile.current_level_id)`.
-5. `active_count = application_repo.count_active_for_freelancer(profile.id)`.
-6. `FreelancerEligibilityPolicy.is_eligible_to_apply(level, project, active_count)`
+4. چک تکراری با `find_by_project_and_freelancer` → `DuplicateApplicationError`.
+5. `level = level_repo.get_by_id(profile.current_level_id)`.
+6. `active_count = application_repo.count_active_for_freelancer(profile.id)`.
+7. `FreelancerEligibilityPolicy.is_eligible_to_apply(level, project, active_count)`
    وگرنه `FreelancerNotEligibleError`.
-7. `ProjectApplication` جدید (status=APPLIED) → `add`.
+8. `ProjectApplication` جدید (status=APPLIED) با `submitted_by_user_id=actor_id` → `add`.
 
 ### WithdrawApplication / ViewApplications
 
@@ -333,7 +348,11 @@ class CreateProjectUseCase(UseCase[CreateProjectCommand, ProjectResult]):
 
 1. `application = application_repo.get_by_id`.
 2. `project = project_repo.get_by_id(application.project_id)`.
-3. مالکیت: `project.customer_user_id == actor_id` وگرنه `PermissionDeniedError`.
+3. احراز هویت بر اساس قرارداد مالکیت دو-سطحی (see AUTHORIZATION.md §3.1):
+   `authorize_owned_action(authz, actor_id, project.customer_user_id,
+   "project.manage_own", "project.manage_any")` — اگر actor خودِ customer باشد
+   `project.manage_own` وگرنه (admin) `project.manage_any` لازم است؛ وگرنه
+   `PermissionDeniedError`.
 4. `application.accept(actor_id, now)`.
 5. `project.assign_freelancer(application.id, now)`.
 6. سایر application‌های `list_by_project` که `APPLIED/SHORTLISTED` هستند → `reject(...)`.
@@ -383,31 +402,40 @@ Queryهای خواندن؛ `GetAvailableProjects` از `list_available_for_freel
 - `GetSupervisorProjectsUseCase(supervisor_user_id)` → `project_repo.list_by_supervisor`.
 - `GetPendingReviewsUseCase(supervisor_user_id)` → `supervisor_review_repo
 .list_pending_for_supervisor`.
-- `ReviewDeliveryUseCase` / `ApproveDeliveryUseCase` / `RejectDeliveryUseCase`:
+- `ReviewDeliveryUseCase` / `ApproveDeliveryUseCase` / `RejectDeliveryUseCase`
+  (هر سه از Domain Service مشترک `decide_delivery_review` در `review/use_cases/review_workflow.py`
+  استفاده می‌کنند):
   1. `delivery = delivery_repo.get_by_id`.
   2. `project = project_repo.get_by_id(delivery.project_id)`.
-  3. چک `category_supervisor_repo.is_supervisor_of(actor_id, project.category_id)`
-     وگرنه `NotAssignedSupervisorError`.
-  4. `SupervisorReview` جدید یا موجود؛ اگر از قبل هست → `DeliveryAlreadyReviewedError`.
-  5. `review.approve(...)`/`review.reject(reason)` → `add`.
-  6. `delivery.approve(...)`/`reject(...)` → `update`.
-  7. Project: `move_to_customer_review()` (approve) یا trigger `RequestRevision` جریان
-     (reject) — از طریق فراخوانی همان Use Case داخلی یا Domain Service مشترک.
+  3. پیش‌شرط وضعیت: `project.status` باید `UNDER_SUPERVISOR_REVIEW` باشد وگرنه
+     `InvalidStateTransitionError`.
+  4. احراز هویت دو-سطحی: اگر `category_supervisor_repo.is_supervisor_of(actor_id,
+     project.category_id)` → `require_permission(actor_id, "review.decide_own")` وگرنه
+     `require_permission(actor_id, "review.decide_any")` (admin) → `PermissionDeniedError`.
+  5. `SupervisorReview` جدید یا موجود؛ اگر تصمیم‌گرفته‌شده باشد → `DeliveryAlreadyReviewedError`.
+  6. `review.approve(...)`/`review.reject(reason)` → `add` (جدید) یا `update` (موجود).
+  7. `delivery.approve(...)`/`reject(...)` → `update`.
+  8. Project: approve → `move_to_customer_review()`؛ reject → ساخت `ProjectRevisionRequest`
+     (قبل از آن `RevisionPolicy.ensure_can_request_new_revision` → `MaxRevisionsExceededError`)
+     و `request_revision()`.
 
 ---
 
 ## 10. Feedback & Rating — Use Caseها (فاز ۱)
 
 - `SubmitReviewUseCase(actor_id, project_id, decision, comment)`:
-  چک `project.status == AWAITING_CUSTOMER_REVIEW` یا `COMPLETED` بسته به مدل جریان →
-  `CustomerReview` → `add`. اگر decision == APPROVED → صدا زدن `CompleteProjectUseCase`
-  (یا انتشار Domain Event `CustomerApprovedEvent` که `project` context به آن گوش دهد —
-  ترجیحاً Event برای کاهش coupling مستقیم بین Use Caseها).
+  احراز هویت: `authorize_owned_action(authz, actor_id, project.customer_user_id,
+  "feedback.manage_own", "feedback.manage_any")`. چک
+  `project.status == AWAITING_CUSTOMER_REVIEW` →
+  `CustomerReview` → `add`. اگر decision == APPROVED → `Project.complete`؛ اگر REJECTED →
+  ساخت `ProjectRevisionRequest` (قبل از آن `RevisionPolicy.ensure_can_request_new_revision`)
+  و `request_revision()`.
 - `SubmitRatingUseCase(actor_id, project_id, score, comment, is_public)`:
   1. `project = project_repo.get_by_id`.
-  2. اگر `project.status != COMPLETED` → `ProjectNotCompletedError`.
-  3. اگر `rating_repo.find_by_project` موجود → `RatingAlreadyExistsError`.
-  4. `Rating(score=...)` (validate در `__post_init__` دامنه) → `add`.
+  2. احراز هویت: `authorize_owned_action(..., "feedback.manage_own", "feedback.manage_any")`.
+  3. اگر `project.status != COMPLETED` → `ProjectNotCompletedError`.
+  4. اگر `rating_repo.find_by_project` موجود → `RatingAlreadyExistsError`.
+  5. `Rating(score=...)` (validate در `__post_init__` دامنه) → `add`.
 - `GetFreelancerRatingsUseCase` / `GetProjectRatingUseCase`.
 
 ---
@@ -416,10 +444,14 @@ Queryهای خواندن؛ `GetAvailableProjects` از `list_available_for_freel
 
 - `CreateTicketUseCase(actor_id, subject, related_project_id, priority)` →
   `Ticket(status=OPEN)` + `TicketParticipant(role=REQUESTER)` → `add`.
-- `AssignTicketUseCase(actor_id, ticket_id, assignee_user_id)`.
+- `AssignTicketUseCase(actor_id, ticket_id, assignee_user_id)` →
+  `require_permission(actor_id, "ticket.assign")`.
 - `SendMessageUseCase(actor_id, ticket_id, body, attachments)` →
   چک `ticket.is_closed()` → `TicketClosedError` وگرنه پیام ثبت + `touch_last_message`.
-- `GetTicketMessagesUseCase` / `GetUserTicketsUseCase`.
+- `GetTicketMessagesUseCase` / `GetUserTicketsUseCase` — latter: `authorize_owned_action(authz,
+  actor_id, user_id, "ticket.read_own", "ticket.read_any")`; CloseTicket:
+  `authorize_owned_action(authz, actor_id, ticket.created_by_user_id, "ticket.close_own",
+  "ticket.close_any")` + چک participant.
 - `CloseTicketUseCase(actor_id, ticket_id)` → `ticket.close(actor_id, now)`.
 
 ---

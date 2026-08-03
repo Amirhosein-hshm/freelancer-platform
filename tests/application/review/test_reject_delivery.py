@@ -2,12 +2,13 @@ import pytest
 
 from app.application.review.dto import RejectDeliveryCommand
 from app.application.review.use_cases.reject_delivery import RejectDeliveryUseCase
+from app.application.shared.exceptions import PermissionDeniedError
 from app.domain.project.enums import DeliveryStatus, ProjectStatus, RevisionRequestStatus
 from app.domain.review.enums import ReviewStatus
-from app.domain.review.exceptions import NotAssignedSupervisorError
 
 
 def build_reject(
+    authorization_service,
     delivery_repo,
     project_repo,
     category_supervisor_repo,
@@ -19,6 +20,7 @@ def build_reject(
     uow,
 ) -> RejectDeliveryUseCase:
     return RejectDeliveryUseCase(
+        authorization_service=authorization_service,
         delivery_repo=delivery_repo,
         project_repo=project_repo,
         category_supervisor_repo=category_supervisor_repo,
@@ -34,6 +36,7 @@ def build_reject(
 class TestRejectDeliveryUseCase:
     def test_reject_triggers_revision_request(
         self,
+        authorization_service,
         delivery_repo,
         project_repo,
         category_supervisor_repo,
@@ -46,7 +49,9 @@ class TestRejectDeliveryUseCase:
         seed_supervisor_flow,
     ):
         seed_supervisor_flow()
+        authorization_service.grant("supervisor-1", "review.decide_own")
         use_case = build_reject(
+            authorization_service,
             delivery_repo,
             project_repo,
             category_supervisor_repo,
@@ -77,6 +82,7 @@ class TestRejectDeliveryUseCase:
 
     def test_non_supervisor_raises(
         self,
+        authorization_service,
         delivery_repo,
         project_repo,
         category_supervisor_repo,
@@ -90,6 +96,7 @@ class TestRejectDeliveryUseCase:
     ):
         seed_supervisor_flow()
         use_case = build_reject(
+            authorization_service,
             delivery_repo,
             project_repo,
             category_supervisor_repo,
@@ -101,7 +108,7 @@ class TestRejectDeliveryUseCase:
             uow,
         )
 
-        with pytest.raises(NotAssignedSupervisorError):
+        with pytest.raises(PermissionDeniedError):
             use_case.execute(
                 RejectDeliveryCommand(
                     actor_id="intruder", project_delivery_id="delivery-1", reason="Nope"

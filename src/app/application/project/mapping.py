@@ -46,6 +46,7 @@ def to_application_result(application: ProjectApplication) -> ApplicationResult:
         proposed_amount=application.proposed_amount,
         proposed_days=application.proposed_days,
         applied_at=application.applied_at,
+        submitted_by_user_id=application.submitted_by_user_id,
         decided_at=application.decided_at,
         decision_note=application.decision_note,
     )

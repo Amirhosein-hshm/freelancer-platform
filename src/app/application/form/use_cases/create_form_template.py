@@ -2,11 +2,14 @@ from app.application.form.dto import (
     CreateFormTemplateCommand,
     CreateFormTemplateResult,
 )
+from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.form.entities import FormTemplate
 from app.domain.form.enums import FormTemplateStatus
 from app.domain.form.repositories import IFormTemplateRepository
+
+PERMISSION_FORM_MANAGE = "form.manage"
 
 
 class CreateFormTemplateUseCase(
@@ -14,17 +17,22 @@ class CreateFormTemplateUseCase(
 ):
     def __init__(
         self,
+        authorization_service: IAuthorizationService,
         template_repo: IFormTemplateRepository,
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
     ) -> None:
+        self._authorization_service = authorization_service
         self._template_repo = template_repo
         self._id_generator = id_generator
         self._clock = clock
         self._uow = uow
 
     def execute(self, request: CreateFormTemplateCommand) -> CreateFormTemplateResult:
+        self._authorization_service.require_permission(
+            request.actor_id, PERMISSION_FORM_MANAGE
+        )
         request.validate()
         now = self._clock.now()
         template = FormTemplate(

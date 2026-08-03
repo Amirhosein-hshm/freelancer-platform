@@ -151,6 +151,7 @@ class InvalidCredentialsError(BusinessRuleViolationError): ...
 class UserAlreadyBlockedError(InvalidStateTransitionError): ...
 class RoleAlreadyAssignedError(BusinessRuleViolationError): ...
 class SystemRoleImmutableError(BusinessRuleViolationError): ...
+class PermissionAlreadyGrantedError(UniqueConstraintViolationError): ...
 ```
 
 ### Repository Interfaces
@@ -351,6 +352,8 @@ class CategorySupervisor(Entity):
     assigned_at: datetime
     revoked_at: datetime | None
     def revoke(self, at: datetime) -> None: ...
+    def promote(self) -> None: ...
+        # is_primary -> True (هنگام حذف مدیر اصلی، اولین مدیر فعال جایگزین می‌شود)
 ```
 
 ### Domain Exceptions
@@ -549,6 +552,8 @@ class Project(AggregateRoot):
         # این را چک کند و BusinessRuleViolationError("project is locked") بدهد.
     def can_accept_applications(self) -> bool: ...
     def has_supervisor(self) -> bool: ...
+    def is_application_deadline_passed(self, at: datetime) -> bool: ...
+        # application_deadline ست شده و at > deadline -> True
 
 @dataclass
 class ProjectApplication(AggregateRoot):
@@ -563,6 +568,8 @@ class ProjectApplication(AggregateRoot):
     decided_at: datetime | None
     decision_note: str | None
     withdrawn_at: datetime | None
+    submitted_by_user_id: EntityId | None = None
+        # مم‌ودِ ثبت درخواست (audit؛ می‌تواند در حالت on-behalf از freelancer_profile_id متفاوت باشد)
 
     def shortlist(self) -> None: ...
     def accept(self, decided_by: EntityId, at: datetime) -> None: ...
@@ -625,12 +632,16 @@ class RevisionPolicy:
     def can_request_new_revision(existing_requests: list[ProjectRevisionRequest]) -> bool:
         return len(existing_requests) < RevisionPolicy.MAX_REVISIONS
         # اگر False -> Use Case باید MaxRevisionsExceededError بدهد
+    @staticmethod
+    def ensure_can_request_new_revision(existing_requests: list[ProjectRevisionRequest]) -> None:
+        # اگر به سقف رسیده -> MaxRevisionsExceededError
 
 class FreelancerEligibilityPolicy:
     @staticmethod
     def is_eligible_to_apply(
         level: "FreelancerLevel", project: Project, active_application_count: int
     ) -> bool: ...
+        # اگر level غیرفعال باشد -> False
         # چک can_apply_public/private_projects و max_active_applications
 ```
 
@@ -647,6 +658,7 @@ class DuplicateApplicationError(UniqueConstraintViolationError): ...
 class DeliveryNotFoundError(EntityNotFoundError): ...
 class MaxRevisionsExceededError(BusinessRuleViolationError): ...
 class FreelancerNotEligibleError(BusinessRuleViolationError): ...
+class ApplicationDeadlineExpiredError(BusinessRuleViolationError): ...
 ```
 
 ### Repository Interfaces

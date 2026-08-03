@@ -48,6 +48,7 @@ class FormTemplateResult:
 
 @dataclass(frozen=True)
 class CreateFormTemplateCommand:
+    actor_id: EntityId
     category_id: EntityId
     name: str
     template_key: str
@@ -66,6 +67,7 @@ class CreateFormTemplateResult:
 
 @dataclass(frozen=True)
 class UpdateFormTemplateCommand:
+    actor_id: EntityId
     template_id: EntityId
     name: str
 
@@ -95,6 +97,7 @@ class PublishFormTemplateResult:
 
 @dataclass(frozen=True)
 class AddFieldCommand:
+    actor_id: EntityId
     template_id: EntityId
     field_key: str
     label: str
@@ -118,6 +121,7 @@ class AddFieldResult:
 
 @dataclass(frozen=True)
 class UpdateFieldCommand:
+    actor_id: EntityId
     template_id: EntityId
     field_id: EntityId
     label: str | None = None
@@ -142,6 +146,7 @@ class UpdateFieldResult:
 
 @dataclass(frozen=True)
 class RemoveFieldCommand:
+    actor_id: EntityId
     template_id: EntityId
     field_id: EntityId
 
@@ -153,6 +158,7 @@ class RemoveFieldResult:
 
 @dataclass(frozen=True)
 class AddFieldOptionCommand:
+    actor_id: EntityId
     template_id: EntityId
     field_id: EntityId
     option_key: str

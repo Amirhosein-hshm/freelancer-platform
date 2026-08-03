@@ -19,7 +19,7 @@ class ForgotPasswordUseCase(UseCase[ForgotPasswordCommand, ForgotPasswordResult]
     def execute(self, request: ForgotPasswordCommand) -> ForgotPasswordResult:
         request.validate()
         email = Email(request.email)
-        self._user_repo.get_by_email(email)
-        token = self._id_generator.new_id()
-        self._notification_service.send_password_reset_email(email.value, token)
+        if self._user_repo.exists_by_email(email):
+            token = self._id_generator.new_id()
+            self._notification_service.send_password_reset_email(email.value, token)
         return ForgotPasswordResult(email=email.value)

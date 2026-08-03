@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -14,15 +15,17 @@ from app.domain.freelancer.exceptions import FreelancerNotApprovedError
 from app.domain.project.entities import ProjectApplication
 from app.domain.project.enums import ProjectApplicationStatus, ProjectStatus
 from app.domain.project.exceptions import (
+    ApplicationDeadlineExpiredError,
     DuplicateApplicationError,
     FreelancerNotEligibleError,
 )
 
 
 def build_apply(
-    project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
+    authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
 ) -> ApplyForProjectUseCase:
     return ApplyForProjectUseCase(
+        authorization_service=authorization_service,
         project_repo=project_repo,
         application_repo=application_repo,
         profile_repo=profile_repo,
@@ -58,6 +61,7 @@ def seed_application(
 class TestApplyForProjectUseCase:
     def test_apply_succeeds(
         self,
+        authorization_service,
         project_repo,
         application_repo,
         profile_repo,
@@ -69,11 +73,12 @@ class TestApplyForProjectUseCase:
         make_profile,
         make_level,
     ):
+        authorization_service.grant("freelancer-1", "project.apply")
         make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
         make_level(level_id="level-1", max_active_applications=3)
         make_profile(profile_id="profile-1", user_id="freelancer-1")
         use_case = build_apply(
-            project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
+            authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
         )
 
         result = use_case.execute(
@@ -88,10 +93,12 @@ class TestApplyForProjectUseCase:
         assert result.status == ProjectApplicationStatus.APPLIED
         assert application.project_id == "project-1"
         assert application.freelancer_profile_id == "profile-1"
+        assert application.submitted_by_user_id == "freelancer-1"
         assert uow.committed is True
 
     def test_project_not_accepting_applications_raises(
         self,
+        authorization_service,
         project_repo,
         application_repo,
         profile_repo,
@@ -103,11 +110,12 @@ class TestApplyForProjectUseCase:
         make_profile,
         make_level,
     ):
+        authorization_service.grant("freelancer-1", "project.apply")
         make_project(project_id="project-1", status=ProjectStatus.ASSIGNED)
         make_level(level_id="level-1")
         make_profile(profile_id="profile-1", user_id="freelancer-1")
         use_case = build_apply(
-            project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
+            authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
         )
 
         with pytest.raises(FreelancerNotEligibleError):
@@ -115,6 +123,7 @@ class TestApplyForProjectUseCase:
 
     def test_unapproved_freelancer_raises(
         self,
+        authorization_service,
         project_repo,
         application_repo,
         profile_repo,
@@ -126,6 +135,7 @@ class TestApplyForProjectUseCase:
         make_profile,
         make_level,
     ):
+        authorization_service.grant("freelancer-1", "project.apply")
         make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
         make_level(level_id="level-1")
         make_profile(
@@ -134,7 +144,7 @@ class TestApplyForProjectUseCase:
             approval_status=FreelancerApprovalStatus.PENDING,
         )
         use_case = build_apply(
-            project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
+            authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
         )
 
         with pytest.raises(FreelancerNotApprovedError):
@@ -142,6 +152,7 @@ class TestApplyForProjectUseCase:
 
     def test_duplicate_application_raises(
         self,
+        authorization_service,
         project_repo,
         application_repo,
         profile_repo,
@@ -153,6 +164,7 @@ class TestApplyForProjectUseCase:
         make_profile,
         make_level,
     ):
+        authorization_service.grant("freelancer-1", "project.apply")
         make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
         make_level(level_id="level-1")
         make_profile(profile_id="profile-1", user_id="freelancer-1")
@@ -174,7 +186,7 @@ class TestApplyForProjectUseCase:
             )
         )
         use_case = build_apply(
-            project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
+            authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
         )
 
         with pytest.raises(DuplicateApplicationError):
@@ -182,6 +194,7 @@ class TestApplyForProjectUseCase:
 
     def test_ineligible_due_to_active_count(
         self,
+        authorization_service,
         project_repo,
         application_repo,
         profile_repo,
@@ -193,6 +206,7 @@ class TestApplyForProjectUseCase:
         make_profile,
         make_level,
     ):
+        authorization_service.grant("freelancer-1", "project.apply")
         make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
         make_level(level_id="level-1", max_active_applications=1)
         make_profile(profile_id="profile-1", user_id="freelancer-1")
@@ -214,11 +228,69 @@ class TestApplyForProjectUseCase:
             )
         )
         use_case = build_apply(
-            project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
+            authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
         )
 
         with pytest.raises(FreelancerNotEligibleError):
             use_case.execute(ApplyForProjectCommand(actor_id="freelancer-1", project_id="project-1"))
+
+    def test_application_deadline_passed_raises(
+        self,
+        authorization_service,
+        project_repo,
+        application_repo,
+        profile_repo,
+        level_repo,
+        id_generator,
+        clock,
+        uow,
+        make_project,
+        make_profile,
+        make_level,
+    ):
+        authorization_service.grant("freelancer-1", "project.apply")
+        make_project(
+            project_id="project-1",
+            status=ProjectStatus.COLLECTING_APPLICATIONS,
+            application_deadline=datetime(2026, 7, 1, tzinfo=UTC),
+        )
+        make_level(level_id="level-1")
+        make_profile(profile_id="profile-1", user_id="freelancer-1")
+        use_case = build_apply(
+            authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
+        )
+
+        with pytest.raises(ApplicationDeadlineExpiredError):
+            use_case.execute(ApplyForProjectCommand(actor_id="freelancer-1", project_id="project-1"))
+
+    def test_apply_uses_submitted_by_actor(
+        self,
+        authorization_service,
+        project_repo,
+        application_repo,
+        profile_repo,
+        level_repo,
+        id_generator,
+        clock,
+        uow,
+        make_project,
+        make_profile,
+        make_level,
+    ):
+        authorization_service.grant("admin-1", "project.apply")
+        make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
+        make_level(level_id="level-1")
+        make_profile(profile_id="profile-1", user_id="admin-1")
+        use_case = build_apply(
+            authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
+        )
+
+        result = use_case.execute(
+            ApplyForProjectCommand(actor_id="admin-1", project_id="project-1")
+        )
+
+        application = application_repo.get_by_id(result.application_id)
+        assert application.submitted_by_user_id == "admin-1"
 
 
 class TestWithdrawApplicationUseCase:

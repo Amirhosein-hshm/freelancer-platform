@@ -251,9 +251,10 @@ class TestSubmitDeliveryUseCase:
 
 
 def build_revision(
-    project_repo, revision_repo, delivery_repo, status_history_repo, id_generator, clock, uow
+    authorization_service, project_repo, revision_repo, delivery_repo, status_history_repo, id_generator, clock, uow
 ) -> RequestRevisionUseCase:
     return RequestRevisionUseCase(
+        authorization_service=authorization_service,
         project_repo=project_repo,
         revision_repo=revision_repo,
         delivery_repo=delivery_repo,
@@ -266,12 +267,29 @@ def build_revision(
 
 class TestRequestRevisionUseCase:
     def test_request_revision_opens_request_and_marks_delivery_revised(
-        self, project_repo, revision_repo, delivery_repo, status_history_repo, id_generator, clock, uow, make_project
+        self,
+        authorization_service,
+        project_repo,
+        revision_repo,
+        delivery_repo,
+        status_history_repo,
+        id_generator,
+        clock,
+        uow,
+        make_project,
     ):
+        authorization_service.grant("customer-1", "project.manage_own")
         make_project(project_id="project-1", status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
         add_delivery(delivery_repo, now=clock.now(), status=DeliveryStatus.UNDER_REVIEW)
         use_case = build_revision(
-            project_repo, revision_repo, delivery_repo, status_history_repo, id_generator, clock, uow
+            authorization_service,
+            project_repo,
+            revision_repo,
+            delivery_repo,
+            status_history_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         result = use_case.execute(
@@ -286,8 +304,18 @@ class TestRequestRevisionUseCase:
         assert delivery_repo.get_by_id("delivery-1").status == DeliveryStatus.REVISED
 
     def test_max_revisions_exceeded_raises(
-        self, project_repo, revision_repo, delivery_repo, status_history_repo, id_generator, clock, uow, make_project
+        self,
+        authorization_service,
+        project_repo,
+        revision_repo,
+        delivery_repo,
+        status_history_repo,
+        id_generator,
+        clock,
+        uow,
+        make_project,
     ):
+        authorization_service.grant("customer-1", "project.manage_own")
         make_project(project_id="project-1", status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
         for i in range(3):
             revision_repo.add(
@@ -307,7 +335,14 @@ class TestRequestRevisionUseCase:
                 )
             )
         use_case = build_revision(
-            project_repo, revision_repo, delivery_repo, status_history_repo, id_generator, clock, uow
+            authorization_service,
+            project_repo,
+            revision_repo,
+            delivery_repo,
+            status_history_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(MaxRevisionsExceededError):
@@ -316,8 +351,11 @@ class TestRequestRevisionUseCase:
             )
 
 
-def build_complete(project_repo, status_history_repo, id_generator, clock, uow) -> CompleteProjectUseCase:
+def build_complete(
+    authorization_service, project_repo, status_history_repo, id_generator, clock, uow
+) -> CompleteProjectUseCase:
     return CompleteProjectUseCase(
+        authorization_service=authorization_service,
         project_repo=project_repo,
         status_history_repo=status_history_repo,
         id_generator=id_generator,
@@ -327,9 +365,19 @@ def build_complete(project_repo, status_history_repo, id_generator, clock, uow) 
 
 
 class TestCompleteProjectUseCase:
-    def test_complete_awaited_project(self, project_repo, status_history_repo, id_generator, clock, uow, make_project):
+    def test_complete_awaited_project(
+        self,
+        authorization_service,
+        project_repo,
+        status_history_repo,
+        id_generator,
+        clock,
+        uow,
+        make_project,
+    ):
+        authorization_service.grant("customer-1", "project.manage_own")
         make_project(project_id="project-1", status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
-        use_case = build_complete(project_repo, status_history_repo, id_generator, clock, uow)
+        use_case = build_complete(authorization_service, project_repo, status_history_repo, id_generator, clock, uow)
 
         result = use_case.execute(
             CompleteProjectCommand(actor_id="customer-1", project_id="project-1")
@@ -339,10 +387,10 @@ class TestCompleteProjectUseCase:
         assert project_repo.get_by_id("project-1").completed_at == clock.now()
 
     def test_complete_wrong_status_raises(
-        self, project_repo, status_history_repo, id_generator, clock, uow, make_project
+        self, authorization_service, project_repo, status_history_repo, id_generator, clock, uow, make_project
     ):
         make_project(project_id="project-1", status=ProjectStatus.IN_PROGRESS)
-        use_case = build_complete(project_repo, status_history_repo, id_generator, clock, uow)
+        use_case = build_complete(authorization_service, project_repo, status_history_repo, id_generator, clock, uow)
 
         with pytest.raises(PermissionDeniedError):
             use_case.execute(

@@ -1,13 +1,15 @@
 import pytest
 
+from app.application.shared.exceptions import PermissionDeniedError
 from app.application.ticketing.dto import AssignTicketCommand
+from app.application.ticketing.permissions import PERMISSION_TICKET_ASSIGN
 from app.application.ticketing.use_cases.assign_ticket import AssignTicketUseCase
 from app.domain.ticketing.enums import TicketParticipantRole
-from app.domain.ticketing.exceptions import NotTicketParticipantError
 
 
-def build_assign(ticket_repo, participant_repo, id_generator, clock, uow) -> AssignTicketUseCase:
+def build_assign(authorization_service, ticket_repo, participant_repo, id_generator, clock, uow) -> AssignTicketUseCase:
     return AssignTicketUseCase(
+        authorization_service=authorization_service,
         ticket_repo=ticket_repo,
         participant_repo=participant_repo,
         id_generator=id_generator,
@@ -18,10 +20,11 @@ def build_assign(ticket_repo, participant_repo, id_generator, clock, uow) -> Ass
 
 class TestAssignTicketUseCase:
     def test_assign_adds_assignee_participant(
-        self, ticket_repo, participant_repo, id_generator, clock, uow, make_ticket
+        self, authorization_service, ticket_repo, participant_repo, id_generator, clock, uow, make_ticket
     ):
         make_ticket(ticket_id="ticket-1")
-        use_case = build_assign(ticket_repo, participant_repo, id_generator, clock, uow)
+        authorization_service.grant("user-1", PERMISSION_TICKET_ASSIGN)
+        use_case = build_assign(authorization_service, ticket_repo, participant_repo, id_generator, clock, uow)
 
         result = use_case.execute(
             AssignTicketCommand(actor_id="user-1", ticket_id="ticket-1", assignee_user_id="agent-1")
@@ -35,13 +38,13 @@ class TestAssignTicketUseCase:
         assert assignee.participant_role == TicketParticipantRole.ASSIGNEE
         assert uow.committed is True
 
-    def test_non_participant_actor_raises(
-        self, ticket_repo, participant_repo, id_generator, clock, uow, make_ticket
+    def test_actor_without_assign_permission_raises(
+        self, authorization_service, ticket_repo, participant_repo, id_generator, clock, uow, make_ticket
     ):
         make_ticket(ticket_id="ticket-1")
-        use_case = build_assign(ticket_repo, participant_repo, id_generator, clock, uow)
+        use_case = build_assign(authorization_service, ticket_repo, participant_repo, id_generator, clock, uow)
 
-        with pytest.raises(NotTicketParticipantError):
+        with pytest.raises(PermissionDeniedError):
             use_case.execute(
                 AssignTicketCommand(actor_id="intruder", ticket_id="ticket-1", assignee_user_id="agent-1")
             )

@@ -2,13 +2,19 @@ from app.application.project.dto import (
     RequestRevisionCommand,
     RequestRevisionResult,
 )
+from app.application.project.permissions import (
+    PERMISSION_PROJECT_MANAGE_ANY,
+    PERMISSION_PROJECT_MANAGE_OWN,
+)
 from app.application.project.status_history import record_status_history
-from app.application.shared.exceptions import PermissionDeniedError
+from app.application.shared.authorization import (
+    IAuthorizationService,
+    authorize_owned_action,
+)
 from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.project.entities import ProjectRevisionRequest
 from app.domain.project.enums import ProjectStatus, RevisionRequestStatus
-from app.domain.project.exceptions import MaxRevisionsExceededError
 from app.domain.project.repositories import (
     IProjectDeliveryRepository,
     IProjectRepository,
@@ -21,6 +27,7 @@ from app.domain.project.services import RevisionPolicy
 class RequestRevisionUseCase(UseCase[RequestRevisionCommand, RequestRevisionResult]):
     def __init__(
         self,
+        authorization_service: IAuthorizationService,
         project_repo: IProjectRepository,
         revision_repo: IProjectRevisionRequestRepository,
         delivery_repo: IProjectDeliveryRepository,
@@ -29,6 +36,7 @@ class RequestRevisionUseCase(UseCase[RequestRevisionCommand, RequestRevisionResu
         clock: IClock,
         uow: IUnitOfWork,
     ) -> None:
+        self._authorization_service = authorization_service
         self._project_repo = project_repo
         self._revision_repo = revision_repo
         self._delivery_repo = delivery_repo
@@ -39,17 +47,16 @@ class RequestRevisionUseCase(UseCase[RequestRevisionCommand, RequestRevisionResu
 
     def execute(self, request: RequestRevisionCommand) -> RequestRevisionResult:
         project = self._project_repo.get_by_id(request.project_id)
-        if project.customer_user_id != request.actor_id:
-            raise PermissionDeniedError(
-                f"User {request.actor_id} cannot request a revision on project "
-                f"{request.project_id}."
-            )
+        authorize_owned_action(
+            self._authorization_service,
+            request.actor_id,
+            project.customer_user_id,
+            PERMISSION_PROJECT_MANAGE_OWN,
+            PERMISSION_PROJECT_MANAGE_ANY,
+        )
         existing = self._revision_repo.list_by_project(project.id)
-        if not RevisionPolicy.can_request_new_revision(existing):
-            raise MaxRevisionsExceededError(
-                f"Project {project.id} has reached the maximum of "
-                f"{RevisionPolicy.MAX_REVISIONS} revisions."
-            )
+        RevisionPolicy.ensure_can_request_new_revision(existing)
+        from_status = project.status
         latest = self._delivery_repo.get_latest_for_project(project.id)
         now = self._clock.now()
         revision = ProjectRevisionRequest(
@@ -76,7 +83,7 @@ class RequestRevisionUseCase(UseCase[RequestRevisionCommand, RequestRevisionResu
                 self._status_history_repo,
                 self._id_generator,
                 project.id,
-                project.status,
+                from_status,
                 ProjectStatus.REVISION_REQUESTED,
                 request.actor_id,
                 request.reason,

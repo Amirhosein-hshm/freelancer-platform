@@ -3,6 +3,7 @@ from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.iam.entities import RolePermission
+from app.domain.iam.exceptions import PermissionAlreadyGrantedError
 from app.domain.iam.repositories import (
     IPermissionRepository,
     IRolePermissionRepository,
@@ -33,6 +34,8 @@ class GrantPermissionUseCase(UseCase[GrantPermissionCommand, GrantPermissionResu
         self._authorization_service.require_permission(request.actor_id, "user.grant_permission")
         role = self._role_repo.get_by_id(request.role_id)
         permission = self._permission_repo.get_by_id(request.permission_id)
+        if any(p.id == permission.id for p in self._role_permission_repo.list_permissions_for_role(role.id)):
+            raise PermissionAlreadyGrantedError(role.id, permission.id)
         now = self._clock.now()
         role_permission = RolePermission(
             id=self._id_generator.new_id(),

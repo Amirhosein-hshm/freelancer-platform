@@ -12,6 +12,7 @@ from app.domain.project.enums import ProjectStatus
 
 
 def build_rating(
+    authorization_service,
     project_repo,
     application_repo,
     customer_review_repo,
@@ -21,6 +22,7 @@ def build_rating(
     uow,
 ) -> SubmitRatingUseCase:
     return SubmitRatingUseCase(
+        authorization_service=authorization_service,
         project_repo=project_repo,
         application_repo=application_repo,
         customer_review_repo=customer_review_repo,
@@ -34,6 +36,7 @@ def build_rating(
 class TestSubmitRatingUseCase:
     def test_submit_rating_succeeds(
         self,
+        authorization_service,
         project_repo,
         application_repo,
         customer_review_repo,
@@ -48,7 +51,9 @@ class TestSubmitRatingUseCase:
         make_project(status=ProjectStatus.COMPLETED)
         make_application()
         make_customer_review()
+        authorization_service.grant("customer-1", "feedback.manage_own")
         use_case = build_rating(
+            authorization_service,
             project_repo,
             application_repo,
             customer_review_repo,
@@ -73,6 +78,7 @@ class TestSubmitRatingUseCase:
 
     def test_not_completed_raises(
         self,
+        authorization_service,
         project_repo,
         application_repo,
         customer_review_repo,
@@ -83,7 +89,9 @@ class TestSubmitRatingUseCase:
         make_project,
     ):
         make_project(status=ProjectStatus.IN_PROGRESS)
+        authorization_service.grant("customer-1", "feedback.manage_own")
         use_case = build_rating(
+            authorization_service,
             project_repo,
             application_repo,
             customer_review_repo,
@@ -100,6 +108,7 @@ class TestSubmitRatingUseCase:
 
     def test_duplicate_rating_raises(
         self,
+        authorization_service,
         project_repo,
         application_repo,
         customer_review_repo,
@@ -116,7 +125,9 @@ class TestSubmitRatingUseCase:
         make_application()
         make_customer_review()
         make_rating()
+        authorization_service.grant("customer-1", "feedback.manage_own")
         use_case = build_rating(
+            authorization_service,
             project_repo,
             application_repo,
             customer_review_repo,
@@ -133,6 +144,7 @@ class TestSubmitRatingUseCase:
 
     def test_invalid_score_raises(
         self,
+        authorization_service,
         project_repo,
         application_repo,
         customer_review_repo,
@@ -147,7 +159,9 @@ class TestSubmitRatingUseCase:
         make_project(status=ProjectStatus.COMPLETED)
         make_application()
         make_customer_review()
+        authorization_service.grant("customer-1", "feedback.manage_own")
         use_case = build_rating(
+            authorization_service,
             project_repo,
             application_repo,
             customer_review_repo,
@@ -164,6 +178,7 @@ class TestSubmitRatingUseCase:
 
     def test_missing_customer_review_raises(
         self,
+        authorization_service,
         project_repo,
         application_repo,
         customer_review_repo,
@@ -176,7 +191,9 @@ class TestSubmitRatingUseCase:
     ):
         make_project(status=ProjectStatus.COMPLETED)
         make_application()
+        authorization_service.grant("customer-1", "feedback.manage_own")
         use_case = build_rating(
+            authorization_service,
             project_repo,
             application_repo,
             customer_review_repo,
@@ -193,6 +210,7 @@ class TestSubmitRatingUseCase:
 
     def test_non_owner_raises(
         self,
+        authorization_service,
         project_repo,
         application_repo,
         customer_review_repo,
@@ -208,6 +226,7 @@ class TestSubmitRatingUseCase:
         make_application()
         make_customer_review()
         use_case = build_rating(
+            authorization_service,
             project_repo,
             application_repo,
             customer_review_repo,

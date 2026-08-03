@@ -62,6 +62,7 @@ def seed_published_template(template_repo) -> FormTemplate:
 
 
 def build_use_case(
+    authorization_service,
     project_repo,
     category_repo,
     form_template_repo,
@@ -72,6 +73,7 @@ def build_use_case(
     uow,
 ) -> CreateProjectUseCase:
     return CreateProjectUseCase(
+        authorization_service=authorization_service,
         project_repo=project_repo,
         category_repo=category_repo,
         form_template_repo=form_template_repo,
@@ -85,6 +87,7 @@ def build_use_case(
 
 def base_command(**overrides: object) -> CreateProjectCommand:
     fields: dict[str, object] = {
+        "actor_id": "customer-1",
         "customer_user_id": "customer-1",
         "category_id": "cat-1",
         "title": "Build an API",
@@ -105,6 +108,7 @@ def base_command(**overrides: object) -> CreateProjectCommand:
 class TestCreateProjectUseCase:
     def test_create_project_succeeds(
         self,
+        authorization_service,
         project_repo,
         category_repo,
         form_template_repo,
@@ -115,9 +119,11 @@ class TestCreateProjectUseCase:
         uow,
         make_category,
     ):
+        authorization_service.grant("customer-1", "project.create")
         make_category(category_id="cat-1")
         seed_published_template(form_template_repo)
         use_case = build_use_case(
+            authorization_service,
             project_repo,
             category_repo,
             form_template_repo,
@@ -140,6 +146,7 @@ class TestCreateProjectUseCase:
 
     def test_unknown_category_raises(
         self,
+        authorization_service,
         project_repo,
         category_repo,
         form_template_repo,
@@ -149,7 +156,9 @@ class TestCreateProjectUseCase:
         clock,
         uow,
     ):
+        authorization_service.grant("customer-1", "project.create")
         use_case = build_use_case(
+            authorization_service,
             project_repo,
             category_repo,
             form_template_repo,
@@ -165,6 +174,7 @@ class TestCreateProjectUseCase:
 
     def test_missing_published_template_raises(
         self,
+        authorization_service,
         project_repo,
         category_repo,
         form_template_repo,
@@ -175,8 +185,10 @@ class TestCreateProjectUseCase:
         uow,
         make_category,
     ):
+        authorization_service.grant("customer-1", "project.create")
         make_category(category_id="cat-1")
         use_case = build_use_case(
+            authorization_service,
             project_repo,
             category_repo,
             form_template_repo,
@@ -192,6 +204,7 @@ class TestCreateProjectUseCase:
 
     def test_missing_required_field_value_raises_form_validation(
         self,
+        authorization_service,
         project_repo,
         category_repo,
         form_template_repo,
@@ -202,9 +215,11 @@ class TestCreateProjectUseCase:
         uow,
         make_category,
     ):
+        authorization_service.grant("customer-1", "project.create")
         make_category(category_id="cat-1")
         seed_published_template(form_template_repo)
         use_case = build_use_case(
+            authorization_service,
             project_repo,
             category_repo,
             form_template_repo,
@@ -220,6 +235,7 @@ class TestCreateProjectUseCase:
 
     def test_invalid_decimal_raises_form_validation(
         self,
+        authorization_service,
         project_repo,
         category_repo,
         form_template_repo,
@@ -230,9 +246,11 @@ class TestCreateProjectUseCase:
         uow,
         make_category,
     ):
+        authorization_service.grant("customer-1", "project.create")
         make_category(category_id="cat-1")
         seed_published_template(form_template_repo)
         use_case = build_use_case(
+            authorization_service,
             project_repo,
             category_repo,
             form_template_repo,

@@ -6,7 +6,12 @@ from app.application.iam.dto import RemoveRoleCommand
 from app.application.iam.use_cases.remove_role import RemoveRoleUseCase
 from app.application.shared.exceptions import PermissionDeniedError
 from app.domain.iam.entities import UserRole
-from app.domain.iam.exceptions import RoleNotFoundError, UserNotFoundError, UserRoleNotFoundError
+from app.domain.iam.exceptions import (
+    RoleNotFoundError,
+    SystemRoleImmutableError,
+    UserNotFoundError,
+    UserRoleNotFoundError,
+)
 
 NOW = datetime(2026, 8, 2, tzinfo=UTC)
 
@@ -62,6 +67,20 @@ class TestRemoveRoleUseCase:
         with pytest.raises(PermissionDeniedError):
             use_case.execute(
                 RemoveRoleCommand(actor_id="admin", target_user_id="u1", role_key="admin")
+            )
+
+    def test_remove_role_system_role_raises(
+        self, authorization_service, user_repo, role_repo, user_role_repo, clock, uow, make_user
+    ):
+        authorization_service.grant("admin", "user.remove_role")
+        make_user(user_id="u1")
+        use_case = build_use_case(
+            authorization_service, user_repo, role_repo, user_role_repo, clock, uow
+        )
+
+        with pytest.raises(SystemRoleImmutableError):
+            use_case.execute(
+                RemoveRoleCommand(actor_id="admin", target_user_id="u1", role_key="system")
             )
 
     def test_remove_role_without_active_assignment_raises(

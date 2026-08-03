@@ -2,6 +2,8 @@ from app.application.project.dto import (
     ApplyForProjectCommand,
     ApplyForProjectResult,
 )
+from app.application.project.permissions import PERMISSION_PROJECT_APPLY
+from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.freelancer.exceptions import FreelancerNotApprovedError
@@ -12,6 +14,7 @@ from app.domain.freelancer.repositories import (
 from app.domain.project.entities import ProjectApplication
 from app.domain.project.enums import ProjectApplicationStatus
 from app.domain.project.exceptions import (
+    ApplicationDeadlineExpiredError,
     DuplicateApplicationError,
     FreelancerNotEligibleError,
 )
@@ -25,6 +28,7 @@ from app.domain.project.services import FreelancerEligibilityPolicy
 class ApplyForProjectUseCase(UseCase[ApplyForProjectCommand, ApplyForProjectResult]):
     def __init__(
         self,
+        authorization_service: IAuthorizationService,
         project_repo: IProjectRepository,
         application_repo: IProjectApplicationRepository,
         profile_repo: IFreelancerProfileRepository,
@@ -33,6 +37,7 @@ class ApplyForProjectUseCase(UseCase[ApplyForProjectCommand, ApplyForProjectResu
         clock: IClock,
         uow: IUnitOfWork,
     ) -> None:
+        self._authorization_service = authorization_service
         self._project_repo = project_repo
         self._application_repo = application_repo
         self._profile_repo = profile_repo
@@ -42,11 +47,19 @@ class ApplyForProjectUseCase(UseCase[ApplyForProjectCommand, ApplyForProjectResu
         self._uow = uow
 
     def execute(self, request: ApplyForProjectCommand) -> ApplyForProjectResult:
+        self._authorization_service.require_permission(
+            request.actor_id, PERMISSION_PROJECT_APPLY
+        )
         project = self._project_repo.get_by_id(request.project_id)
         if not project.can_accept_applications():
             raise FreelancerNotEligibleError(
                 f"Project {request.project_id} is not accepting applications "
                 f"(status '{project.status.value}')."
+            )
+        now = self._clock.now()
+        if project.is_application_deadline_passed(now):
+            raise ApplicationDeadlineExpiredError(
+                f"Project {request.project_id} application deadline has passed."
             )
         profile = self._profile_repo.get_by_user_id(request.actor_id)
         if not profile.is_approved():
@@ -73,7 +86,6 @@ class ApplyForProjectUseCase(UseCase[ApplyForProjectCommand, ApplyForProjectResu
                 f"Freelancer {profile.id} is not eligible to apply to project {project.id} "
                 "at level '{level.level_key}'."
             )
-        now = self._clock.now()
         application = ProjectApplication(
             id=self._id_generator.new_id(),
             project_id=project.id,
@@ -83,6 +95,7 @@ class ApplyForProjectUseCase(UseCase[ApplyForProjectCommand, ApplyForProjectResu
             proposed_amount=request.proposed_amount,
             proposed_days=request.proposed_days,
             applied_at=now,
+            submitted_by_user_id=request.actor_id,
             decided_by_user_id=None,
             decided_at=None,
             decision_note=None,

@@ -132,12 +132,16 @@ class Project(AggregateRoot):
             raise ProjectLockedError(f"Project {self.id} is locked and cannot be cancelled.")
         self.status = ProjectStatus.CANCELLED
         self.cancelled_at = at
+        self.locked_at = at
 
     def is_locked(self) -> bool:
         return self.status in _LOCKED_STATUSES
 
     def can_accept_applications(self) -> bool:
         return self.status in _APPLICATION_OPEN_STATUSES
+
+    def is_application_deadline_passed(self, at: datetime) -> bool:
+        return self.application_deadline is not None and at > self.application_deadline
 
     def has_supervisor(self) -> bool:
         return self.assigned_supervisor_user_id is not None
@@ -168,6 +172,7 @@ class ProjectApplication(AggregateRoot):
     decided_at: datetime | None
     decision_note: str | None
     withdrawn_at: datetime | None
+    submitted_by_user_id: EntityId | None = None
 
     def shortlist(self) -> None:
         self._from_applied_or_shortlisted(ProjectApplicationStatus.SHORTLISTED)

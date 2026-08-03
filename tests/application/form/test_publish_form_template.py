@@ -7,8 +7,13 @@ from app.domain.form.enums import FormFieldType, FormTemplateStatus
 from app.domain.form.exceptions import FormTemplateHasNoFieldsError
 
 
-def build_use_case(template_repo, clock, uow) -> PublishFormTemplateUseCase:
-    return PublishFormTemplateUseCase(template_repo=template_repo, clock=clock, uow=uow)
+def build_use_case(template_repo, clock, uow, authorization_service) -> PublishFormTemplateUseCase:
+    return PublishFormTemplateUseCase(
+        template_repo=template_repo,
+        clock=clock,
+        uow=uow,
+        authorization_service=authorization_service,
+    )
 
 
 def add_field(template) -> None:
@@ -30,10 +35,13 @@ def add_field(template) -> None:
 
 
 class TestPublishFormTemplateUseCase:
-    def test_publish_with_fields(self, template_repo, clock, uow, make_template):
+    def test_publish_with_fields(
+        self, template_repo, clock, uow, make_template, authorization_service
+    ):
         template = make_template(template_id="template-1")
         add_field(template)
-        use_case = build_use_case(template_repo, clock, uow)
+        authorization_service.grant("admin-1", "form.manage")
+        use_case = build_use_case(template_repo, clock, uow, authorization_service)
 
         result = use_case.execute(
             PublishFormTemplateCommand(template_id="template-1", published_by="admin-1")
@@ -44,9 +52,12 @@ class TestPublishFormTemplateUseCase:
         assert template_repo.get_by_id("template-1").published_by_user_id == "admin-1"
         assert uow.committed is True
 
-    def test_publish_without_fields_raises(self, template_repo, clock, uow, make_template):
+    def test_publish_without_fields_raises(
+        self, template_repo, clock, uow, make_template, authorization_service
+    ):
         make_template(template_id="template-1")
-        use_case = build_use_case(template_repo, clock, uow)
+        authorization_service.grant("admin-1", "form.manage")
+        use_case = build_use_case(template_repo, clock, uow, authorization_service)
 
         with pytest.raises(FormTemplateHasNoFieldsError):
             use_case.execute(

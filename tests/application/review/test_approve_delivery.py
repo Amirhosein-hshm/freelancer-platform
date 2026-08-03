@@ -2,15 +2,14 @@ import pytest
 
 from app.application.review.dto import ApproveDeliveryCommand
 from app.application.review.use_cases.approve_delivery import ApproveDeliveryUseCase
+from app.application.shared.exceptions import PermissionDeniedError
 from app.domain.project.enums import DeliveryStatus, ProjectStatus
 from app.domain.review.enums import ReviewStatus
-from app.domain.review.exceptions import (
-    DeliveryAlreadyReviewedError,
-    NotAssignedSupervisorError,
-)
+from app.domain.review.exceptions import DeliveryAlreadyReviewedError
 
 
 def build_approve(
+    authorization_service,
     delivery_repo,
     project_repo,
     category_supervisor_repo,
@@ -22,6 +21,7 @@ def build_approve(
     uow,
 ) -> ApproveDeliveryUseCase:
     return ApproveDeliveryUseCase(
+        authorization_service=authorization_service,
         delivery_repo=delivery_repo,
         project_repo=project_repo,
         category_supervisor_repo=category_supervisor_repo,
@@ -37,6 +37,7 @@ def build_approve(
 class TestApproveDeliveryUseCase:
     def test_approve_moves_project_to_customer_review(
         self,
+        authorization_service,
         delivery_repo,
         project_repo,
         category_supervisor_repo,
@@ -49,7 +50,9 @@ class TestApproveDeliveryUseCase:
         seed_supervisor_flow,
     ):
         seed_supervisor_flow()
+        authorization_service.grant("supervisor-1", "review.decide_own")
         use_case = build_approve(
+            authorization_service,
             delivery_repo,
             project_repo,
             category_supervisor_repo,
@@ -79,6 +82,7 @@ class TestApproveDeliveryUseCase:
 
     def test_non_supervisor_raises(
         self,
+        authorization_service,
         delivery_repo,
         project_repo,
         category_supervisor_repo,
@@ -92,6 +96,7 @@ class TestApproveDeliveryUseCase:
     ):
         seed_supervisor_flow()
         use_case = build_approve(
+            authorization_service,
             delivery_repo,
             project_repo,
             category_supervisor_repo,
@@ -103,7 +108,7 @@ class TestApproveDeliveryUseCase:
             uow,
         )
 
-        with pytest.raises(NotAssignedSupervisorError):
+        with pytest.raises(PermissionDeniedError):
             use_case.execute(
                 ApproveDeliveryCommand(
                     actor_id="intruder", project_delivery_id="delivery-1"
@@ -112,6 +117,7 @@ class TestApproveDeliveryUseCase:
 
     def test_already_reviewed_raises(
         self,
+        authorization_service,
         delivery_repo,
         project_repo,
         category_supervisor_repo,
@@ -124,7 +130,10 @@ class TestApproveDeliveryUseCase:
         seed_supervisor_flow,
     ):
         seed_supervisor_flow()
+        authorization_service.grant("supervisor-1", "review.decide_own")
+        review_repo.get_by_delivery("delivery-1").approve("pre-seeded", clock.now())
         use_case = build_approve(
+            authorization_service,
             delivery_repo,
             project_repo,
             category_supervisor_repo,
@@ -134,9 +143,6 @@ class TestApproveDeliveryUseCase:
             id_generator,
             clock,
             uow,
-        )
-        use_case.execute(
-            ApproveDeliveryCommand(actor_id="supervisor-1", project_delivery_id="delivery-1")
         )
 
         with pytest.raises(DeliveryAlreadyReviewedError):
@@ -146,6 +152,7 @@ class TestApproveDeliveryUseCase:
 
     def test_missing_pending_review_creates_one(
         self,
+        authorization_service,
         delivery_repo,
         project_repo,
         category_supervisor_repo,
@@ -158,7 +165,9 @@ class TestApproveDeliveryUseCase:
         seed_supervisor_flow,
     ):
         seed_supervisor_flow(with_review=False)
+        authorization_service.grant("supervisor-1", "review.decide_own")
         use_case = build_approve(
+            authorization_service,
             delivery_repo,
             project_repo,
             category_supervisor_repo,

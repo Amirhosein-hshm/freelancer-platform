@@ -1,0 +1,5 @@
+PERMISSION_TICKET_ASSIGN = "ticket.assign"
+PERMISSION_TICKET_READ_OWN = "ticket.read_own"
+PERMISSION_TICKET_READ_ANY = "ticket.read_any"
+PERMISSION_TICKET_CLOSE_OWN = "ticket.close_own"
+PERMISSION_TICKET_CLOSE_ANY = "ticket.close_any"

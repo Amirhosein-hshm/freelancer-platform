@@ -35,8 +35,16 @@ class RemoveSupervisorUseCase(UseCase[RemoveSupervisorCommand, RemoveSupervisorR
             )
         now = self._clock.now()
         with self._uow:
+            was_primary = link.is_primary
             link.revoke(now)
             self._category_supervisor_repo.update(link)
+            if was_primary:
+                remaining = self._category_supervisor_repo.list_active_supervisors(
+                    request.category_id
+                )
+                if remaining:
+                    remaining[0].promote()
+                    self._category_supervisor_repo.update(remaining[0])
             self._uow.commit()
         return RemoveSupervisorResult(
             category_id=link.category_id,

@@ -39,14 +39,22 @@ def seed_field(template, field_id: str = "field-1", field_type=FormFieldType.SEL
 
 
 class TestAddFieldUseCase:
-    def test_add_field_succeeds(self, template_repo, id_generator, clock, uow, make_template):
+    def test_add_field_succeeds(
+        self, template_repo, id_generator, clock, uow, make_template, authorization_service
+    ):
         make_template(template_id="template-1")
+        authorization_service.grant("admin", "form.manage")
         use_case = AddFieldUseCase(
-            template_repo=template_repo, id_generator=id_generator, clock=clock, uow=uow
+            authorization_service=authorization_service,
+            template_repo=template_repo,
+            id_generator=id_generator,
+            clock=clock,
+            uow=uow,
         )
 
         result = use_case.execute(
             AddFieldCommand(
+                actor_id="admin",
                 template_id="template-1",
                 field_key="budget",
                 label="Budget",
@@ -63,17 +71,23 @@ class TestAddFieldUseCase:
         assert uow.committed is True
 
     def test_duplicate_field_key_raises(
-        self, template_repo, id_generator, clock, uow, make_template
+        self, template_repo, id_generator, clock, uow, make_template, authorization_service
     ):
         template = make_template(template_id="template-1")
         seed_field(template, field_type=FormFieldType.TEXT)
+        authorization_service.grant("admin", "form.manage")
         use_case = AddFieldUseCase(
-            template_repo=template_repo, id_generator=id_generator, clock=clock, uow=uow
+            authorization_service=authorization_service,
+            template_repo=template_repo,
+            id_generator=id_generator,
+            clock=clock,
+            uow=uow,
         )
 
         with pytest.raises(DuplicateFieldKeyError):
             use_case.execute(
                 AddFieldCommand(
+                    actor_id="admin",
                     template_id="template-1",
                     field_key="category",
                     label="Category",
@@ -82,16 +96,22 @@ class TestAddFieldUseCase:
             )
 
     def test_add_field_to_published_raises(
-        self, template_repo, id_generator, clock, uow, make_template
+        self, template_repo, id_generator, clock, uow, make_template, authorization_service
     ):
         make_template(template_id="template-1", status=FormTemplateStatus.PUBLISHED)
+        authorization_service.grant("admin", "form.manage")
         use_case = AddFieldUseCase(
-            template_repo=template_repo, id_generator=id_generator, clock=clock, uow=uow
+            authorization_service=authorization_service,
+            template_repo=template_repo,
+            id_generator=id_generator,
+            clock=clock,
+            uow=uow,
         )
 
         with pytest.raises(InvalidStateTransitionError):
             use_case.execute(
                 AddFieldCommand(
+                    actor_id="admin",
                     template_id="template-1",
                     field_key="budget",
                     label="Budget",
@@ -101,13 +121,17 @@ class TestAddFieldUseCase:
 
 
 class TestUpdateFieldUseCase:
-    def test_update_field_succeeds(self, template_repo, make_template):
+    def test_update_field_succeeds(self, template_repo, make_template, authorization_service):
         template = make_template(template_id="template-1")
         seed_field(template)
-        use_case = UpdateFieldUseCase(template_repo=template_repo)
+        authorization_service.grant("admin", "form.manage")
+        use_case = UpdateFieldUseCase(
+            template_repo=template_repo, authorization_service=authorization_service
+        )
 
         result = use_case.execute(
             UpdateFieldCommand(
+                actor_id="admin",
                 template_id="template-1",
                 field_id="field-1",
                 label="Project Category",
@@ -120,7 +144,9 @@ class TestUpdateFieldUseCase:
         assert field.label == "Project Category"
         assert field.is_required is False
 
-    def test_update_field_type_clears_options(self, template_repo, make_template):
+    def test_update_field_type_clears_options(
+        self, template_repo, make_template, authorization_service
+    ):
         template = make_template(template_id="template-1")
         seed_field(template)
         template.get_field("field-1").add_option(
@@ -134,21 +160,33 @@ class TestUpdateFieldUseCase:
                 created_at=template.created_at,
             )
         )
-        use_case = UpdateFieldUseCase(template_repo=template_repo)
+        authorization_service.grant("admin", "form.manage")
+        use_case = UpdateFieldUseCase(
+            template_repo=template_repo, authorization_service=authorization_service
+        )
 
         use_case.execute(
-            UpdateFieldCommand(template_id="template-1", field_id="field-1", field_type=FormFieldType.TEXT)
+            UpdateFieldCommand(
+                actor_id="admin",
+                template_id="template-1",
+                field_id="field-1",
+                field_type=FormFieldType.TEXT,
+            )
         )
 
         assert template_repo.get_by_id("template-1").get_field("field-1").options == []
 
-    def test_update_all_attributes(self, template_repo, make_template):
+    def test_update_all_attributes(self, template_repo, make_template, authorization_service):
         template = make_template(template_id="template-1")
         seed_field(template)
-        use_case = UpdateFieldUseCase(template_repo=template_repo)
+        authorization_service.grant("admin", "form.manage")
+        use_case = UpdateFieldUseCase(
+            template_repo=template_repo, authorization_service=authorization_service
+        )
 
         use_case.execute(
             UpdateFieldCommand(
+                actor_id="admin",
                 template_id="template-1",
                 field_id="field-1",
                 description="Pick a category",
@@ -170,23 +208,35 @@ class TestUpdateFieldUseCase:
         assert field.validation_rules == {"min_length": 3}
         assert field.is_active is False
 
-    def test_update_unknown_field_raises(self, template_repo, make_template):
+    def test_update_unknown_field_raises(self, template_repo, make_template, authorization_service):
         make_template(template_id="template-1")
-        use_case = UpdateFieldUseCase(template_repo=template_repo)
+        authorization_service.grant("admin", "form.manage")
+        use_case = UpdateFieldUseCase(
+            template_repo=template_repo, authorization_service=authorization_service
+        )
 
         with pytest.raises(FieldNotFoundError):
             use_case.execute(
-                UpdateFieldCommand(template_id="template-1", field_id="ghost", label="X")
+                UpdateFieldCommand(
+                    actor_id="admin", template_id="template-1", field_id="ghost", label="X"
+                )
             )
 
 
 class TestRemoveFieldUseCase:
-    def test_remove_field_succeeds(self, template_repo, uow, make_template):
+    def test_remove_field_succeeds(
+        self, template_repo, uow, make_template, authorization_service
+    ):
         template = make_template(template_id="template-1")
         seed_field(template, field_type=FormFieldType.TEXT)
-        use_case = RemoveFieldUseCase(template_repo=template_repo, uow=uow)
+        authorization_service.grant("admin", "form.manage")
+        use_case = RemoveFieldUseCase(
+            template_repo=template_repo, uow=uow, authorization_service=authorization_service
+        )
 
-        result = use_case.execute(RemoveFieldCommand(template_id="template-1", field_id="field-1"))
+        result = use_case.execute(
+            RemoveFieldCommand(actor_id="admin", template_id="template-1", field_id="field-1")
+        )
 
         assert result.field_id == "field-1"
         assert template_repo.get_by_id("template-1").fields == []
@@ -194,15 +244,23 @@ class TestRemoveFieldUseCase:
 
 
 class TestAddFieldOptionUseCase:
-    def test_add_option_to_select_field(self, template_repo, id_generator, clock, uow, make_template):
+    def test_add_option_to_select_field(
+        self, template_repo, id_generator, clock, uow, make_template, authorization_service
+    ):
         template = make_template(template_id="template-1")
         seed_field(template)
+        authorization_service.grant("admin", "form.manage")
         use_case = AddFieldOptionUseCase(
-            template_repo=template_repo, id_generator=id_generator, clock=clock, uow=uow
+            authorization_service=authorization_service,
+            template_repo=template_repo,
+            id_generator=id_generator,
+            clock=clock,
+            uow=uow,
         )
 
         result = use_case.execute(
             AddFieldOptionCommand(
+                actor_id="admin",
                 template_id="template-1",
                 field_id="field-1",
                 option_key="backend",
@@ -216,17 +274,23 @@ class TestAddFieldOptionUseCase:
         assert uow.committed is True
 
     def test_add_option_to_text_field_raises(
-        self, template_repo, id_generator, clock, uow, make_template
+        self, template_repo, id_generator, clock, uow, make_template, authorization_service
     ):
         template = make_template(template_id="template-1")
         seed_field(template, field_type=FormFieldType.TEXT)
+        authorization_service.grant("admin", "form.manage")
         use_case = AddFieldOptionUseCase(
-            template_repo=template_repo, id_generator=id_generator, clock=clock, uow=uow
+            authorization_service=authorization_service,
+            template_repo=template_repo,
+            id_generator=id_generator,
+            clock=clock,
+            uow=uow,
         )
 
         with pytest.raises(InvalidFieldOptionError):
             use_case.execute(
                 AddFieldOptionCommand(
+                    actor_id="admin",
                     template_id="template-1",
                     field_id="field-1",
                     option_key="backend",

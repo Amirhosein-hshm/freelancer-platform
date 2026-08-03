@@ -3,12 +3,14 @@ import pytest
 from app.application.project.dto import FormValueInput
 from app.application.project.form_validation import validate_form_values
 from app.application.shared.exceptions import FormValidationError
-from app.domain.form.entities import FormField, FormTemplate
+from app.domain.form.entities import FormField, FormFieldOption, FormTemplate
 from app.domain.form.enums import FormFieldType, FormTemplateStatus
 from tests.application.project.conftest import NOW
 
 
-def build_template(field_type: FormFieldType, *, required: bool = True) -> FormTemplate:
+def build_template(
+    field_type: FormFieldType, *, required: bool = True, options: list[FormFieldOption] | None = None
+) -> FormTemplate:
     return FormTemplate(
         id="template-1",
         category_id="cat-1",
@@ -31,6 +33,7 @@ def build_template(field_type: FormFieldType, *, required: bool = True) -> FormT
                 is_unique=False,
                 sort_order=0,
                 validation_rules=None,
+                options=options or [],
                 created_at=NOW,
             )
         ],
@@ -120,3 +123,74 @@ class TestValidateFormValues:
     def test_url_invalid(self):
         with pytest.raises(FormValidationError, match="URL"):
             validate_form_values(build_template(FormFieldType.URL), build_values("ftp://x"))
+
+    def _make_options(self) -> list[FormFieldOption]:
+        return [
+            FormFieldOption(
+                id="opt-1",
+                option_key="small",
+                label="Small",
+                value="small",
+                sort_order=0,
+                is_active=True,
+                created_at=NOW,
+            ),
+            FormFieldOption(
+                id="opt-2",
+                option_key="large",
+                label="Large",
+                value="large",
+                sort_order=1,
+                is_active=True,
+                created_at=NOW,
+            ),
+            FormFieldOption(
+                id="opt-3",
+                option_key="hidden",
+                label="Hidden",
+                value="hidden",
+                sort_order=2,
+                is_active=False,
+                created_at=NOW,
+            ),
+        ]
+
+    def test_select_valid(self):
+        template = build_template(
+            FormFieldType.SELECT, options=self._make_options()
+        )
+        validate_form_values(template, build_values("small"))
+
+    def test_select_invalid_option_raises(self):
+        template = build_template(
+            FormFieldType.SELECT, options=self._make_options()
+        )
+        with pytest.raises(FormValidationError, match="available options"):
+            validate_form_values(template, build_values("medium"))
+
+    def test_select_inactive_option_raises(self):
+        template = build_template(
+            FormFieldType.SELECT, options=self._make_options()
+        )
+        with pytest.raises(FormValidationError, match="available options"):
+            validate_form_values(template, build_values("hidden"))
+
+    def test_multi_select_valid(self):
+        template = build_template(
+            FormFieldType.MULTI_SELECT, options=self._make_options()
+        )
+        validate_form_values(template, build_values("small, large"))
+
+    def test_multi_select_invalid_item_raises(self):
+        template = build_template(
+            FormFieldType.MULTI_SELECT, options=self._make_options()
+        )
+        with pytest.raises(FormValidationError, match="not available"):
+            validate_form_values(template, build_values("small, medium"))
+
+    def test_multi_select_empty_item_raises(self):
+        template = build_template(
+            FormFieldType.MULTI_SELECT, options=self._make_options()
+        )
+        with pytest.raises(FormValidationError, match="empty option"):
+            validate_form_values(template, build_values("small,,large"))

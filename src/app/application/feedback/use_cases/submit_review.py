@@ -1,6 +1,14 @@
 from app.application.feedback.dto import SubmitReviewCommand, SubmitReviewResult
+from app.application.feedback.permissions import (
+    PERMISSION_FEEDBACK_MANAGE_ANY,
+    PERMISSION_FEEDBACK_MANAGE_OWN,
+)
 from app.application.project.status_history import record_status_history
-from app.application.shared.exceptions import PermissionDeniedError, ValidationError
+from app.application.shared.authorization import (
+    IAuthorizationService,
+    authorize_owned_action,
+)
+from app.application.shared.exceptions import ValidationError
 from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.feedback.entities import CustomerReview
@@ -14,12 +22,14 @@ from app.domain.project.repositories import (
     IProjectRevisionRequestRepository,
     IProjectStatusHistoryRepository,
 )
+from app.domain.project.services import RevisionPolicy
 from app.domain.review.enums import ReviewStatus
 
 
 class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
     def __init__(
         self,
+        authorization_service: IAuthorizationService,
         project_repo: IProjectRepository,
         customer_review_repo: ICustomerReviewRepository,
         delivery_repo: IProjectDeliveryRepository,
@@ -29,6 +39,7 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
         clock: IClock,
         uow: IUnitOfWork,
     ) -> None:
+        self._authorization_service = authorization_service
         self._project_repo = project_repo
         self._customer_review_repo = customer_review_repo
         self._delivery_repo = delivery_repo
@@ -40,10 +51,13 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
 
     def execute(self, request: SubmitReviewCommand) -> SubmitReviewResult:
         project = self._project_repo.get_by_id(request.project_id)
-        if project.customer_user_id != request.actor_id:
-            raise PermissionDeniedError(
-                f"User {request.actor_id} does not own project {project.id}."
-            )
+        authorize_owned_action(
+            self._authorization_service,
+            request.actor_id,
+            project.customer_user_id,
+            PERMISSION_FEEDBACK_MANAGE_OWN,
+            PERMISSION_FEEDBACK_MANAGE_ANY,
+        )
         if project.status != ProjectStatus.AWAITING_CUSTOMER_REVIEW:
             raise ProjectNotCompletedError(
                 f"Project {project.id} is '{project.status.value}'; it must be "
@@ -75,6 +89,7 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
                 latest.mark_revised()
                 self._delivery_repo.update(latest)
                 existing = self._revision_repo.list_by_project(project.id)
+                RevisionPolicy.ensure_can_request_new_revision(existing)
                 revision = ProjectRevisionRequest(
                     id=self._id_generator.new_id(),
                     project_id=project.id,

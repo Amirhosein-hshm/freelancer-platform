@@ -3,10 +3,47 @@ from datetime import UTC, datetime
 import pytest
 
 from app.domain.category.entities import Category
+from app.domain.iam.entities import User
+from app.domain.iam.enums import UserStatus
+from app.domain.iam.value_objects import Email, PasswordHash
 from tests.fakes.fake_category_repository import FakeCategoryRepository
 from tests.fakes.fake_category_supervisor_repository import FakeCategorySupervisorRepository
+from tests.fakes.fake_password_hasher import FakePasswordHasher
+from tests.fakes.fake_user_repository import FakeUserRepository
 
 NOW = datetime(2026, 8, 2, tzinfo=UTC)
+
+
+@pytest.fixture
+def user_repo() -> FakeUserRepository:
+    return FakeUserRepository()
+
+
+@pytest.fixture
+def make_user(user_repo: FakeUserRepository):
+    hasher = FakePasswordHasher()
+
+    def _make(
+        user_id: str = "sup-1",
+        email: str = "supervisor@example.com",
+        status: UserStatus = UserStatus.ACTIVE,
+        **overrides: object,
+    ) -> User:
+        user = User(
+            id=user_id,
+            email=Email(email),
+            phone=None,
+            password_hash=PasswordHash(hasher.hash("secret")),
+            first_name="Jane",
+            last_name="Supervisor",
+            status=status,
+            created_at=NOW,
+            **overrides,  # type: ignore[arg-type]
+        )
+        user_repo.add(user)
+        return user
+
+    return _make
 
 
 @pytest.fixture

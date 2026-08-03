@@ -7,12 +7,19 @@ from app.domain.category.exceptions import CategoryNotFoundError, SupervisorAlre
 
 
 def build_use_case(
-    authorization_service, category_repo, category_supervisor_repo, id_generator, clock, uow
+    authorization_service,
+    category_repo,
+    category_supervisor_repo,
+    user_repo,
+    id_generator,
+    clock,
+    uow,
 ) -> AssignSupervisorUseCase:
     return AssignSupervisorUseCase(
         authorization_service=authorization_service,
         category_repo=category_repo,
         category_supervisor_repo=category_supervisor_repo,
+        user_repo=user_repo,
         id_generator=id_generator,
         clock=clock,
         uow=uow,
@@ -25,15 +32,24 @@ class TestAssignSupervisorUseCase:
         authorization_service,
         category_repo,
         category_supervisor_repo,
+        user_repo,
         id_generator,
         clock,
         uow,
         make_category,
+        make_user,
     ):
         authorization_service.grant("admin", "category.assign_supervisor")
         make_category(category_id="cat-1")
+        make_user(user_id="sup-1")
         use_case = build_use_case(
-            authorization_service, category_repo, category_supervisor_repo, id_generator, clock, uow
+            authorization_service,
+            category_repo,
+            category_supervisor_repo,
+            user_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         result = use_case.execute(
@@ -49,6 +65,7 @@ class TestAssignSupervisorUseCase:
         authorization_service,
         category_repo,
         category_supervisor_repo,
+        user_repo,
         id_generator,
         clock,
         uow,
@@ -56,7 +73,13 @@ class TestAssignSupervisorUseCase:
     ):
         make_category(category_id="cat-1")
         use_case = build_use_case(
-            authorization_service, category_repo, category_supervisor_repo, id_generator, clock, uow
+            authorization_service,
+            category_repo,
+            category_supervisor_repo,
+            user_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(PermissionDeniedError):
@@ -69,21 +92,36 @@ class TestAssignSupervisorUseCase:
         authorization_service,
         category_repo,
         category_supervisor_repo,
+        user_repo,
         id_generator,
         clock,
         uow,
         make_category,
+        make_user,
     ):
         authorization_service.grant("admin", "category.assign_supervisor")
         make_category(category_id="cat-1")
+        make_user(user_id="sup-1")
         first = AssignSupervisorUseCase(
-            authorization_service, category_repo, category_supervisor_repo, id_generator, clock, uow
+            authorization_service,
+            category_repo,
+            category_supervisor_repo,
+            user_repo,
+            id_generator,
+            clock,
+            uow,
         )
         first.execute(
             AssignSupervisorCommand(actor_id="admin", category_id="cat-1", supervisor_user_id="sup-1")
         )
         use_case = build_use_case(
-            authorization_service, category_repo, category_supervisor_repo, id_generator, clock, uow
+            authorization_service,
+            category_repo,
+            category_supervisor_repo,
+            user_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(SupervisorAlreadyAssignedError):
@@ -96,13 +134,20 @@ class TestAssignSupervisorUseCase:
         authorization_service,
         category_repo,
         category_supervisor_repo,
+        user_repo,
         id_generator,
         clock,
         uow,
     ):
         authorization_service.grant("admin", "category.assign_supervisor")
         use_case = build_use_case(
-            authorization_service, category_repo, category_supervisor_repo, id_generator, clock, uow
+            authorization_service,
+            category_repo,
+            category_supervisor_repo,
+            user_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(CategoryNotFoundError):

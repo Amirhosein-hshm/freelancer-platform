@@ -3,7 +3,9 @@ from app.application.project.dto import (
     CreateProjectResult,
 )
 from app.application.project.form_validation import validate_form_values
+from app.application.project.permissions import PERMISSION_PROJECT_CREATE
 from app.application.project.status_history import record_status_history
+from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.ports import (
     IClock,
     IIdGenerator,
@@ -25,6 +27,7 @@ from app.domain.project.value_objects import Budget, ProjectCode
 class CreateProjectUseCase(UseCase[CreateProjectCommand, CreateProjectResult]):
     def __init__(
         self,
+        authorization_service: IAuthorizationService,
         project_repo: IProjectRepository,
         category_repo: ICategoryRepository,
         form_template_repo: IFormTemplateRepository,
@@ -34,6 +37,7 @@ class CreateProjectUseCase(UseCase[CreateProjectCommand, CreateProjectResult]):
         clock: IClock,
         uow: IUnitOfWork,
     ) -> None:
+        self._authorization_service = authorization_service
         self._project_repo = project_repo
         self._category_repo = category_repo
         self._form_template_repo = form_template_repo
@@ -44,6 +48,9 @@ class CreateProjectUseCase(UseCase[CreateProjectCommand, CreateProjectResult]):
         self._uow = uow
 
     def execute(self, request: CreateProjectCommand) -> CreateProjectResult:
+        self._authorization_service.require_permission(
+            request.actor_id, PERMISSION_PROJECT_CREATE
+        )
         request.validate()
         category = self._category_repo.get_by_id(request.category_id)
         template = self._form_template_repo.get_published_for_category(category.id)

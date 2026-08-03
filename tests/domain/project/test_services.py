@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
+import pytest
+
 from app.domain.freelancer.entities import FreelancerLevel
 from app.domain.freelancer.enums import FreelancerLevelAccessType
 from app.domain.project.entities import Project
@@ -10,6 +12,7 @@ from app.domain.project.enums import (
     ProjectStatus,
     ProjectVisibility,
 )
+from app.domain.project.exceptions import MaxRevisionsExceededError
 from app.domain.project.services import FreelancerEligibilityPolicy, RevisionPolicy
 from app.domain.project.value_objects import Budget, ProjectCode
 
@@ -76,8 +79,24 @@ class TestRevisionPolicy:
         existing = [object()] * RevisionPolicy.MAX_REVISIONS  # type: ignore[list-item]
         assert RevisionPolicy.can_request_new_revision(existing) is False  # type: ignore[arg-type]
 
+    def test_ensure_below_max_passes(self):
+        existing = [object()] * (RevisionPolicy.MAX_REVISIONS - 1)  # type: ignore[list-item]
+        RevisionPolicy.ensure_can_request_new_revision(existing)  # type: ignore[arg-type]
+
+    def test_ensure_at_max_raises(self):
+        existing = [object()] * RevisionPolicy.MAX_REVISIONS  # type: ignore[list-item]
+        with pytest.raises(MaxRevisionsExceededError):
+            RevisionPolicy.ensure_can_request_new_revision(existing)  # type: ignore[arg-type]
+
 
 class TestFreelancerEligibilityPolicy:
+    def test_inactive_level_is_ineligible(self):
+        level = make_level(is_active=False)
+        assert (
+            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 0)
+            is False
+        )
+
     def test_public_project_requires_public_access(self):
         level = make_level(can_apply_public_projects=False)
         assert (

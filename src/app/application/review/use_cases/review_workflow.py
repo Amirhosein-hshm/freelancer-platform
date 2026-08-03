@@ -1,5 +1,6 @@
 from app.application.project.status_history import record_status_history
 from app.application.review.dto import ReviewDeliveryResult
+from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.exceptions import ValidationError
 from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
 from app.domain.category.repositories import ICategorySupervisorRepository
@@ -11,18 +12,21 @@ from app.domain.project.repositories import (
     IProjectRevisionRequestRepository,
     IProjectStatusHistoryRepository,
 )
+from app.domain.project.services import RevisionPolicy
 from app.domain.review.entities import SupervisorReview
 from app.domain.review.enums import ReviewStatus
-from app.domain.review.exceptions import (
-    DeliveryAlreadyReviewedError,
-    NotAssignedSupervisorError,
-)
+from app.domain.review.exceptions import DeliveryAlreadyReviewedError
 from app.domain.review.repositories import ISupervisorReviewRepository
+from app.domain.shared.exceptions import InvalidStateTransitionError
 from app.domain.shared.types import EntityId
+
+PERMISSION_REVIEW_DECIDE_OWN = "review.decide_own"
+PERMISSION_REVIEW_DECIDE_ANY = "review.decide_any"
 
 
 def decide_delivery_review(
     *,
+    authorization_service: IAuthorizationService,
     delivery_repo: IProjectDeliveryRepository,
     project_repo: IProjectRepository,
     category_supervisor_repo: ICategorySupervisorRepository,
@@ -40,11 +44,15 @@ def decide_delivery_review(
 ) -> ReviewDeliveryResult:
     delivery = delivery_repo.get_by_id(delivery_id)
     project = project_repo.get_by_id(delivery.project_id)
-    if not category_supervisor_repo.is_supervisor_of(actor_id, project.category_id):
-        raise NotAssignedSupervisorError(
-            f"User {actor_id} is not a supervisor of category {project.category_id} "
-            f"and cannot review delivery {delivery.id}."
+    if project.status != ProjectStatus.UNDER_SUPERVISOR_REVIEW:
+        raise InvalidStateTransitionError(
+            f"Project {project.id} is '{project.status.value}'; delivery review is only "
+            "allowed while the project is under supervisor review."
         )
+    if category_supervisor_repo.is_supervisor_of(actor_id, project.category_id):
+        authorization_service.require_permission(actor_id, PERMISSION_REVIEW_DECIDE_OWN)
+    else:
+        authorization_service.require_permission(actor_id, PERMISSION_REVIEW_DECIDE_ANY)
     existing = review_repo.find_by_delivery(delivery.id)
     if existing is not None and existing.decision != ReviewStatus.PENDING:
         raise DeliveryAlreadyReviewedError(
@@ -74,9 +82,10 @@ def decide_delivery_review(
             target = ProjectStatus.AWAITING_CUSTOMER_REVIEW
             reason = f"Supervisor approved delivery {delivery.id}."
         elif decision == ReviewStatus.REJECTED:
+            existing_revisions = revision_repo.list_by_project(project.id)
+            RevisionPolicy.ensure_can_request_new_revision(existing_revisions)
             review.reject(reject_reason or "No reason given", now)
             delivery.reject(actor_id, now)
-            existing_revisions = revision_repo.list_by_project(project.id)
             revision = ProjectRevisionRequest(
                 id=id_generator.new_id(),
                 project_id=project.id,
@@ -109,7 +118,10 @@ def decide_delivery_review(
             reason,
             now,
         )
-        review_repo.add(review)
+        if existing is not None:
+            review_repo.update(review)
+        else:
+            review_repo.add(review)
         delivery_repo.update(delivery)
         project_repo.update(project)
         uow.commit()

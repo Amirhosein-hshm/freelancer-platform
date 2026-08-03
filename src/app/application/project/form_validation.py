@@ -3,7 +3,7 @@ from decimal import Decimal, InvalidOperation
 
 from app.application.project.dto import FormValueInput
 from app.application.shared.exceptions import FormValidationError
-from app.domain.form.entities import FormTemplate
+from app.domain.form.entities import FormField, FormTemplate
 from app.domain.form.enums import FormFieldType
 
 _BOOLEAN_TRUE = {"true", "1", "yes", "on"}
@@ -34,10 +34,12 @@ def validate_form_values(
             )
         if value is None or not value.value.strip():
             continue
-        _validate_value(field.field_type, field.label, value.value)
+        _validate_value(field, value.value)
 
 
-def _validate_value(field_type: FormFieldType, label: str, raw: str) -> None:
+def _validate_value(field: FormField, raw: str) -> None:
+    field_type = field.field_type
+    label = field.label
     value = raw.strip()
     if field_type == FormFieldType.NUMBER:
         if not value.lstrip("-").isdigit():
@@ -71,3 +73,21 @@ def _validate_value(field_type: FormFieldType, label: str, raw: str) -> None:
             raise FormValidationError(f"Field '{label}' must be a valid email address.")
     elif field_type == FormFieldType.URL and not value.lower().startswith(("http://", "https://")):
         raise FormValidationError(f"Field '{label}' must be a valid URL.")
+    elif field_type == FormFieldType.SELECT:
+        if value not in _active_option_values(field):
+            raise FormValidationError(
+                f"Field '{label}' must be one of the available options."
+            )
+    elif field_type == FormFieldType.MULTI_SELECT:
+        active_values = _active_option_values(field)
+        for item in value.split(","):
+            if not item.strip():
+                raise FormValidationError(f"Field '{label}' contains an empty option.")
+            if item.strip() not in active_values:
+                raise FormValidationError(
+                    f"Field '{label}' contains an option that is not available: '{item}'."
+                )
+
+
+def _active_option_values(field: FormField) -> set[str]:
+    return {option.value for option in field.options if option.is_active}

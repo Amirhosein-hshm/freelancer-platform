@@ -5,6 +5,7 @@ from app.application.shared.use_case import UseCase
 from app.domain.category.entities import CategorySupervisor
 from app.domain.category.exceptions import SupervisorAlreadyAssignedError
 from app.domain.category.repositories import ICategoryRepository, ICategorySupervisorRepository
+from app.domain.iam.repositories import IUserRepository
 
 
 class AssignSupervisorUseCase(UseCase[AssignSupervisorCommand, AssignSupervisorResult]):
@@ -13,6 +14,7 @@ class AssignSupervisorUseCase(UseCase[AssignSupervisorCommand, AssignSupervisorR
         authorization_service: IAuthorizationService,
         category_repo: ICategoryRepository,
         category_supervisor_repo: ICategorySupervisorRepository,
+        user_repo: IUserRepository,
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
@@ -20,6 +22,7 @@ class AssignSupervisorUseCase(UseCase[AssignSupervisorCommand, AssignSupervisorR
         self._authorization_service = authorization_service
         self._category_repo = category_repo
         self._category_supervisor_repo = category_supervisor_repo
+        self._user_repo = user_repo
         self._id_generator = id_generator
         self._clock = clock
         self._uow = uow
@@ -29,6 +32,7 @@ class AssignSupervisorUseCase(UseCase[AssignSupervisorCommand, AssignSupervisorR
             request.actor_id, "category.assign_supervisor"
         )
         self._category_repo.get_by_id(request.category_id)
+        self._user_repo.get_by_id(request.supervisor_user_id)
         active = self._category_supervisor_repo.list_active_supervisors(request.category_id)
         if any(link.supervisor_user_id == request.supervisor_user_id for link in active):
             raise SupervisorAlreadyAssignedError(

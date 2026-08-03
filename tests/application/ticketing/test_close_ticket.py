@@ -1,14 +1,16 @@
 import pytest
 
+from app.application.shared.exceptions import PermissionDeniedError
 from app.application.ticketing.dto import CloseTicketCommand
+from app.application.ticketing.permissions import PERMISSION_TICKET_CLOSE_OWN
 from app.application.ticketing.use_cases.close_ticket import CloseTicketUseCase
 from app.domain.shared.exceptions import InvalidStateTransitionError
 from app.domain.ticketing.enums import TicketStatus
-from app.domain.ticketing.exceptions import NotTicketParticipantError
 
 
-def build_close(ticket_repo, participant_repo, clock, uow) -> CloseTicketUseCase:
+def build_close(authorization_service, ticket_repo, participant_repo, clock, uow) -> CloseTicketUseCase:
     return CloseTicketUseCase(
+        authorization_service=authorization_service,
         ticket_repo=ticket_repo,
         participant_repo=participant_repo,
         clock=clock,
@@ -17,9 +19,10 @@ def build_close(ticket_repo, participant_repo, clock, uow) -> CloseTicketUseCase
 
 
 class TestCloseTicketUseCase:
-    def test_close_sets_closed(self, ticket_repo, participant_repo, clock, uow, make_ticket):
+    def test_close_sets_closed(self, authorization_service, ticket_repo, participant_repo, clock, uow, make_ticket):
         make_ticket(ticket_id="ticket-1")
-        use_case = build_close(ticket_repo, participant_repo, clock, uow)
+        authorization_service.grant("user-1", PERMISSION_TICKET_CLOSE_OWN)
+        use_case = build_close(authorization_service, ticket_repo, participant_repo, clock, uow)
 
         result = use_case.execute(
             CloseTicketCommand(actor_id="user-1", ticket_id="ticket-1")
@@ -32,20 +35,23 @@ class TestCloseTicketUseCase:
         assert ticket.is_closed() is True
         assert uow.committed is True
 
-    def test_cannot_close_twice(self, ticket_repo, participant_repo, clock, uow, make_ticket):
+    def test_cannot_close_twice(self, authorization_service, ticket_repo, participant_repo, clock, uow, make_ticket):
         make_ticket(ticket_id="ticket-1", status=TicketStatus.CLOSED)
-        use_case = build_close(ticket_repo, participant_repo, clock, uow)
+        authorization_service.grant("user-1", PERMISSION_TICKET_CLOSE_OWN)
+        use_case = build_close(authorization_service, ticket_repo, participant_repo, clock, uow)
 
         with pytest.raises(InvalidStateTransitionError):
             use_case.execute(
                 CloseTicketCommand(actor_id="user-1", ticket_id="ticket-1")
             )
 
-    def test_non_participant_raises(self, ticket_repo, participant_repo, clock, uow, make_ticket):
+    def test_non_participant_raises(
+        self, authorization_service, ticket_repo, participant_repo, clock, uow, make_ticket
+    ):
         make_ticket(ticket_id="ticket-1")
-        use_case = build_close(ticket_repo, participant_repo, clock, uow)
+        use_case = build_close(authorization_service, ticket_repo, participant_repo, clock, uow)
 
-        with pytest.raises(NotTicketParticipantError):
+        with pytest.raises(PermissionDeniedError):
             use_case.execute(
                 CloseTicketCommand(actor_id="intruder", ticket_id="ticket-1")
             )

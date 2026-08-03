@@ -1,5 +1,13 @@
 from app.application.feedback.dto import SubmitRatingCommand, SubmitRatingResult
-from app.application.shared.exceptions import PermissionDeniedError, ValidationError
+from app.application.feedback.permissions import (
+    PERMISSION_FEEDBACK_MANAGE_ANY,
+    PERMISSION_FEEDBACK_MANAGE_OWN,
+)
+from app.application.shared.authorization import (
+    IAuthorizationService,
+    authorize_owned_action,
+)
+from app.application.shared.exceptions import ValidationError
 from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.feedback.entities import Rating
@@ -18,6 +26,7 @@ from app.domain.project.repositories import (
 class SubmitRatingUseCase(UseCase[SubmitRatingCommand, SubmitRatingResult]):
     def __init__(
         self,
+        authorization_service: IAuthorizationService,
         project_repo: IProjectRepository,
         application_repo: IProjectApplicationRepository,
         customer_review_repo: ICustomerReviewRepository,
@@ -26,6 +35,7 @@ class SubmitRatingUseCase(UseCase[SubmitRatingCommand, SubmitRatingResult]):
         clock: IClock,
         uow: IUnitOfWork,
     ) -> None:
+        self._authorization_service = authorization_service
         self._project_repo = project_repo
         self._application_repo = application_repo
         self._customer_review_repo = customer_review_repo
@@ -36,10 +46,13 @@ class SubmitRatingUseCase(UseCase[SubmitRatingCommand, SubmitRatingResult]):
 
     def execute(self, request: SubmitRatingCommand) -> SubmitRatingResult:
         project = self._project_repo.get_by_id(request.project_id)
-        if project.customer_user_id != request.actor_id:
-            raise PermissionDeniedError(
-                f"User {request.actor_id} does not own project {project.id}."
-            )
+        authorize_owned_action(
+            self._authorization_service,
+            request.actor_id,
+            project.customer_user_id,
+            PERMISSION_FEEDBACK_MANAGE_OWN,
+            PERMISSION_FEEDBACK_MANAGE_ANY,
+        )
         if project.status != ProjectStatus.COMPLETED:
             raise ProjectNotCompletedError(
                 f"Project {project.id} is '{project.status.value}'; it can only be "

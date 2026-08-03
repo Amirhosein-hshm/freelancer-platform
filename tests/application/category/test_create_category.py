@@ -6,18 +6,29 @@ from app.application.shared.exceptions import ValidationError
 from app.domain.category.exceptions import DuplicateCategorySlugError
 
 
-def build_use_case(category_repo, id_generator, clock, uow) -> CreateCategoryUseCase:
+def build_use_case(
+    authorization_service, category_repo, id_generator, clock, uow
+) -> CreateCategoryUseCase:
     return CreateCategoryUseCase(
-        category_repo=category_repo, id_generator=id_generator, clock=clock, uow=uow
+        authorization_service=authorization_service,
+        category_repo=category_repo,
+        id_generator=id_generator,
+        clock=clock,
+        uow=uow,
     )
 
 
 class TestCreateCategoryUseCase:
-    def test_create_category_succeeds(self, category_repo, id_generator, clock, uow):
-        use_case = build_use_case(category_repo, id_generator, clock, uow)
+    def test_create_category_succeeds(
+        self, authorization_service, category_repo, id_generator, clock, uow
+    ):
+        authorization_service.grant("admin", "category.manage")
+        use_case = build_use_case(authorization_service, category_repo, id_generator, clock, uow)
 
         result = use_case.execute(
-            CreateCategoryCommand(name="Backend", slug="backend", category_key="backend")
+            CreateCategoryCommand(
+                actor_id="admin", name="Backend", slug="backend", category_key="backend"
+            )
         )
 
         assert result.name == "Backend"
@@ -26,17 +37,27 @@ class TestCreateCategoryUseCase:
         assert category_repo.get_by_slug("backend").id == result.category_id
         assert uow.committed is True
 
-    def test_create_duplicate_slug_raises(self, category_repo, id_generator, clock, uow, make_category):
+    def test_create_duplicate_slug_raises(
+        self, authorization_service, category_repo, id_generator, clock, uow, make_category
+    ):
+        authorization_service.grant("admin", "category.manage")
         make_category(category_id="cat-1", slug="taken")
-        use_case = build_use_case(category_repo, id_generator, clock, uow)
+        use_case = build_use_case(authorization_service, category_repo, id_generator, clock, uow)
 
         with pytest.raises(DuplicateCategorySlugError):
             use_case.execute(
-                CreateCategoryCommand(name="Other", slug="taken", category_key="other")
+                CreateCategoryCommand(
+                    actor_id="admin", name="Other", slug="taken", category_key="other"
+                )
             )
 
-    def test_create_missing_fields_raises_validation(self, category_repo, id_generator, clock, uow):
-        use_case = build_use_case(category_repo, id_generator, clock, uow)
+    def test_create_missing_fields_raises_validation(
+        self, authorization_service, category_repo, id_generator, clock, uow
+    ):
+        authorization_service.grant("admin", "category.manage")
+        use_case = build_use_case(authorization_service, category_repo, id_generator, clock, uow)
 
         with pytest.raises(ValidationError):
-            use_case.execute(CreateCategoryCommand(name="", slug="", category_key=""))
+            use_case.execute(
+                CreateCategoryCommand(actor_id="admin", name="", slug="", category_key="")
+            )

@@ -57,6 +57,7 @@ class ApplicationResult:
     proposed_amount: Decimal | None
     proposed_days: int | None
     applied_at: datetime
+    submitted_by_user_id: EntityId | None
     decided_at: datetime | None
     decision_note: str | None
 
@@ -76,6 +77,7 @@ class DeliveryResult:
 
 @dataclass(frozen=True)
 class CreateProjectCommand:
+    actor_id: EntityId
     customer_user_id: EntityId
     category_id: EntityId
     title: str

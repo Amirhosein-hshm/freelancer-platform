@@ -78,6 +78,7 @@ class GetTicketMessagesResult:
 
 @dataclass(frozen=True)
 class GetUserTicketsQuery:
+    actor_id: EntityId
     user_id: EntityId
 
 

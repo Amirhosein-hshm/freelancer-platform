@@ -19,6 +19,7 @@ class CategoryResult:
 
 @dataclass(frozen=True)
 class CreateCategoryCommand:
+    actor_id: EntityId
     name: str
     slug: str
     category_key: str
@@ -33,6 +34,7 @@ class CreateCategoryCommand:
 
 @dataclass(frozen=True)
 class UpdateCategoryCommand:
+    actor_id: EntityId
     category_id: EntityId
     name: str
     slug: str
@@ -46,6 +48,7 @@ class UpdateCategoryCommand:
 
 @dataclass(frozen=True)
 class DeleteCategoryCommand:
+    actor_id: EntityId
     category_id: EntityId
 
 

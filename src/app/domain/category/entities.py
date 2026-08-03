@@ -46,3 +46,6 @@ class CategorySupervisor(Entity):
             )
         self.is_active = False
         self.revoked_at = at
+
+    def promote(self) -> None:
+        self.is_primary = True

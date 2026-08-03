@@ -7,34 +7,49 @@ from app.domain.form.enums import FormTemplateStatus
 from app.domain.shared.exceptions import InvalidStateTransitionError
 
 
-def build_use_case(template_repo) -> UpdateFormTemplateUseCase:
-    return UpdateFormTemplateUseCase(template_repo=template_repo)
+def build_use_case(template_repo, authorization_service) -> UpdateFormTemplateUseCase:
+    return UpdateFormTemplateUseCase(
+        template_repo=template_repo, authorization_service=authorization_service
+    )
 
 
 class TestUpdateFormTemplateUseCase:
-    def test_update_name_of_draft(self, template_repo, make_template):
+    def test_update_name_of_draft(self, template_repo, make_template, authorization_service):
         make_template(template_id="template-1")
-        use_case = build_use_case(template_repo)
+        authorization_service.grant("admin", "form.manage")
+        use_case = build_use_case(template_repo, authorization_service)
 
         result = use_case.execute(
-            UpdateFormTemplateCommand(template_id="template-1", name="New Name")
+            UpdateFormTemplateCommand(
+                actor_id="admin", template_id="template-1", name="New Name"
+            )
         )
 
         assert result.name == "New Name"
         assert template_repo.get_by_id("template-1").name == "New Name"
 
-    def test_update_published_raises(self, template_repo, make_template):
+    def test_update_published_raises(self, template_repo, make_template, authorization_service):
         make_template(template_id="template-1", status=FormTemplateStatus.PUBLISHED)
-        use_case = build_use_case(template_repo)
+        authorization_service.grant("admin", "form.manage")
+        use_case = build_use_case(template_repo, authorization_service)
 
         with pytest.raises(InvalidStateTransitionError):
             use_case.execute(
-                UpdateFormTemplateCommand(template_id="template-1", name="New Name")
+                UpdateFormTemplateCommand(
+                    actor_id="admin", template_id="template-1", name="New Name"
+                )
             )
 
-    def test_empty_name_raises_validation(self, template_repo, make_template):
+    def test_empty_name_raises_validation(
+        self, template_repo, make_template, authorization_service
+    ):
         make_template(template_id="template-1")
-        use_case = build_use_case(template_repo)
+        authorization_service.grant("admin", "form.manage")
+        use_case = build_use_case(template_repo, authorization_service)
 
         with pytest.raises(ValidationError):
-            use_case.execute(UpdateFormTemplateCommand(template_id="template-1", name="  "))
+            use_case.execute(
+                UpdateFormTemplateCommand(
+                    actor_id="admin", template_id="template-1", name="  "
+                )
+            )

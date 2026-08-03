@@ -30,12 +30,15 @@ def role_repo() -> FakeRoleRepository:
             id="role-customer",
             role_key="customer",
             name="Customer",
-            is_system=True,
+            is_system=False,
             created_at=NOW,
         )
     )
     repo.add(
-        Role(id="role-admin", role_key="admin", name="Admin", is_system=True, created_at=NOW)
+        Role(id="role-admin", role_key="admin", name="Admin", is_system=False, created_at=NOW)
+    )
+    repo.add(
+        Role(id="role-system", role_key="system", name="System", is_system=True, created_at=NOW)
     )
     return repo
 

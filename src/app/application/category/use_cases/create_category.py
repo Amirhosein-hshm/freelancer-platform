@@ -2,11 +2,14 @@ from app.application.category.dto import (
     CategoryResult,
     CreateCategoryCommand,
 )
+from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.category.entities import Category
 from app.domain.category.exceptions import CategoryNotFoundError, DuplicateCategorySlugError
 from app.domain.category.repositories import ICategoryRepository
+
+PERMISSION_CATEGORY_MANAGE = "category.manage"
 
 
 def _to_result(category: Category) -> CategoryResult:
@@ -25,17 +28,22 @@ def _to_result(category: Category) -> CategoryResult:
 class CreateCategoryUseCase(UseCase[CreateCategoryCommand, CategoryResult]):
     def __init__(
         self,
+        authorization_service: IAuthorizationService,
         category_repo: ICategoryRepository,
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
     ) -> None:
+        self._authorization_service = authorization_service
         self._category_repo = category_repo
         self._id_generator = id_generator
         self._clock = clock
         self._uow = uow
 
     def execute(self, request: CreateCategoryCommand) -> CategoryResult:
+        self._authorization_service.require_permission(
+            request.actor_id, PERMISSION_CATEGORY_MANAGE
+        )
         request.validate()
         try:
             self._category_repo.get_by_slug(request.slug)

@@ -9,6 +9,7 @@ from app.domain.review.enums import ReviewStatus
 
 
 def build_review(
+    authorization_service,
     project_repo,
     customer_review_repo,
     delivery_repo,
@@ -19,6 +20,7 @@ def build_review(
     uow,
 ) -> SubmitReviewUseCase:
     return SubmitReviewUseCase(
+        authorization_service=authorization_service,
         project_repo=project_repo,
         customer_review_repo=customer_review_repo,
         delivery_repo=delivery_repo,
@@ -33,6 +35,7 @@ def build_review(
 class TestSubmitReviewUseCase:
     def test_approve_completes_project(
         self,
+        authorization_service,
         project_repo,
         customer_review_repo,
         delivery_repo,
@@ -46,7 +49,9 @@ class TestSubmitReviewUseCase:
     ):
         make_project(status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
         make_delivery()
+        authorization_service.grant("customer-1", "feedback.manage_own")
         use_case = build_review(
+            authorization_service,
             project_repo,
             customer_review_repo,
             delivery_repo,
@@ -80,6 +85,7 @@ class TestSubmitReviewUseCase:
 
     def test_reject_requests_revision(
         self,
+        authorization_service,
         project_repo,
         customer_review_repo,
         delivery_repo,
@@ -93,7 +99,9 @@ class TestSubmitReviewUseCase:
     ):
         make_project(status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
         make_delivery()
+        authorization_service.grant("customer-1", "feedback.manage_own")
         use_case = build_review(
+            authorization_service,
             project_repo,
             customer_review_repo,
             delivery_repo,
@@ -122,6 +130,7 @@ class TestSubmitReviewUseCase:
 
     def test_wrong_project_status_raises(
         self,
+        authorization_service,
         project_repo,
         customer_review_repo,
         delivery_repo,
@@ -135,7 +144,9 @@ class TestSubmitReviewUseCase:
     ):
         make_project(status=ProjectStatus.IN_PROGRESS)
         make_delivery()
+        authorization_service.grant("customer-1", "feedback.manage_own")
         use_case = build_review(
+            authorization_service,
             project_repo,
             customer_review_repo,
             delivery_repo,
@@ -157,6 +168,7 @@ class TestSubmitReviewUseCase:
 
     def test_non_owner_raises(
         self,
+        authorization_service,
         project_repo,
         customer_review_repo,
         delivery_repo,
@@ -171,6 +183,7 @@ class TestSubmitReviewUseCase:
         make_project(status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
         make_delivery()
         use_case = build_review(
+            authorization_service,
             project_repo,
             customer_review_repo,
             delivery_repo,
@@ -192,6 +205,7 @@ class TestSubmitReviewUseCase:
 
     def test_pending_decision_raises(
         self,
+        authorization_service,
         project_repo,
         customer_review_repo,
         delivery_repo,
@@ -205,7 +219,9 @@ class TestSubmitReviewUseCase:
     ):
         make_project(status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
         make_delivery()
+        authorization_service.grant("customer-1", "feedback.manage_own")
         use_case = build_review(
+            authorization_service,
             project_repo,
             customer_review_repo,
             delivery_repo,

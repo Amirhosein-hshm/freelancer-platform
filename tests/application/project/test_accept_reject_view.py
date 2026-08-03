@@ -43,8 +43,17 @@ def add_application(
 
 class TestAcceptFreelancerUseCase:
     def test_accept_selection_and_rejects_others(
-        self, project_repo, application_repo, status_history_repo, id_generator, clock, uow, make_project
+        self,
+        authorization_service,
+        project_repo,
+        application_repo,
+        status_history_repo,
+        id_generator,
+        clock,
+        uow,
+        make_project,
     ):
+        authorization_service.grant("customer-1", "project.manage_own")
         make_project(
             project_id="project-1",
             customer_user_id="customer-1",
@@ -53,6 +62,7 @@ class TestAcceptFreelancerUseCase:
         add_application(application_repo, "app-1", "profile-1", now=clock.now())
         add_application(application_repo, "app-2", "profile-2", now=clock.now())
         use_case = AcceptFreelancerUseCase(
+            authorization_service=authorization_service,
             project_repo=project_repo,
             application_repo=application_repo,
             status_history_repo=status_history_repo,
@@ -72,11 +82,20 @@ class TestAcceptFreelancerUseCase:
         assert len(status_history_repo.list_by_project("project-1")) == 1
 
     def test_non_owner_raises(
-        self, project_repo, application_repo, status_history_repo, id_generator, clock, uow, make_project
+        self,
+        authorization_service,
+        project_repo,
+        application_repo,
+        status_history_repo,
+        id_generator,
+        clock,
+        uow,
+        make_project,
     ):
         make_project(project_id="project-1", customer_user_id="customer-1")
         add_application(application_repo, "app-1", "profile-1", now=clock.now())
         use_case = AcceptFreelancerUseCase(
+            authorization_service=authorization_service,
             project_repo=project_repo,
             application_repo=application_repo,
             status_history_repo=status_history_repo,
@@ -90,11 +109,16 @@ class TestAcceptFreelancerUseCase:
 
 
 class TestRejectFreelancerUseCase:
-    def test_reject_application(self, project_repo, application_repo, clock, uow, make_project):
+    def test_reject_application(self, authorization_service, project_repo, application_repo, clock, uow, make_project):
+        authorization_service.grant("customer-1", "project.manage_own")
         make_project(project_id="project-1", customer_user_id="customer-1")
         add_application(application_repo, "app-1", "profile-1", now=clock.now())
         use_case = RejectFreelancerUseCase(
-            project_repo=project_repo, application_repo=application_repo, clock=clock, uow=uow
+            authorization_service=authorization_service,
+            project_repo=project_repo,
+            application_repo=application_repo,
+            clock=clock,
+            uow=uow,
         )
 
         result = use_case.execute(
@@ -104,11 +128,15 @@ class TestRejectFreelancerUseCase:
         assert result.status == ProjectApplicationStatus.REJECTED
         assert application_repo.get_by_id("app-1").decision_note == "No fit"
 
-    def test_non_owner_raises(self, project_repo, application_repo, clock, uow, make_project):
+    def test_non_owner_raises(self, authorization_service, project_repo, application_repo, clock, uow, make_project):
         make_project(project_id="project-1", customer_user_id="customer-1")
         add_application(application_repo, "app-1", "profile-1", now=clock.now())
         use_case = RejectFreelancerUseCase(
-            project_repo=project_repo, application_repo=application_repo, clock=clock, uow=uow
+            authorization_service=authorization_service,
+            project_repo=project_repo,
+            application_repo=application_repo,
+            clock=clock,
+            uow=uow,
         )
 
         with pytest.raises(PermissionDeniedError):
@@ -118,22 +146,29 @@ class TestRejectFreelancerUseCase:
 
 
 class TestViewApplicationsUseCase:
-    def test_view_applications_as_customer(self, project_repo, application_repo, clock, make_project):
+    def test_view_applications_as_customer(
+        self, authorization_service, project_repo, application_repo, clock, make_project
+    ):
+        authorization_service.grant("customer-1", "project.manage_own")
         make_project(project_id="project-1", customer_user_id="customer-1")
         add_application(application_repo, "app-1", "profile-1", now=clock.now())
         add_application(application_repo, "app-2", "profile-2", now=clock.now())
         use_case = ViewApplicationsUseCase(
-            project_repo=project_repo, application_repo=application_repo
+            authorization_service=authorization_service,
+            project_repo=project_repo,
+            application_repo=application_repo,
         )
 
         result = use_case.execute(ViewApplicationsQuery(actor_id="customer-1", project_id="project-1"))
 
         assert len(result.applications) == 2
 
-    def test_non_owner_raises(self, project_repo, application_repo, make_project):
+    def test_non_owner_raises(self, authorization_service, project_repo, application_repo, make_project):
         make_project(project_id="project-1", customer_user_id="customer-1")
         use_case = ViewApplicationsUseCase(
-            project_repo=project_repo, application_repo=application_repo
+            authorization_service=authorization_service,
+            project_repo=project_repo,
+            application_repo=application_repo,
         )
 
         with pytest.raises(PermissionDeniedError):

@@ -70,6 +70,46 @@ class TestRemoveSupervisorUseCase:
                 RemoveSupervisorCommand(actor_id="admin", category_id="cat-1", supervisor_user_id="ghost")
             )
 
+    def test_removing_primary_promotes_next_active_supervisor(
+        self, authorization_service, category_supervisor_repo, clock, uow, make_category
+    ):
+        authorization_service.grant("admin", "category.remove_supervisor")
+        make_category(category_id="cat-1")
+        category_supervisor_repo.add(
+            CategorySupervisor(
+                id="link-1",
+                category_id="cat-1",
+                supervisor_user_id="sup-1",
+                assigned_by_user_id="admin",
+                is_primary=True,
+                is_active=True,
+                assigned_at=NOW,
+                created_at=NOW,
+            )
+        )
+        category_supervisor_repo.add(
+            CategorySupervisor(
+                id="link-2",
+                category_id="cat-1",
+                supervisor_user_id="sup-2",
+                assigned_by_user_id="admin",
+                is_primary=False,
+                is_active=True,
+                assigned_at=NOW,
+                created_at=NOW,
+            )
+        )
+        use_case = build_remove(authorization_service, category_supervisor_repo, clock, uow)
+
+        use_case.execute(
+            RemoveSupervisorCommand(actor_id="admin", category_id="cat-1", supervisor_user_id="sup-1")
+        )
+
+        remaining = category_supervisor_repo.list_active_supervisors("cat-1")
+        assert len(remaining) == 1
+        assert remaining[0].supervisor_user_id == "sup-2"
+        assert remaining[0].is_primary is True
+
 
 class TestAssignAndRemoveFlow:
     def test_assign_then_remove_flow(
@@ -77,16 +117,25 @@ class TestAssignAndRemoveFlow:
         authorization_service,
         category_repo,
         category_supervisor_repo,
+        user_repo,
         id_generator,
         clock,
         uow,
         make_category,
+        make_user,
     ):
         authorization_service.grant("admin", "category.assign_supervisor")
         authorization_service.grant("admin", "category.remove_supervisor")
         make_category(category_id="cat-1")
+        make_user(user_id="sup-1")
         assign = AssignSupervisorUseCase(
-            authorization_service, category_repo, category_supervisor_repo, id_generator, clock, uow
+            authorization_service,
+            category_repo,
+            category_supervisor_repo,
+            user_repo,
+            id_generator,
+            clock,
+            uow,
         )
         remove = build_remove(authorization_service, category_supervisor_repo, clock, uow)
 

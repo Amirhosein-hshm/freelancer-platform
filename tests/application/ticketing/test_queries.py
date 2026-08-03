@@ -5,6 +5,7 @@ from app.application.ticketing.dto import (
     GetUserTicketsQuery,
     SendMessageCommand,
 )
+from app.application.ticketing.permissions import PERMISSION_TICKET_READ_OWN
 from app.application.ticketing.use_cases.get_ticket_messages import (
     GetTicketMessagesUseCase,
 )
@@ -14,13 +15,18 @@ from app.domain.ticketing.exceptions import NotTicketParticipantError
 
 
 class TestGetUserTicketsUseCase:
-    def test_lists_created_and_assigned(self, ticket_repo, make_ticket):
+    def test_lists_created_and_assigned(self, authorization_service, ticket_repo, make_ticket):
         make_ticket(ticket_id="ticket-1", created_by="user-1")
         make_ticket(ticket_id="ticket-2", created_by="user-2", assigned_to="user-1")
         make_ticket(ticket_id="ticket-3", created_by="user-2")
-        use_case = GetUserTicketsUseCase(ticket_repo=ticket_repo)
+        authorization_service.grant("user-1", PERMISSION_TICKET_READ_OWN)
+        use_case = GetUserTicketsUseCase(
+            authorization_service=authorization_service, ticket_repo=ticket_repo
+        )
 
-        result = use_case.execute(GetUserTicketsQuery(user_id="user-1"))
+        result = use_case.execute(
+            GetUserTicketsQuery(actor_id="user-1", user_id="user-1")
+        )
 
         assert [t.ticket_id for t in result.tickets] == ["ticket-1", "ticket-2"]
         assert result.tickets[0].status.value == "open"

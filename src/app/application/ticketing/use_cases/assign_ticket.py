@@ -1,7 +1,9 @@
+from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.application.ticketing.access import ensure_participant
 from app.application.ticketing.dto import AssignTicketCommand, AssignTicketResult
+from app.application.ticketing.permissions import PERMISSION_TICKET_ASSIGN
 from app.domain.ticketing.entities import TicketParticipant
 from app.domain.ticketing.enums import TicketParticipantRole
 from app.domain.ticketing.repositories import (
@@ -13,12 +15,14 @@ from app.domain.ticketing.repositories import (
 class AssignTicketUseCase(UseCase[AssignTicketCommand, AssignTicketResult]):
     def __init__(
         self,
+        authorization_service: IAuthorizationService,
         ticket_repo: ITicketRepository,
         participant_repo: ITicketParticipantRepository,
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
     ) -> None:
+        self._authorization_service = authorization_service
         self._ticket_repo = ticket_repo
         self._participant_repo = participant_repo
         self._id_generator = id_generator
@@ -26,6 +30,9 @@ class AssignTicketUseCase(UseCase[AssignTicketCommand, AssignTicketResult]):
         self._uow = uow
 
     def execute(self, request: AssignTicketCommand) -> AssignTicketResult:
+        self._authorization_service.require_permission(
+            request.actor_id, PERMISSION_TICKET_ASSIGN
+        )
         ticket = self._ticket_repo.get_by_id(request.ticket_id)
         ensure_participant(self._participant_repo, ticket.id, request.actor_id)
         now = self._clock.now()
