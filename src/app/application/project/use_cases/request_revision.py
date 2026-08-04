@@ -45,22 +45,22 @@ class RequestRevisionUseCase(UseCase[RequestRevisionCommand, RequestRevisionResu
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: RequestRevisionCommand) -> RequestRevisionResult:
-        project = self._project_repo.get_by_id(request.project_id)
-        authorize_owned_action(
+    async def execute(self, request: RequestRevisionCommand) -> RequestRevisionResult:
+        project = await self._project_repo.get_by_id(request.project_id)
+        await authorize_owned_action(
             self._authorization_service,
             request.actor_id,
             project.customer_user_id,
             PERMISSION_PROJECT_MANAGE_OWN,
             PERMISSION_PROJECT_MANAGE_ANY,
         )
-        existing = self._revision_repo.list_by_project(project.id)
+        existing = await self._revision_repo.list_by_project(project.id)
         RevisionPolicy.ensure_can_request_new_revision(existing)
         from_status = project.status
-        latest = self._delivery_repo.get_latest_for_project(project.id)
-        now = self._clock.now()
+        latest = await self._delivery_repo.get_latest_for_project(project.id)
+        now = await self._clock.now()
         revision = ProjectRevisionRequest(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             project_id=project.id,
             project_delivery_id=latest.id if latest is not None else None,
             requested_by_user_id=request.actor_id,
@@ -73,13 +73,13 @@ class RequestRevisionUseCase(UseCase[RequestRevisionCommand, RequestRevisionResu
             resolved_at=None,
             created_at=now,
         )
-        with self._uow:
-            self._revision_repo.add(revision)
+        async with self._uow:
+            await self._revision_repo.add(revision)
             if latest is not None:
                 latest.mark_revised()
-                self._delivery_repo.update(latest)
+                await self._delivery_repo.update(latest)
             project.request_revision()
-            record_status_history(
+            await record_status_history(
                 self._status_history_repo,
                 self._id_generator,
                 project.id,
@@ -89,8 +89,8 @@ class RequestRevisionUseCase(UseCase[RequestRevisionCommand, RequestRevisionResu
                 request.reason,
                 now,
             )
-            self._project_repo.update(project)
-            self._uow.commit()
+            await self._project_repo.update(project)
+            await self._uow.commit()
         return RequestRevisionResult(
             revision_id=revision.id,
             round_no=revision.round_no,

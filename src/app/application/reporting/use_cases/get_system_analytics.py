@@ -14,12 +14,12 @@ class GetSystemAnalyticsUseCase(UseCase[ReportingQuery, SystemAnalytics]):
         self._authorization_service = authorization_service
         self._reporting_read_repo = reporting_read_repo
 
-    def execute(self, request: ReportingQuery) -> SystemAnalytics:
-        self._authorization_service.require_permission(request.actor_id, "reporting.read")
+    async def execute(self, request: ReportingQuery) -> SystemAnalytics:
+        await self._authorization_service.require_permission(request.actor_id, "reporting.read")
         return SystemAnalytics(
-            dashboard=self._reporting_read_repo.get_dashboard_statistics(),
-            users=self._reporting_read_repo.get_user_statistics(),
-            projects=self._reporting_read_repo.get_project_statistics(),
-            freelancers=self._reporting_read_repo.get_freelancer_statistics(),
-            customers=self._reporting_read_repo.get_customer_statistics(),
+            dashboard=await self._reporting_read_repo.get_dashboard_statistics(),
+            users=await self._reporting_read_repo.get_user_statistics(),
+            projects=await self._reporting_read_repo.get_project_statistics(),
+            freelancers=await self._reporting_read_repo.get_freelancer_statistics(),
+            customers=await self._reporting_read_repo.get_customer_statistics(),
         )

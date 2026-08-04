@@ -43,25 +43,25 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: SubmitDeliveryCommand) -> SubmitDeliveryResult:
-        project = self._project_repo.get_by_id(request.project_id)
+    async def execute(self, request: SubmitDeliveryCommand) -> SubmitDeliveryResult:
+        project = await self._project_repo.get_by_id(request.project_id)
         if project.selected_application_id is None:
             raise PermissionDeniedError(
                 f"Project {project.id} has no selected freelancer."
             )
-        selected = self._application_repo.get_by_id(project.selected_application_id)
-        profile = self._profile_repo.get_by_id(selected.freelancer_profile_id)
+        selected = await self._application_repo.get_by_id(project.selected_application_id)
+        profile = await self._profile_repo.get_by_id(selected.freelancer_profile_id)
         if profile.user_id != request.actor_id:
             raise PermissionDeniedError(
                 f"User {request.actor_id} is not the selected freelancer of project "
                 f"{project.id}."
             )
-        previous = self._delivery_repo.get_latest_for_project(project.id)
+        previous = await self._delivery_repo.get_latest_for_project(project.id)
         was_revision_requested = project.status == ProjectStatus.REVISION_REQUESTED
         version_no = (previous.version_no + 1) if previous is not None else 1
-        now = self._clock.now()
+        now = await self._clock.now()
         delivery = ProjectDelivery(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             project_id=project.id,
             version_no=version_no,
             submitted_by_user_id=request.actor_id,
@@ -74,13 +74,13 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
             file_asset_ids=list(request.file_asset_ids),
             created_at=now,
         )
-        with self._uow:
-            self._delivery_repo.add(delivery)
+        async with self._uow:
+            await self._delivery_repo.add(delivery)
             if previous is not None and was_revision_requested:
                 previous.supersede(delivery.id)
-                self._delivery_repo.update(previous)
+                await self._delivery_repo.update(previous)
             project.mark_delivery_submitted()
-            record_status_history(
+            await record_status_history(
                 self._status_history_repo,
                 self._id_generator,
                 project.id,
@@ -95,11 +95,11 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
             if project.has_supervisor():
                 project.move_to_supervisor_review()
                 delivery.mark_under_review()
-                self._delivery_repo.update(delivery)
+                await self._delivery_repo.update(delivery)
                 assert project.assigned_supervisor_user_id is not None
-                self._review_repo.add(
+                await self._review_repo.add(
                     SupervisorReview(
-                        id=self._id_generator.new_id(),
+                        id=await self._id_generator.new_id(),
                         project_delivery_id=delivery.id,
                         project_id=project.id,
                         supervisor_user_id=project.assigned_supervisor_user_id,
@@ -114,7 +114,7 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
             else:
                 project.move_to_customer_review()
                 target = ProjectStatus.AWAITING_CUSTOMER_REVIEW
-            record_status_history(
+            await record_status_history(
                 self._status_history_repo,
                 self._id_generator,
                 project.id,
@@ -124,8 +124,8 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
                 None,
                 now,
             )
-            self._project_repo.update(project)
-            self._uow.commit()
+            await self._project_repo.update(project)
+            await self._uow.commit()
         return SubmitDeliveryResult(
             delivery_id=delivery.id,
             version_no=delivery.version_no,

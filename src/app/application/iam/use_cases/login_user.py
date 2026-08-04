@@ -47,41 +47,41 @@ class LoginUserUseCase(UseCase[LoginUserCommand, LoginUserResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: LoginUserCommand) -> LoginUserResult:
+    async def execute(self, request: LoginUserCommand) -> LoginUserResult:
         request.validate()
         email = Email(request.email)
         try:
-            user = self._user_repo.get_by_email(email)
+            user = await self._user_repo.get_by_email(email)
         except UserNotFoundError:
             raise InvalidCredentialsError(
                 f"Invalid credentials for {email.value}."
             ) from None
-        if not self._password_hasher.verify(request.password, user.password_hash.value):
+        if not await self._password_hasher.verify(request.password, user.password_hash.value):
             raise InvalidCredentialsError(f"Invalid credentials for {email.value}.")
         if user.status != UserStatus.ACTIVE:
             raise UserNotActiveError(
                 f"User {user.id} is not active (status={user.status.value})."
             )
         roles = [
-            role.role_key for role in self._user_role_repo.list_active_roles_for_user(user.id)
+            role.role_key for role in await self._user_role_repo.list_active_roles_for_user(user.id)
         ]
-        access_token = self._token_service.generate_access_token(user.id, roles)
-        raw_token, jti = self._token_service.generate_refresh_token()
-        now = self._clock.now()
+        access_token = await self._token_service.generate_access_token(user.id, roles)
+        raw_token, jti = await self._token_service.generate_refresh_token()
+        now = await self._clock.now()
         refresh_token = RefreshToken(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             user_id=user.id,
             jti=jti,
-            token_hash=self._token_service.hash_refresh_token(raw_token),
+            token_hash=await self._token_service.hash_refresh_token(raw_token),
             issued_at=now,
             expires_at=now + REFRESH_TOKEN_TTL,
             created_at=now,
         )
-        with self._uow:
-            self._refresh_token_repo.add(refresh_token)
+        async with self._uow:
+            await self._refresh_token_repo.add(refresh_token)
             user.record_login(now)
-            self._user_repo.update(user)
-            self._uow.commit()
+            await self._user_repo.update(user)
+            await self._uow.commit()
         return LoginUserResult(
             user_id=user.id,
             email=email.value,

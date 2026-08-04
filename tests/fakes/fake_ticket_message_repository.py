@@ -4,13 +4,13 @@ from app.domain.ticketing.repositories import ITicketMessageRepository
 
 
 class FakeTicketMessageRepository(ITicketMessageRepository):
-    def __init__(self) -> None:
+    async def __init__(self) -> None:
         self._store: list[TicketMessage] = []
 
-    def add(self, message: TicketMessage) -> None:
+    async def add(self, message: TicketMessage) -> None:
         self._store.append(message)
 
-    def list_by_ticket(self, ticket_id: EntityId) -> list[TicketMessage]:
+    async def list_by_ticket(self, ticket_id: EntityId) -> list[TicketMessage]:
         return sorted(
             (m for m in self._store if m.ticket_id == ticket_id),
             key=lambda m: m.sent_at,

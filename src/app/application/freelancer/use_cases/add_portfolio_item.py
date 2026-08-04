@@ -26,12 +26,12 @@ class AddPortfolioItemUseCase(UseCase[AddPortfolioItemCommand, AddPortfolioItemR
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: AddPortfolioItemCommand) -> AddPortfolioItemResult:
+    async def execute(self, request: AddPortfolioItemCommand) -> AddPortfolioItemResult:
         request.validate()
-        profile = self._profile_repo.get_by_user_id(request.user_id)
-        now = self._clock.now()
+        profile = await self._profile_repo.get_by_user_id(request.user_id)
+        now = await self._clock.now()
         item = PortfolioItem(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             freelancer_profile_id=profile.id,
             title=request.title,
             description=request.description,
@@ -42,7 +42,7 @@ class AddPortfolioItemUseCase(UseCase[AddPortfolioItemCommand, AddPortfolioItemR
             deleted_at=None,
             created_at=now,
         )
-        with self._uow:
-            self._portfolio_item_repo.add(item)
-            self._uow.commit()
+        async with self._uow:
+            await self._portfolio_item_repo.add(item)
+            await self._uow.commit()
         return AddPortfolioItemResult(item_id=item.id)

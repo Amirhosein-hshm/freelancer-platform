@@ -40,19 +40,19 @@ class CreateCategoryUseCase(UseCase[CreateCategoryCommand, CategoryResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: CreateCategoryCommand) -> CategoryResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: CreateCategoryCommand) -> CategoryResult:
+        await self._authorization_service.require_permission(
             request.actor_id, PERMISSION_CATEGORY_MANAGE
         )
         request.validate()
         try:
-            self._category_repo.get_by_slug(request.slug)
+            await self._category_repo.get_by_slug(request.slug)
         except CategoryNotFoundError:
             pass
         else:
             raise DuplicateCategorySlugError(f"Category slug '{request.slug}' already exists.")
         category = Category(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             parent_category_id=request.parent_category_id,
             category_key=request.category_key,
             name=request.name,
@@ -60,9 +60,9 @@ class CreateCategoryUseCase(UseCase[CreateCategoryCommand, CategoryResult]):
             description=request.description,
             is_active=True,
             sort_order=request.sort_order,
-            created_at=self._clock.now(),
+            created_at=await self._clock.now(),
         )
-        with self._uow:
-            self._category_repo.add(category)
-            self._uow.commit()
+        async with self._uow:
+            await self._category_repo.add(category)
+            await self._uow.commit()
         return _to_result(category)

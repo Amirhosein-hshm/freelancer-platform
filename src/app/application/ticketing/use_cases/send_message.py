@@ -29,16 +29,16 @@ class SendMessageUseCase(UseCase[SendMessageCommand, SendMessageResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: SendMessageCommand) -> SendMessageResult:
-        ticket = self._ticket_repo.get_by_id(request.ticket_id)
+    async def execute(self, request: SendMessageCommand) -> SendMessageResult:
+        ticket = await self._ticket_repo.get_by_id(request.ticket_id)
         if ticket.is_closed():
             raise TicketClosedError(
                 f"Ticket {ticket.id} is closed and accepts no new messages."
             )
-        ensure_participant(self._participant_repo, ticket.id, request.actor_id)
-        now = self._clock.now()
+        await ensure_participant(self._participant_repo, ticket.id, request.actor_id)
+        now = await self._clock.now()
         message = TicketMessage(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             ticket_id=ticket.id,
             sender_user_id=request.actor_id,
             message_type=TicketMessageType.TEXT,
@@ -50,11 +50,11 @@ class SendMessageUseCase(UseCase[SendMessageCommand, SendMessageResult]):
             attachment_file_asset_ids=list(request.attachment_file_asset_ids),
             created_at=now,
         )
-        with self._uow:
-            self._message_repo.add(message)
+        async with self._uow:
+            await self._message_repo.add(message)
             ticket.touch_last_message(now)
-            self._ticket_repo.update(ticket)
-            self._uow.commit()
+            await self._ticket_repo.update(ticket)
+            await self._uow.commit()
         return SendMessageResult(
             message_id=message.id,
             ticket_id=ticket.id,

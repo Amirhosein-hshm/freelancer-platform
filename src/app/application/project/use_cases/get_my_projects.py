@@ -11,6 +11,6 @@ class GetMyProjectsUseCase(UseCase[GetMyProjectsQuery, GetMyProjectsResult]):
     def __init__(self, project_repo: IProjectRepository) -> None:
         self._project_repo = project_repo
 
-    def execute(self, request: GetMyProjectsQuery) -> GetMyProjectsResult:
-        projects = self._project_repo.list_by_customer(request.customer_user_id)
+    async def execute(self, request: GetMyProjectsQuery) -> GetMyProjectsResult:
+        projects = await self._project_repo.list_by_customer(request.customer_user_id)
         return GetMyProjectsResult(projects=[to_project_result(p) for p in projects])

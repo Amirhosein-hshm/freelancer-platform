@@ -7,12 +7,25 @@ name = "media-project"
 version = "0.1.0"
 description = "Freelance/project platform backend - Phase 1 (domain + application)"
 requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic-settings",
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg",
+    "alembic",
+    "pyjwt",
+    "argon2-cffi",
+    "python-multipart",
+]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
     "pytest-cov",
     "pytest-mock",
+    "pytest-asyncio",
+    "httpx",
     "mypy",
     "ruff",
 ]
@@ -22,15 +35,21 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra -q --strict-markers"
+asyncio_mode = "auto"
+addopts = "-ra -q --strict-markers -m 'not integration'"
 markers = [
     "unit: fast unit tests (default for all tests in this project)",
     "slow: tests that execute slower (should not exist in Phase 1)",
+    "integration: tests that require a real Postgres (via docker-compose db service)",
 ]
 
 [tool.coverage.run]
 branch = true
 source = ["app.domain", "app.application"]
+omit = [
+    "app/application/*/mapping.py",
+    "app/application/*/status_history.py",
+]
 
 [tool.coverage.report]
 show_missing = true
@@ -41,6 +60,15 @@ python_version = "3.12"
 strict = true
 explicit_package_bases = true
 mypy_path = "src"
+files = [
+    "src/app/domain",
+    "src/app/application",
+]
+
+[[tool.mypy.overrides]]
+module = ["app.infrastructure.*", "app.presentation.*", "app.bootstrap.*"]
+strict = false
+disallow_untyped_defs = false
 
 [tool.ruff]
 target-version = "py312"

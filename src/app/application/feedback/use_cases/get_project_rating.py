@@ -8,8 +8,8 @@ class GetProjectRatingUseCase(UseCase[GetProjectRatingQuery, GetProjectRatingRes
     def __init__(self, rating_repo: IRatingRepository) -> None:
         self._rating_repo = rating_repo
 
-    def execute(self, request: GetProjectRatingQuery) -> GetProjectRatingResult:
-        rating = self._rating_repo.find_by_project(request.project_id)
+    async def execute(self, request: GetProjectRatingQuery) -> GetProjectRatingResult:
+        rating = await self._rating_repo.find_by_project(request.project_id)
         return GetProjectRatingResult(
             rating=to_rating_result(rating) if rating is not None else None
         )

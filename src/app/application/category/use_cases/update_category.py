@@ -21,15 +21,15 @@ class UpdateCategoryUseCase(UseCase[UpdateCategoryCommand, CategoryResult]):
         self._category_repo = category_repo
         self._uow = uow
 
-    def execute(self, request: UpdateCategoryCommand) -> CategoryResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: UpdateCategoryCommand) -> CategoryResult:
+        await self._authorization_service.require_permission(
             request.actor_id, PERMISSION_CATEGORY_MANAGE
         )
         request.validate()
-        category = self._category_repo.get_by_id(request.category_id)
+        category = await self._category_repo.get_by_id(request.category_id)
         if category.slug != request.slug:
             try:
-                existing = self._category_repo.get_by_slug(request.slug)
+                existing = await self._category_repo.get_by_slug(request.slug)
             except CategoryNotFoundError:
                 pass
             else:
@@ -37,10 +37,10 @@ class UpdateCategoryUseCase(UseCase[UpdateCategoryCommand, CategoryResult]):
                     raise DuplicateCategorySlugError(
                         f"Category slug '{request.slug}' already exists."
                     )
-        with self._uow:
+        async with self._uow:
             category.rename(request.name, request.slug)
             category.description = request.description
             category.sort_order = request.sort_order
-            self._category_repo.update(category)
-            self._uow.commit()
+            await self._category_repo.update(category)
+            await self._uow.commit()
         return _to_result(category)

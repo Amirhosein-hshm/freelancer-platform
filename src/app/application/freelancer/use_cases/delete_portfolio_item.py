@@ -21,12 +21,12 @@ class DeletePortfolioItemUseCase(
         self._profile_repo = profile_repo
         self._portfolio_item_repo = portfolio_item_repo
 
-    def execute(self, request: DeletePortfolioItemCommand) -> DeletePortfolioItemResult:
-        profile = self._profile_repo.get_by_user_id(request.user_id)
-        item = self._portfolio_item_repo.get_by_id(request.item_id)
+    async def execute(self, request: DeletePortfolioItemCommand) -> DeletePortfolioItemResult:
+        profile = await self._profile_repo.get_by_user_id(request.user_id)
+        item = await self._portfolio_item_repo.get_by_id(request.item_id)
         if item.freelancer_profile_id != profile.id:
             raise PortfolioItemNotFoundError(
                 f"Portfolio item {request.item_id} not found for this profile."
             )
-        self._portfolio_item_repo.delete(request.item_id)
+        await self._portfolio_item_repo.delete(request.item_id)
         return DeletePortfolioItemResult(item_id=request.item_id)

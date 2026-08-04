@@ -55,6 +55,6 @@ class GetFormTemplateUseCase(UseCase[GetFormTemplateQuery, FormTemplateResult]):
     def __init__(self, template_repo: IFormTemplateRepository) -> None:
         self._template_repo = template_repo
 
-    def execute(self, request: GetFormTemplateQuery) -> FormTemplateResult:
-        template = self._template_repo.get_published_for_category(request.category_id)
+    async def execute(self, request: GetFormTemplateQuery) -> FormTemplateResult:
+        template = await self._template_repo.get_published_for_category(request.category_id)
         return to_template_result(template)

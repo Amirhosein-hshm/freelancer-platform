@@ -6,8 +6,8 @@ class FakePasswordHasher(IPasswordHasher):
 
     PREFIX = "fake-hash:"
 
-    def hash(self, plain_password: str) -> str:
+    async def hash(self, plain_password: str) -> str:
         return f"{self.PREFIX}{plain_password}"
 
-    def verify(self, plain_password: str, hashed: str) -> bool:
-        return hashed == self.hash(plain_password)
+    async def verify(self, plain_password: str, hashed: str) -> bool:
+        return hashed == await self.hash(plain_password)

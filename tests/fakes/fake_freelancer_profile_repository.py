@@ -6,37 +6,37 @@ from app.domain.shared.types import EntityId
 
 
 class FakeFreelancerProfileRepository(IFreelancerProfileRepository):
-    def __init__(self) -> None:
+    async def __init__(self) -> None:
         self._store: dict[str, FreelancerProfile] = {}
         self._by_user_id: dict[str, FreelancerProfile] = {}
 
-    def add(self, profile: FreelancerProfile) -> None:
+    async def add(self, profile: FreelancerProfile) -> None:
         self._store[profile.id] = profile
         self._by_user_id[profile.user_id] = profile
 
-    def get_by_id(self, profile_id: EntityId) -> FreelancerProfile:
+    async def get_by_id(self, profile_id: EntityId) -> FreelancerProfile:
         try:
             return self._store[profile_id]
         except KeyError:
             raise FreelancerProfileNotFoundError(f"Freelancer profile {profile_id} not found.") from None
 
-    def get_by_user_id(self, user_id: EntityId) -> FreelancerProfile:
+    async def get_by_user_id(self, user_id: EntityId) -> FreelancerProfile:
         try:
             return self._by_user_id[user_id]
         except KeyError:
             raise FreelancerProfileNotFoundError(f"No freelancer profile for user {user_id}.") from None
 
-    def update(self, profile: FreelancerProfile) -> None:
+    async def update(self, profile: FreelancerProfile) -> None:
         old = self._store.get(profile.id)
         if old is not None and old.user_id != profile.user_id:
             self._by_user_id.pop(old.user_id, None)
         self._store[profile.id] = profile
         self._by_user_id[profile.user_id] = profile
 
-    def list_by_approval_status(self, status: FreelancerApprovalStatus) -> list[FreelancerProfile]:
+    async def list_by_approval_status(self, status: FreelancerApprovalStatus) -> list[FreelancerProfile]:
         return [p for p in self._store.values() if p.approval_status == status]
 
-    def list_available_for_level(self, level_id: EntityId) -> list[FreelancerProfile]:
+    async def list_available_for_level(self, level_id: EntityId) -> list[FreelancerProfile]:
         return [
             p
             for p in self._store.values()

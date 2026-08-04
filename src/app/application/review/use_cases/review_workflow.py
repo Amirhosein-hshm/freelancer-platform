@@ -24,7 +24,7 @@ PERMISSION_REVIEW_DECIDE_OWN = "review.decide_own"
 PERMISSION_REVIEW_DECIDE_ANY = "review.decide_any"
 
 
-def decide_delivery_review(
+async def decide_delivery_review(
     *,
     authorization_service: IAuthorizationService,
     delivery_repo: IProjectDeliveryRepository,
@@ -42,30 +42,30 @@ def decide_delivery_review(
     notes: str | None,
     reject_reason: str | None,
 ) -> ReviewDeliveryResult:
-    delivery = delivery_repo.get_by_id(delivery_id)
-    project = project_repo.get_by_id(delivery.project_id)
+    delivery = await delivery_repo.get_by_id(delivery_id)
+    project = await project_repo.get_by_id(delivery.project_id)
     if project.status != ProjectStatus.UNDER_SUPERVISOR_REVIEW:
         raise InvalidStateTransitionError(
             f"Project {project.id} is '{project.status.value}'; delivery review is only "
             "allowed while the project is under supervisor review."
         )
-    if category_supervisor_repo.is_supervisor_of(actor_id, project.category_id):
-        authorization_service.require_permission(actor_id, PERMISSION_REVIEW_DECIDE_OWN)
+    if await category_supervisor_repo.is_supervisor_of(actor_id, project.category_id):
+        await authorization_service.require_permission(actor_id, PERMISSION_REVIEW_DECIDE_OWN)
     else:
-        authorization_service.require_permission(actor_id, PERMISSION_REVIEW_DECIDE_ANY)
-    existing = review_repo.find_by_delivery(delivery.id)
+        await authorization_service.require_permission(actor_id, PERMISSION_REVIEW_DECIDE_ANY)
+    existing = await review_repo.find_by_delivery(delivery.id)
     if existing is not None and existing.decision != ReviewStatus.PENDING:
         raise DeliveryAlreadyReviewedError(
             f"Delivery {delivery.id} has already been reviewed "
             f"({existing.decision.value})."
         )
-    now = clock.now()
-    with uow:
+    now = await clock.now()
+    async with uow:
         if existing is not None:
             review = existing
         else:
             review = SupervisorReview(
-                id=id_generator.new_id(),
+                id=await id_generator.new_id(),
                 project_delivery_id=delivery.id,
                 project_id=project.id,
                 supervisor_user_id=actor_id,
@@ -82,12 +82,12 @@ def decide_delivery_review(
             target = ProjectStatus.AWAITING_CUSTOMER_REVIEW
             reason = f"Supervisor approved delivery {delivery.id}."
         elif decision == ReviewStatus.REJECTED:
-            existing_revisions = revision_repo.list_by_project(project.id)
+            existing_revisions = await revision_repo.list_by_project(project.id)
             RevisionPolicy.ensure_can_request_new_revision(existing_revisions)
             review.reject(reject_reason or "No reason given", now)
             delivery.reject(actor_id, now)
             revision = ProjectRevisionRequest(
-                id=id_generator.new_id(),
+                id=await id_generator.new_id(),
                 project_id=project.id,
                 project_delivery_id=delivery.id,
                 requested_by_user_id=actor_id,
@@ -100,7 +100,7 @@ def decide_delivery_review(
                 resolved_at=None,
                 created_at=now,
             )
-            revision_repo.add(revision)
+            await revision_repo.add(revision)
             project.request_revision()
             target = ProjectStatus.REVISION_REQUESTED
             reason = f"Supervisor rejected delivery {delivery.id}."
@@ -108,7 +108,7 @@ def decide_delivery_review(
             raise ValidationError(
                 f"Decision '{decision.value}' is not a valid review decision."
             )
-        record_status_history(
+        await record_status_history(
             status_history_repo,
             id_generator,
             project.id,
@@ -119,12 +119,12 @@ def decide_delivery_review(
             now,
         )
         if existing is not None:
-            review_repo.update(review)
+            await review_repo.update(review)
         else:
-            review_repo.add(review)
-        delivery_repo.update(delivery)
-        project_repo.update(project)
-        uow.commit()
+            await review_repo.add(review)
+        await delivery_repo.update(delivery)
+        await project_repo.update(project)
+        await uow.commit()
     return ReviewDeliveryResult(
         delivery_id=delivery.id,
         project_id=project.id,

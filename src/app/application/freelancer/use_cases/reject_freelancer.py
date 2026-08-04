@@ -21,14 +21,14 @@ class RejectFreelancerUseCase(UseCase[RejectFreelancerCommand, RejectFreelancerR
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: RejectFreelancerCommand) -> RejectFreelancerResult:
-        self._authorization_service.require_permission(request.actor_id, "freelancer.approve")
-        profile = self._profile_repo.get_by_id(request.profile_id)
-        now = self._clock.now()
-        with self._uow:
+    async def execute(self, request: RejectFreelancerCommand) -> RejectFreelancerResult:
+        await self._authorization_service.require_permission(request.actor_id, "freelancer.approve")
+        profile = await self._profile_repo.get_by_id(request.profile_id)
+        now = await self._clock.now()
+        async with self._uow:
             profile.reject(request.actor_id, now, request.note)
-            self._profile_repo.update(profile)
-            self._uow.commit()
+            await self._profile_repo.update(profile)
+            await self._uow.commit()
         return RejectFreelancerResult(
             profile_id=profile.id,
             approval_status=profile.approval_status,

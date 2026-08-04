@@ -21,15 +21,15 @@ class GetUserTicketsUseCase(UseCase[GetUserTicketsQuery, GetUserTicketsResult]):
         self._authorization_service = authorization_service
         self._ticket_repo = ticket_repo
 
-    def execute(self, request: GetUserTicketsQuery) -> GetUserTicketsResult:
-        authorize_owned_action(
+    async def execute(self, request: GetUserTicketsQuery) -> GetUserTicketsResult:
+        await authorize_owned_action(
             self._authorization_service,
             request.actor_id,
             request.user_id,
             PERMISSION_TICKET_READ_OWN,
             PERMISSION_TICKET_READ_ANY,
         )
-        tickets = self._ticket_repo.list_for_user(request.user_id)
+        tickets = await self._ticket_repo.list_for_user(request.user_id)
         return GetUserTicketsResult(
             tickets=[to_ticket_result(t) for t in tickets]
         )

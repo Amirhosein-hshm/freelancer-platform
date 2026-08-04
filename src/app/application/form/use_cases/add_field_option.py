@@ -25,17 +25,17 @@ class AddFieldOptionUseCase(UseCase[AddFieldOptionCommand, AddFieldOptionResult]
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: AddFieldOptionCommand) -> AddFieldOptionResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: AddFieldOptionCommand) -> AddFieldOptionResult:
+        await self._authorization_service.require_permission(
             request.actor_id, PERMISSION_FORM_MANAGE
         )
         request.validate()
-        template = self._template_repo.get_by_id(request.template_id)
+        template = await self._template_repo.get_by_id(request.template_id)
         template.require_draft("add options")
         field = template.get_field(request.field_id)
-        now = self._clock.now()
+        now = await self._clock.now()
         option = FormFieldOption(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             option_key=request.option_key,
             label=request.label,
             value=request.value,
@@ -43,8 +43,8 @@ class AddFieldOptionUseCase(UseCase[AddFieldOptionCommand, AddFieldOptionResult]
             is_active=request.is_active,
             created_at=now,
         )
-        with self._uow:
+        async with self._uow:
             field.add_option(option)
-            self._template_repo.update(template)
-            self._uow.commit()
+            await self._template_repo.update(template)
+            await self._uow.commit()
         return AddFieldOptionResult(option_id=option.id)

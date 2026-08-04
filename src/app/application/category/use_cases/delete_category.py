@@ -19,13 +19,13 @@ class DeleteCategoryUseCase(UseCase[DeleteCategoryCommand, DeleteCategoryResult]
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: DeleteCategoryCommand) -> DeleteCategoryResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: DeleteCategoryCommand) -> DeleteCategoryResult:
+        await self._authorization_service.require_permission(
             request.actor_id, PERMISSION_CATEGORY_MANAGE
         )
-        category = self._category_repo.get_by_id(request.category_id)
-        with self._uow:
-            category.soft_delete(self._clock.now())
-            self._category_repo.update(category)
-            self._uow.commit()
+        category = await self._category_repo.get_by_id(request.category_id)
+        async with self._uow:
+            category.soft_delete(await self._clock.now())
+            await self._category_repo.update(category)
+            await self._uow.commit()
         return DeleteCategoryResult(category_id=category.id)

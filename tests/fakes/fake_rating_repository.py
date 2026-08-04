@@ -6,22 +6,22 @@ from app.domain.shared.types import EntityId
 
 
 class FakeRatingRepository(IRatingRepository):
-    def __init__(self) -> None:
+    async def __init__(self) -> None:
         self._store: list[Rating] = []
 
-    def add(self, rating: Rating) -> None:
+    async def add(self, rating: Rating) -> None:
         self._store.append(rating)
 
-    def find_by_project(self, project_id: EntityId) -> Rating | None:
+    async def find_by_project(self, project_id: EntityId) -> Rating | None:
         for rating in self._store:
             if rating.project_id == project_id:
                 return rating
         return None
 
-    def list_by_freelancer(self, freelancer_profile_id: EntityId) -> list[Rating]:
+    async def list_by_freelancer(self, freelancer_profile_id: EntityId) -> list[Rating]:
         return [r for r in self._store if r.freelancer_profile_id == freelancer_profile_id]
 
-    def average_score_for_freelancer(
+    async def average_score_for_freelancer(
         self, freelancer_profile_id: EntityId
     ) -> Decimal | None:
         scores = [r.score for r in self.list_by_freelancer(freelancer_profile_id)]

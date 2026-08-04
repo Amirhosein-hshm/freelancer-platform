@@ -33,21 +33,21 @@ class RejectFreelancerUseCase(UseCase[RejectFreelancerCommand, RejectFreelancerR
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: RejectFreelancerCommand) -> RejectFreelancerResult:
-        application = self._application_repo.get_by_id(request.application_id)
-        project = self._project_repo.get_by_id(application.project_id)
-        authorize_owned_action(
+    async def execute(self, request: RejectFreelancerCommand) -> RejectFreelancerResult:
+        application = await self._application_repo.get_by_id(request.application_id)
+        project = await self._project_repo.get_by_id(application.project_id)
+        await authorize_owned_action(
             self._authorization_service,
             request.actor_id,
             project.customer_user_id,
             PERMISSION_PROJECT_MANAGE_OWN,
             PERMISSION_PROJECT_MANAGE_ANY,
         )
-        now = self._clock.now()
-        with self._uow:
+        now = await self._clock.now()
+        async with self._uow:
             application.reject(request.actor_id, now, request.note)
-            self._application_repo.update(application)
-            self._uow.commit()
+            await self._application_repo.update(application)
+            await self._uow.commit()
         return RejectFreelancerResult(
             application_id=application.id,
             status=application.status,

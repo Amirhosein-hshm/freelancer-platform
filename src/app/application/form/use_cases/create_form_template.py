@@ -29,14 +29,14 @@ class CreateFormTemplateUseCase(
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: CreateFormTemplateCommand) -> CreateFormTemplateResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: CreateFormTemplateCommand) -> CreateFormTemplateResult:
+        await self._authorization_service.require_permission(
             request.actor_id, PERMISSION_FORM_MANAGE
         )
         request.validate()
-        now = self._clock.now()
+        now = await self._clock.now()
         template = FormTemplate(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             category_id=request.category_id,
             template_key=request.template_key,
             name=request.name,
@@ -49,9 +49,9 @@ class CreateFormTemplateUseCase(
             deleted_at=None,
             created_at=now,
         )
-        with self._uow:
-            self._template_repo.add(template)
-            self._uow.commit()
+        async with self._uow:
+            await self._template_repo.add(template)
+            await self._uow.commit()
         return CreateFormTemplateResult(
             template_id=template.id,
             version_no=template.version_no,

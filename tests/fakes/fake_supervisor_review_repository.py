@@ -6,13 +6,13 @@ from app.domain.shared.types import EntityId
 
 
 class FakeSupervisorReviewRepository(ISupervisorReviewRepository):
-    def __init__(self) -> None:
+    async def __init__(self) -> None:
         self._store: dict[str, SupervisorReview] = {}
 
-    def add(self, review: SupervisorReview) -> None:
+    async def add(self, review: SupervisorReview) -> None:
         self._store[review.id] = review
 
-    def get_by_delivery(self, project_delivery_id: EntityId) -> SupervisorReview:
+    async def get_by_delivery(self, project_delivery_id: EntityId) -> SupervisorReview:
         for review in self._store.values():
             if review.project_delivery_id == project_delivery_id:
                 return review
@@ -20,13 +20,13 @@ class FakeSupervisorReviewRepository(ISupervisorReviewRepository):
             f"No review for delivery {project_delivery_id}."
         )
 
-    def find_by_delivery(self, project_delivery_id: EntityId) -> SupervisorReview | None:
+    async def find_by_delivery(self, project_delivery_id: EntityId) -> SupervisorReview | None:
         for review in self._store.values():
             if review.project_delivery_id == project_delivery_id:
                 return review
         return None
 
-    def list_pending_for_supervisor(
+    async def list_pending_for_supervisor(
         self, supervisor_user_id: EntityId
     ) -> list[SupervisorReview]:
         return [
@@ -36,5 +36,5 @@ class FakeSupervisorReviewRepository(ISupervisorReviewRepository):
             and review.decision == ReviewStatus.PENDING
         ]
 
-    def update(self, review: SupervisorReview) -> None:
+    async def update(self, review: SupervisorReview) -> None:
         self._store[review.id] = review

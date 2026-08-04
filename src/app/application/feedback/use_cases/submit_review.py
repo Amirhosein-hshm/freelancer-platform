@@ -49,9 +49,9 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: SubmitReviewCommand) -> SubmitReviewResult:
-        project = self._project_repo.get_by_id(request.project_id)
-        authorize_owned_action(
+    async def execute(self, request: SubmitReviewCommand) -> SubmitReviewResult:
+        project = await self._project_repo.get_by_id(request.project_id)
+        await authorize_owned_action(
             self._authorization_service,
             request.actor_id,
             project.customer_user_id,
@@ -63,14 +63,14 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
                 f"Project {project.id} is '{project.status.value}'; it must be "
                 "awaiting customer review to submit a review."
             )
-        latest = self._delivery_repo.get_latest_for_project(project.id)
+        latest = await self._delivery_repo.get_latest_for_project(project.id)
         if latest is None:
             raise ValidationError(
                 f"Project {project.id} has no delivery to review."
             )
-        now = self._clock.now()
+        now = await self._clock.now()
         review = CustomerReview(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             project_id=project.id,
             project_delivery_id=latest.id,
             customer_user_id=request.actor_id,
@@ -79,19 +79,19 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
             reviewed_at=now,
             created_at=now,
         )
-        with self._uow:
-            self._customer_review_repo.add(review)
+        async with self._uow:
+            await self._customer_review_repo.add(review)
             if request.decision == ReviewStatus.APPROVED:
                 project.complete(now)
                 target = ProjectStatus.COMPLETED
                 reason = f"Customer approved project {project.id}."
             elif request.decision == ReviewStatus.REJECTED:
                 latest.mark_revised()
-                self._delivery_repo.update(latest)
-                existing = self._revision_repo.list_by_project(project.id)
+                await self._delivery_repo.update(latest)
+                existing = await self._revision_repo.list_by_project(project.id)
                 RevisionPolicy.ensure_can_request_new_revision(existing)
                 revision = ProjectRevisionRequest(
-                    id=self._id_generator.new_id(),
+                    id=await self._id_generator.new_id(),
                     project_id=project.id,
                     project_delivery_id=latest.id,
                     requested_by_user_id=request.actor_id,
@@ -104,7 +104,7 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
                     resolved_at=None,
                     created_at=now,
                 )
-                self._revision_repo.add(revision)
+                await self._revision_repo.add(revision)
                 project.request_revision()
                 target = ProjectStatus.REVISION_REQUESTED
                 reason = request.comment or f"Customer rejected project {project.id}."
@@ -112,7 +112,7 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
                 raise ValidationError(
                     f"Decision '{request.decision.value}' is not a valid review decision."
                 )
-            record_status_history(
+            await record_status_history(
                 self._status_history_repo,
                 self._id_generator,
                 project.id,
@@ -122,8 +122,8 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
                 reason,
                 now,
             )
-            self._project_repo.update(project)
-            self._uow.commit()
+            await self._project_repo.update(project)
+            await self._uow.commit()
         return SubmitReviewResult(
             review_id=review.id,
             project_id=project.id,

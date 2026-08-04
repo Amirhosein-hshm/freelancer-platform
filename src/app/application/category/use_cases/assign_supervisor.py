@@ -27,21 +27,21 @@ class AssignSupervisorUseCase(UseCase[AssignSupervisorCommand, AssignSupervisorR
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: AssignSupervisorCommand) -> AssignSupervisorResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: AssignSupervisorCommand) -> AssignSupervisorResult:
+        await self._authorization_service.require_permission(
             request.actor_id, "category.assign_supervisor"
         )
-        self._category_repo.get_by_id(request.category_id)
-        self._user_repo.get_by_id(request.supervisor_user_id)
-        active = self._category_supervisor_repo.list_active_supervisors(request.category_id)
+        await self._category_repo.get_by_id(request.category_id)
+        await self._user_repo.get_by_id(request.supervisor_user_id)
+        active = await self._category_supervisor_repo.list_active_supervisors(request.category_id)
         if any(link.supervisor_user_id == request.supervisor_user_id for link in active):
             raise SupervisorAlreadyAssignedError(
                 f"User {request.supervisor_user_id} is already a supervisor of category "
                 f"{request.category_id}."
             )
-        now = self._clock.now()
+        now = await self._clock.now()
         link = CategorySupervisor(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             category_id=request.category_id,
             supervisor_user_id=request.supervisor_user_id,
             assigned_by_user_id=request.actor_id,
@@ -50,9 +50,9 @@ class AssignSupervisorUseCase(UseCase[AssignSupervisorCommand, AssignSupervisorR
             assigned_at=now,
             created_at=now,
         )
-        with self._uow:
-            self._category_supervisor_repo.add(link)
-            self._uow.commit()
+        async with self._uow:
+            await self._category_supervisor_repo.add(link)
+            await self._uow.commit()
         return AssignSupervisorResult(
             link_id=link.id,
             category_id=link.category_id,

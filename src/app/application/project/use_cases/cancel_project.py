@@ -37,20 +37,20 @@ class CancelProjectUseCase(UseCase[CancelProjectCommand, CancelProjectResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: CancelProjectCommand) -> CancelProjectResult:
-        project = self._project_repo.get_by_id(request.project_id)
-        authorize_owned_action(
+    async def execute(self, request: CancelProjectCommand) -> CancelProjectResult:
+        project = await self._project_repo.get_by_id(request.project_id)
+        await authorize_owned_action(
             self._authorization_service,
             request.actor_id,
             project.customer_user_id,
             PERMISSION_PROJECT_MANAGE_OWN,
             PERMISSION_PROJECT_MANAGE_ANY,
         )
-        now = self._clock.now()
+        now = await self._clock.now()
         from_status = project.status
-        with self._uow:
+        async with self._uow:
             project.cancel(now, request.reason)
-            record_status_history(
+            await record_status_history(
                 self._status_history_repo,
                 self._id_generator,
                 project.id,
@@ -60,6 +60,6 @@ class CancelProjectUseCase(UseCase[CancelProjectCommand, CancelProjectResult]):
                 request.reason,
                 now,
             )
-            self._project_repo.update(project)
-            self._uow.commit()
+            await self._project_repo.update(project)
+            await self._uow.commit()
         return CancelProjectResult(project_id=project.id, status=project.status)

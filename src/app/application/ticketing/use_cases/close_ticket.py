@@ -34,19 +34,19 @@ class CloseTicketUseCase(UseCase[CloseTicketCommand, CloseTicketResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: CloseTicketCommand) -> CloseTicketResult:
-        ticket = self._ticket_repo.get_by_id(request.ticket_id)
-        authorize_owned_action(
+    async def execute(self, request: CloseTicketCommand) -> CloseTicketResult:
+        ticket = await self._ticket_repo.get_by_id(request.ticket_id)
+        await authorize_owned_action(
             self._authorization_service,
             request.actor_id,
             ticket.created_by_user_id,
             PERMISSION_TICKET_CLOSE_OWN,
             PERMISSION_TICKET_CLOSE_ANY,
         )
-        ensure_participant(self._participant_repo, ticket.id, request.actor_id)
-        now = self._clock.now()
-        with self._uow:
+        await ensure_participant(self._participant_repo, ticket.id, request.actor_id)
+        now = await self._clock.now()
+        async with self._uow:
             ticket.close(request.actor_id, now)
-            self._ticket_repo.update(ticket)
-            self._uow.commit()
+            await self._ticket_repo.update(ticket)
+            await self._uow.commit()
         return CloseTicketResult(ticket_id=ticket.id, status=ticket.status)

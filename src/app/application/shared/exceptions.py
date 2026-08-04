@@ -2,6 +2,14 @@ class ApplicationError(Exception):
     """Base class for every application-level error (orchestration/authorization)."""
 
 
+class InvalidTokenError(ApplicationError):
+    """Raised when an access token is malformed/invalid (maps to HTTP 401)."""
+
+
+class ExpiredTokenError(ApplicationError):
+    """Raised when an access token is valid but expired (maps to HTTP 401)."""
+
+
 class PermissionDeniedError(ApplicationError):
     """Raised when the actor is not allowed to perform the operation (maps to HTTP 403)."""
 

@@ -38,24 +38,24 @@ class CompleteProjectUseCase(UseCase[CompleteProjectCommand, CompleteProjectResu
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: CompleteProjectCommand) -> CompleteProjectResult:
-        project = self._project_repo.get_by_id(request.project_id)
+    async def execute(self, request: CompleteProjectCommand) -> CompleteProjectResult:
+        project = await self._project_repo.get_by_id(request.project_id)
         if project.status != ProjectStatus.AWAITING_CUSTOMER_REVIEW:
             raise PermissionDeniedError(
                 f"Project {request.project_id} is not awaiting customer review "
                 f"(status '{project.status.value}'); it cannot be completed."
             )
-        authorize_owned_action(
+        await authorize_owned_action(
             self._authorization_service,
             request.actor_id,
             project.customer_user_id,
             PERMISSION_PROJECT_MANAGE_OWN,
             PERMISSION_PROJECT_MANAGE_ANY,
         )
-        now = self._clock.now()
-        with self._uow:
+        now = await self._clock.now()
+        async with self._uow:
             project.complete(now)
-            record_status_history(
+            await record_status_history(
                 self._status_history_repo,
                 self._id_generator,
                 project.id,
@@ -65,6 +65,6 @@ class CompleteProjectUseCase(UseCase[CompleteProjectCommand, CompleteProjectResu
                 None,
                 now,
             )
-            self._project_repo.update(project)
-            self._uow.commit()
+            await self._project_repo.update(project)
+            await self._uow.commit()
         return CompleteProjectResult(project_id=project.id, status=project.status)

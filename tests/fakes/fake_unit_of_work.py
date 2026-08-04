@@ -8,11 +8,11 @@ class FakeUnitOfWork(IUnitOfWork):
         self.commit_count = 0
         self._active = False
 
-    def __enter__(self) -> "FakeUnitOfWork":
+    async def __aenter__(self) -> "FakeUnitOfWork":
         self._active = True
         return self
 
-    def __exit__(
+    async def __aexit__(
         self,
         exc_type: type[BaseException] | None,
         exc: BaseException | None,
@@ -20,11 +20,11 @@ class FakeUnitOfWork(IUnitOfWork):
     ) -> None:
         self._active = False
         if exc_type is not None:
-            self.rollback()
+            await self.rollback()
 
-    def commit(self) -> None:
+    async def commit(self) -> None:
         self.committed = True
         self.commit_count += 1
 
-    def rollback(self) -> None:
+    async def rollback(self) -> None:
         self.rollback_called = True

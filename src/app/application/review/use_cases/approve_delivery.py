@@ -39,8 +39,8 @@ class ApproveDeliveryUseCase(UseCase[ApproveDeliveryCommand, ReviewDeliveryResul
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: ApproveDeliveryCommand) -> ReviewDeliveryResult:
-        return decide_delivery_review(
+    async def execute(self, request: ApproveDeliveryCommand) -> ReviewDeliveryResult:
+        return await decide_delivery_review(
             authorization_service=self._authorization_service,
             delivery_repo=self._delivery_repo,
             project_repo=self._project_repo,

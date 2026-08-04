@@ -5,17 +5,21 @@ from app.domain.shared.types import EntityId
 
 class IAuthorizationService(ABC):
     @abstractmethod
-    def has_permission(self, user_id: EntityId, permission_key: str) -> bool: ...
+    async def has_permission(self, user_id: EntityId, permission_key: str) -> bool: ...
 
     @abstractmethod
-    def require_permission(self, user_id: EntityId, permission_key: str) -> None:
+    async def require_permission(self, user_id: EntityId, permission_key: str) -> None:
         """Raise :class:`PermissionDeniedError` if the actor lacks the permission."""
 
     @abstractmethod
-    def has_role(self, user_id: EntityId, role_key: str) -> bool: ...
+    async def has_role(self, user_id: EntityId, role_key: str) -> bool: ...
+
+    @abstractmethod
+    async def list_permissions_for_user(self, user_id: EntityId) -> list[str]:
+        """Return the union of all permission keys granted by the user's active roles."""
 
 
-def authorize_owned_action(
+async def authorize_owned_action(
     authz: IAuthorizationService,
     actor_id: EntityId,
     owner_id: EntityId,
@@ -27,6 +31,6 @@ def authorize_owned_action(
     Implements the two-tier ownership permission convention (see AUTHORIZATION.md §3.1).
     """
     if actor_id == owner_id:
-        authz.require_permission(actor_id, own_permission)
+        await authz.require_permission(actor_id, own_permission)
     else:
-        authz.require_permission(actor_id, any_permission)
+        await authz.require_permission(actor_id, any_permission)

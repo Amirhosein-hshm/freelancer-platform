@@ -35,9 +35,9 @@ class UpdateFreelancerProfileUseCase(
     ) -> None:
         self._profile_repo = profile_repo
 
-    def execute(self, request: UpdateFreelancerProfileCommand) -> FreelancerProfileResult:
+    async def execute(self, request: UpdateFreelancerProfileCommand) -> FreelancerProfileResult:
         request.validate()
-        profile = self._profile_repo.get_by_user_id(request.user_id)
+        profile = await self._profile_repo.get_by_user_id(request.user_id)
         if request.display_name is not None:
             profile.display_name = request.display_name
         if request.headline is not None:
@@ -59,5 +59,5 @@ class UpdateFreelancerProfileUseCase(
                 if request.hourly_rate_max is not None
                 else profile.hourly_rate_max,
             )
-        self._profile_repo.update(profile)
+        await self._profile_repo.update(profile)
         return to_profile_result(profile)

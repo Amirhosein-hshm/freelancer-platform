@@ -8,7 +8,7 @@ class FakeIdGenerator(IIdGenerator):
         self._counter = 0
         self.generated: list[str] = []
 
-    def new_id(self) -> EntityId:
+    async def new_id(self) -> EntityId:
         self._counter += 1
         value = f"{self._prefix}-{self._counter}"
         self.generated.append(value)

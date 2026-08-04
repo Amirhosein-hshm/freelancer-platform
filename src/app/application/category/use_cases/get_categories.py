@@ -8,6 +8,6 @@ class GetCategoriesUseCase(UseCase[GetCategoriesQuery, GetCategoriesResult]):
     def __init__(self, category_repo: ICategoryRepository) -> None:
         self._category_repo = category_repo
 
-    def execute(self, request: GetCategoriesQuery) -> GetCategoriesResult:
-        categories = self._category_repo.list_active()
+    async def execute(self, request: GetCategoriesQuery) -> GetCategoriesResult:
+        categories = await self._category_repo.list_active()
         return GetCategoriesResult(categories=[_to_result(c) for c in categories])

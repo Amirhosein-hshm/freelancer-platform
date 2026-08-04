@@ -14,6 +14,6 @@ class GetProjectStatisticsUseCase(UseCase[ReportingQuery, ProjectStatistics]):
         self._authorization_service = authorization_service
         self._reporting_read_repo = reporting_read_repo
 
-    def execute(self, request: ReportingQuery) -> ProjectStatistics:
-        self._authorization_service.require_permission(request.actor_id, "reporting.read")
-        return self._reporting_read_repo.get_project_statistics()
+    async def execute(self, request: ReportingQuery) -> ProjectStatistics:
+        await self._authorization_service.require_permission(request.actor_id, "reporting.read")
+        return await self._reporting_read_repo.get_project_statistics()

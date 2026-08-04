@@ -34,7 +34,7 @@ from app.domain.project.value_objects import Budget, ProjectCode
 from app.domain.shared.types import EntityId
 
 
-def _create_project(
+async def _create_project(
     *,
     customer_user_id: EntityId,
     created_by_user_id: EntityId,
@@ -59,11 +59,11 @@ def _create_project(
     clock: IClock,
     uow: IUnitOfWork,
 ) -> CreateProjectResult:
-    category = category_repo.get_by_id(category_id)
-    template = form_template_repo.get_published_for_category(category.id)
+    category = await category_repo.get_by_id(category_id)
+    template = await form_template_repo.get_published_for_category(category.id)
     validate_form_values(template, form_values)
-    now = clock.now()
-    code_value = project_code_generator.next_code(now.year)
+    now = await clock.now()
+    code_value = await project_code_generator.next_code(now.year)
     budget = Budget(
         budget_type=budget_type,
         fixed_amount=fixed_budget,
@@ -72,7 +72,7 @@ def _create_project(
         currency_code=currency_code,
     )
     project = Project(
-        id=id_generator.new_id(),
+        id=await id_generator.new_id(),
         project_code=ProjectCode(code_value),
         customer_user_id=customer_user_id,
         created_by_user_id=created_by_user_id,
@@ -95,9 +95,9 @@ def _create_project(
         deleted_at=None,
         created_at=now,
     )
-    with uow:
-        project_repo.add(project)
-        record_status_history(
+    async with uow:
+        await project_repo.add(project)
+        await record_status_history(
             status_history_repo,
             id_generator,
             project.id,
@@ -107,7 +107,7 @@ def _create_project(
             "Project created.",
             now,
         )
-        uow.commit()
+        await uow.commit()
     return CreateProjectResult(
         project_id=project.id,
         project_code=project.project_code.value,
@@ -138,12 +138,12 @@ class CreateProjectUseCase(UseCase[CreateProjectCommand, CreateProjectResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: CreateProjectCommand) -> CreateProjectResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: CreateProjectCommand) -> CreateProjectResult:
+        await self._authorization_service.require_permission(
             request.actor_id, PERMISSION_PROJECT_CREATE_OWN
         )
         request.validate()
-        return _create_project(
+        return await _create_project(
             customer_user_id=request.actor_id,
             created_by_user_id=request.actor_id,
             category_id=request.category_id,

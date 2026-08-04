@@ -46,27 +46,27 @@ class ApplyForProjectUseCase(UseCase[ApplyForProjectCommand, ApplyForProjectResu
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: ApplyForProjectCommand) -> ApplyForProjectResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: ApplyForProjectCommand) -> ApplyForProjectResult:
+        await self._authorization_service.require_permission(
             request.actor_id, PERMISSION_PROJECT_APPLY
         )
-        project = self._project_repo.get_by_id(request.project_id)
+        project = await self._project_repo.get_by_id(request.project_id)
         if not project.can_accept_applications():
             raise FreelancerNotEligibleError(
                 f"Project {request.project_id} is not accepting applications "
                 f"(status '{project.status.value}')."
             )
-        now = self._clock.now()
+        now = await self._clock.now()
         if project.is_application_deadline_passed(now):
             raise ApplicationDeadlineExpiredError(
                 f"Project {request.project_id} application deadline has passed."
             )
-        profile = self._profile_repo.get_by_user_id(request.actor_id)
+        profile = await self._profile_repo.get_by_user_id(request.actor_id)
         if not profile.is_approved():
             raise FreelancerNotApprovedError(
                 f"Freelancer profile {profile.id} is not approved."
             )
-        existing = self._application_repo.find_by_project_and_freelancer(
+        existing = await self._application_repo.find_by_project_and_freelancer(
             project.id, profile.id
         )
         if existing is not None:
@@ -77,8 +77,8 @@ class ApplyForProjectUseCase(UseCase[ApplyForProjectCommand, ApplyForProjectResu
             raise FreelancerNotEligibleError(
                 f"Freelancer {profile.id} has no assigned level and cannot apply."
             )
-        level = self._level_repo.get_by_id(profile.current_level_id)
-        active_count = self._application_repo.count_active_for_freelancer(profile.id)
+        level = await self._level_repo.get_by_id(profile.current_level_id)
+        active_count = await self._application_repo.count_active_for_freelancer(profile.id)
         if not FreelancerEligibilityPolicy.is_eligible_to_apply(
             level, project, active_count
         ):
@@ -87,7 +87,7 @@ class ApplyForProjectUseCase(UseCase[ApplyForProjectCommand, ApplyForProjectResu
                 "at level '{level.level_key}'."
             )
         application = ProjectApplication(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             project_id=project.id,
             freelancer_profile_id=profile.id,
             status=ProjectApplicationStatus.APPLIED,
@@ -102,9 +102,9 @@ class ApplyForProjectUseCase(UseCase[ApplyForProjectCommand, ApplyForProjectResu
             withdrawn_at=None,
             created_at=now,
         )
-        with self._uow:
-            self._application_repo.add(application)
-            self._uow.commit()
+        async with self._uow:
+            await self._application_repo.add(application)
+            await self._uow.commit()
         return ApplyForProjectResult(
             application_id=application.id,
             status=application.status,

@@ -18,11 +18,11 @@ class BlockUserUseCase(UseCase[BlockUserCommand, BlockUserResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: BlockUserCommand) -> BlockUserResult:
-        self._authorization_service.require_permission(request.actor_id, "user.block")
-        user = self._user_repo.get_by_id(request.target_user_id)
-        with self._uow:
+    async def execute(self, request: BlockUserCommand) -> BlockUserResult:
+        await self._authorization_service.require_permission(request.actor_id, "user.block")
+        user = await self._user_repo.get_by_id(request.target_user_id)
+        async with self._uow:
             user.block(request.reason)
-            self._user_repo.update(user)
-            self._uow.commit()
+            await self._user_repo.update(user)
+            await self._uow.commit()
         return BlockUserResult(user_id=user.id, status=user.status.value)

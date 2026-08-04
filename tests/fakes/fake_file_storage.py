@@ -11,13 +11,13 @@ class FakeFileStorageService(IFileStorageService):
     def add(self, metadata: FileAssetMetadata) -> None:
         self._store[metadata.file_asset_id] = metadata
 
-    def get_metadata(self, file_asset_id: EntityId) -> FileAssetMetadata:
+    async def get_metadata(self, file_asset_id: EntityId) -> FileAssetMetadata:
         try:
             return self._store[file_asset_id]
         except KeyError:
             raise FileNotFoundError(f"File asset {file_asset_id} not found.") from None
 
-    def register_uploaded_file(
+    async def register_uploaded_file(
         self,
         file_name: str,
         size_bytes: int,

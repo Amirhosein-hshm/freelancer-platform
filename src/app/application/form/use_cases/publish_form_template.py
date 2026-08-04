@@ -24,16 +24,16 @@ class PublishFormTemplateUseCase(
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: PublishFormTemplateCommand) -> PublishFormTemplateResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: PublishFormTemplateCommand) -> PublishFormTemplateResult:
+        await self._authorization_service.require_permission(
             request.published_by, PERMISSION_FORM_MANAGE
         )
-        template = self._template_repo.get_by_id(request.template_id)
-        now = self._clock.now()
-        with self._uow:
+        template = await self._template_repo.get_by_id(request.template_id)
+        now = await self._clock.now()
+        async with self._uow:
             template.publish(request.published_by, now)
-            self._template_repo.update(template)
-            self._uow.commit()
+            await self._template_repo.update(template)
+            await self._uow.commit()
         published_at = template.published_at
         assert published_at is not None
         return PublishFormTemplateResult(

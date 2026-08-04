@@ -17,12 +17,12 @@ class UpdateFieldUseCase(UseCase[UpdateFieldCommand, UpdateFieldResult]):
         self._authorization_service = authorization_service
         self._template_repo = template_repo
 
-    def execute(self, request: UpdateFieldCommand) -> UpdateFieldResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: UpdateFieldCommand) -> UpdateFieldResult:
+        await self._authorization_service.require_permission(
             request.actor_id, PERMISSION_FORM_MANAGE
         )
         request.validate()
-        template = self._template_repo.get_by_id(request.template_id)
+        template = await self._template_repo.get_by_id(request.template_id)
         template.require_draft("update fields")
         field = template.get_field(request.field_id)
         if request.label is not None:
@@ -43,5 +43,5 @@ class UpdateFieldUseCase(UseCase[UpdateFieldCommand, UpdateFieldResult]):
             field.validation_rules = request.validation_rules
         if request.is_active is not None:
             field.is_active = request.is_active
-        self._template_repo.update(template)
+        await self._template_repo.update(template)
         return UpdateFieldResult(field_id=field.id)

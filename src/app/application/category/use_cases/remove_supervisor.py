@@ -19,11 +19,11 @@ class RemoveSupervisorUseCase(UseCase[RemoveSupervisorCommand, RemoveSupervisorR
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: RemoveSupervisorCommand) -> RemoveSupervisorResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: RemoveSupervisorCommand) -> RemoveSupervisorResult:
+        await self._authorization_service.require_permission(
             request.actor_id, "category.remove_supervisor"
         )
-        active = self._category_supervisor_repo.list_active_supervisors(request.category_id)
+        active = await self._category_supervisor_repo.list_active_supervisors(request.category_id)
         link = next(
             (item for item in active if item.supervisor_user_id == request.supervisor_user_id),
             None,
@@ -33,19 +33,19 @@ class RemoveSupervisorUseCase(UseCase[RemoveSupervisorCommand, RemoveSupervisorR
                 f"User {request.supervisor_user_id} is not an active supervisor of "
                 f"category {request.category_id}."
             )
-        now = self._clock.now()
-        with self._uow:
+        now = await self._clock.now()
+        async with self._uow:
             was_primary = link.is_primary
             link.revoke(now)
-            self._category_supervisor_repo.update(link)
+            await self._category_supervisor_repo.update(link)
             if was_primary:
-                remaining = self._category_supervisor_repo.list_active_supervisors(
+                remaining = await self._category_supervisor_repo.list_active_supervisors(
                     request.category_id
                 )
                 if remaining:
                     remaining[0].promote()
-                    self._category_supervisor_repo.update(remaining[0])
-            self._uow.commit()
+                    await self._category_supervisor_repo.update(remaining[0])
+            await self._uow.commit()
         return RemoveSupervisorResult(
             category_id=link.category_id,
             supervisor_user_id=link.supervisor_user_id,

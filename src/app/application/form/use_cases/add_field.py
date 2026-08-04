@@ -22,15 +22,15 @@ class AddFieldUseCase(UseCase[AddFieldCommand, AddFieldResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: AddFieldCommand) -> AddFieldResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: AddFieldCommand) -> AddFieldResult:
+        await self._authorization_service.require_permission(
             request.actor_id, PERMISSION_FORM_MANAGE
         )
         request.validate()
-        template = self._template_repo.get_by_id(request.template_id)
-        now = self._clock.now()
+        template = await self._template_repo.get_by_id(request.template_id)
+        now = await self._clock.now()
         field = FormField(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             field_key=request.field_key,
             label=request.label,
             description=request.description,
@@ -43,8 +43,8 @@ class AddFieldUseCase(UseCase[AddFieldCommand, AddFieldResult]):
             is_active=True,
             created_at=now,
         )
-        with self._uow:
+        async with self._uow:
             template.add_field(field)
-            self._template_repo.update(template)
-            self._uow.commit()
+            await self._template_repo.update(template)
+            await self._uow.commit()
         return AddFieldResult(field_id=field.id)

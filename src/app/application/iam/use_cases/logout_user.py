@@ -15,10 +15,10 @@ class LogoutUserUseCase(UseCase[LogoutUserCommand, LogoutUserResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: LogoutUserCommand) -> LogoutUserResult:
-        token = self._refresh_token_repo.get_by_jti(request.refresh_token_jti)
-        with self._uow:
-            token.revoke(self._clock.now())
-            self._refresh_token_repo.update(token)
-            self._uow.commit()
+    async def execute(self, request: LogoutUserCommand) -> LogoutUserResult:
+        token = await self._refresh_token_repo.get_by_jti(request.refresh_token_jti)
+        async with self._uow:
+            token.revoke(await self._clock.now())
+            await self._refresh_token_repo.update(token)
+            await self._uow.commit()
         return LogoutUserResult(user_id=token.user_id)

@@ -10,8 +10,8 @@ class GetSupervisorProjectsUseCase(
     def __init__(self, project_repo: IProjectRepository) -> None:
         self._project_repo = project_repo
 
-    def execute(self, request: GetSupervisorProjectsQuery) -> GetSupervisorProjectsResult:
-        projects = self._project_repo.list_by_supervisor(request.supervisor_user_id)
+    async def execute(self, request: GetSupervisorProjectsQuery) -> GetSupervisorProjectsResult:
+        projects = await self._project_repo.list_by_supervisor(request.supervisor_user_id)
         return GetSupervisorProjectsResult(
             projects=[to_project_result(p) for p in projects]
         )

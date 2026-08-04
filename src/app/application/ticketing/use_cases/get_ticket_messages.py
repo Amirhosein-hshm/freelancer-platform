@@ -25,10 +25,10 @@ class GetTicketMessagesUseCase(
         self._message_repo = message_repo
         self._participant_repo = participant_repo
 
-    def execute(self, request: GetTicketMessagesQuery) -> GetTicketMessagesResult:
-        ticket = self._ticket_repo.get_by_id(request.ticket_id)
-        ensure_participant(self._participant_repo, ticket.id, request.actor_id)
-        messages = self._message_repo.list_by_ticket(ticket.id)
+    async def execute(self, request: GetTicketMessagesQuery) -> GetTicketMessagesResult:
+        ticket = await self._ticket_repo.get_by_id(request.ticket_id)
+        await ensure_participant(self._participant_repo, ticket.id, request.actor_id)
+        messages = await self._message_repo.list_by_ticket(ticket.id)
         return GetTicketMessagesResult(
             messages=[to_message_result(m) for m in messages]
         )

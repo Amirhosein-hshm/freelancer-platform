@@ -34,20 +34,20 @@ class AssignFreelancerLevelUseCase(
         self._clock = clock
         self._uow = uow
 
-    def execute(
+    async def execute(
         self, request: AssignFreelancerLevelCommand
     ) -> AssignFreelancerLevelResult:
-        self._authorization_service.require_permission(
+        await self._authorization_service.require_permission(
             request.actor_id, "freelancer.assign_level"
         )
-        profile = self._profile_repo.get_by_id(request.profile_id)
-        level = self._level_repo.get_by_id(request.new_level_id)
+        profile = await self._profile_repo.get_by_id(request.profile_id)
+        level = await self._level_repo.get_by_id(request.new_level_id)
         old_level_id = profile.current_level_id
-        now = self._clock.now()
-        with self._uow:
+        now = await self._clock.now()
+        async with self._uow:
             profile.change_level(level.id)
             history = FreelancerLevelHistory(
-                id=self._id_generator.new_id(),
+                id=await self._id_generator.new_id(),
                 freelancer_profile_id=profile.id,
                 old_level_id=old_level_id,
                 new_level_id=level.id,
@@ -56,9 +56,9 @@ class AssignFreelancerLevelUseCase(
                 assigned_at=now,
                 created_at=now,
             )
-            self._level_history_repo.add(history)
-            self._profile_repo.update(profile)
-            self._uow.commit()
+            await self._level_history_repo.add(history)
+            await self._profile_repo.update(profile)
+            await self._uow.commit()
         return AssignFreelancerLevelResult(
             profile_id=profile.id,
             old_level_id=old_level_id,

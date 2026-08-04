@@ -31,11 +31,11 @@ class CreateTicketUseCase(UseCase[CreateTicketCommand, CreateTicketResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: CreateTicketCommand) -> CreateTicketResult:
-        now = self._clock.now()
-        code_value = self._ticket_code_generator.next_code(now.year)
+    async def execute(self, request: CreateTicketCommand) -> CreateTicketResult:
+        now = await self._clock.now()
+        code_value = await self._ticket_code_generator.next_code(now.year)
         ticket = Ticket(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             ticket_code=code_value,
             created_by_user_id=request.actor_id,
             assigned_to_user_id=None,
@@ -51,7 +51,7 @@ class CreateTicketUseCase(UseCase[CreateTicketCommand, CreateTicketResult]):
             created_at=now,
         )
         requester = TicketParticipant(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             ticket_id=ticket.id,
             user_id=request.actor_id,
             participant_role=TicketParticipantRole.REQUESTER,
@@ -59,10 +59,10 @@ class CreateTicketUseCase(UseCase[CreateTicketCommand, CreateTicketResult]):
             left_at=None,
             created_at=now,
         )
-        with self._uow:
-            self._ticket_repo.add(ticket)
-            self._participant_repo.add(requester)
-            self._uow.commit()
+        async with self._uow:
+            await self._ticket_repo.add(ticket)
+            await self._participant_repo.add(requester)
+            await self._uow.commit()
         return CreateTicketResult(
             ticket_id=ticket.id,
             ticket_code=ticket.ticket_code,

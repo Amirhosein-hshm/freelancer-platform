@@ -14,6 +14,6 @@ class GetFreelancerStatisticsUseCase(UseCase[ReportingQuery, FreelancerStatistic
         self._authorization_service = authorization_service
         self._reporting_read_repo = reporting_read_repo
 
-    def execute(self, request: ReportingQuery) -> FreelancerStatistics:
-        self._authorization_service.require_permission(request.actor_id, "reporting.read")
-        return self._reporting_read_repo.get_freelancer_statistics()
+    async def execute(self, request: ReportingQuery) -> FreelancerStatistics:
+        await self._authorization_service.require_permission(request.actor_id, "reporting.read")
+        return await self._reporting_read_repo.get_freelancer_statistics()

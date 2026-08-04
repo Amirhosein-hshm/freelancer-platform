@@ -7,7 +7,7 @@ from app.domain.project.repositories import IProjectStatusHistoryRepository
 from app.domain.shared.types import EntityId
 
 
-def record_status_history(
+async def record_status_history(
     history_repo: IProjectStatusHistoryRepository,
     id_generator: IIdGenerator,
     project_id: EntityId,
@@ -17,9 +17,9 @@ def record_status_history(
     reason: str | None,
     at: datetime,
 ) -> None:
-    history_repo.add(
+    await history_repo.add(
         ProjectStatusHistory(
-            id=id_generator.new_id(),
+            id=await id_generator.new_id(),
             project_id=project_id,
             from_status=from_status,
             to_status=to_status,

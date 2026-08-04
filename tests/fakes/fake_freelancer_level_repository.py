@@ -13,17 +13,17 @@ class FakeFreelancerLevelRepository(IFreelancerLevelRepository):
         self._store[level.id] = level
         self._by_key[level.level_key] = level
 
-    def get_by_id(self, level_id: EntityId) -> FreelancerLevel:
+    async def get_by_id(self, level_id: EntityId) -> FreelancerLevel:
         try:
             return self._store[level_id]
         except KeyError:
             raise FreelancerLevelNotFoundError(f"Freelancer level {level_id} not found.") from None
 
-    def get_by_key(self, level_key: str) -> FreelancerLevel:
+    async def get_by_key(self, level_key: str) -> FreelancerLevel:
         try:
             return self._by_key[level_key]
         except KeyError:
             raise FreelancerLevelNotFoundError(f"Freelancer level '{level_key}' not found.") from None
 
-    def list_active(self) -> list[FreelancerLevel]:
+    async def list_active(self) -> list[FreelancerLevel]:
         return [level for level in self._store.values() if level.is_active]

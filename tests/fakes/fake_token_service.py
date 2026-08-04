@@ -8,19 +8,19 @@ class FakeTokenService(ITokenService):
     def __init__(self) -> None:
         self._jti_counter = 0
 
-    def generate_access_token(self, user_id: EntityId, roles: list[str]) -> str:
+    async def generate_access_token(self, user_id: EntityId, roles: list[str]) -> str:
         roles_part = ",".join(roles)
         return f"access.{user_id}.{roles_part}"
 
-    def generate_refresh_token(self) -> tuple[str, str]:
+    async def generate_refresh_token(self) -> tuple[str, str]:
         self._jti_counter += 1
         jti = f"jti-{self._jti_counter}"
         return f"refresh.{jti}", jti
 
-    def hash_refresh_token(self, raw_token: str) -> str:
+    async def hash_refresh_token(self, raw_token: str) -> str:
         return f"hash:{raw_token}"
 
-    def decode_access_token(self, token: str) -> AccessTokenPayload:
+    async def decode_access_token(self, token: str) -> AccessTokenPayload:
         _prefix, user_id, roles_part = token.split(".")
         roles = roles_part.split(",") if roles_part else []
         return AccessTokenPayload(

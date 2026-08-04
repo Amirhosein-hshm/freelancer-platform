@@ -30,22 +30,22 @@ class GrantPermissionUseCase(UseCase[GrantPermissionCommand, GrantPermissionResu
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: GrantPermissionCommand) -> GrantPermissionResult:
-        self._authorization_service.require_permission(request.actor_id, "user.grant_permission")
-        role = self._role_repo.get_by_id(request.role_id)
-        permission = self._permission_repo.get_by_id(request.permission_id)
-        if any(p.id == permission.id for p in self._role_permission_repo.list_permissions_for_role(role.id)):
+    async def execute(self, request: GrantPermissionCommand) -> GrantPermissionResult:
+        await self._authorization_service.require_permission(request.actor_id, "user.grant_permission")
+        role = await self._role_repo.get_by_id(request.role_id)
+        permission = await self._permission_repo.get_by_id(request.permission_id)
+        if any(p.id == permission.id for p in await self._role_permission_repo.list_permissions_for_role(role.id)):
             raise PermissionAlreadyGrantedError(role.id, permission.id)
-        now = self._clock.now()
+        now = await self._clock.now()
         role_permission = RolePermission(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             role_id=role.id,
             permission_id=permission.id,
             granted_by_user_id=request.actor_id,
             granted_at=now,
             created_at=now,
         )
-        with self._uow:
-            self._role_permission_repo.add(role_permission)
-            self._uow.commit()
+        async with self._uow:
+            await self._role_permission_repo.add(role_permission)
+            await self._uow.commit()
         return GrantPermissionResult(role_id=role.id, permission_id=permission.id)

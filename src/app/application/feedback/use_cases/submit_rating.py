@@ -44,9 +44,9 @@ class SubmitRatingUseCase(UseCase[SubmitRatingCommand, SubmitRatingResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: SubmitRatingCommand) -> SubmitRatingResult:
-        project = self._project_repo.get_by_id(request.project_id)
-        authorize_owned_action(
+    async def execute(self, request: SubmitRatingCommand) -> SubmitRatingResult:
+        project = await self._project_repo.get_by_id(request.project_id)
+        await authorize_owned_action(
             self._authorization_service,
             request.actor_id,
             project.customer_user_id,
@@ -58,7 +58,7 @@ class SubmitRatingUseCase(UseCase[SubmitRatingCommand, SubmitRatingResult]):
                 f"Project {project.id} is '{project.status.value}'; it can only be "
                 "rated after completion."
             )
-        if self._rating_repo.find_by_project(project.id) is not None:
+        if await self._rating_repo.find_by_project(project.id) is not None:
             raise RatingAlreadyExistsError(
                 f"Project {project.id} has already been rated."
             )
@@ -66,16 +66,16 @@ class SubmitRatingUseCase(UseCase[SubmitRatingCommand, SubmitRatingResult]):
             raise ValidationError(
                 f"Project {project.id} has no selected freelancer to rate."
             )
-        application = self._application_repo.get_by_id(project.selected_application_id)
-        customer_review = self._customer_review_repo.find_by_project(project.id)
+        application = await self._application_repo.get_by_id(project.selected_application_id)
+        customer_review = await self._customer_review_repo.find_by_project(project.id)
         if customer_review is None:
             raise ValidationError(
                 f"Project {project.id} has no customer review yet; submit a review "
                 "before rating."
             )
-        now = self._clock.now()
+        now = await self._clock.now()
         rating = Rating(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             customer_review_id=customer_review.id,
             project_id=project.id,
             customer_user_id=request.actor_id,
@@ -85,9 +85,9 @@ class SubmitRatingUseCase(UseCase[SubmitRatingCommand, SubmitRatingResult]):
             is_public=request.is_public,
             created_at=now,
         )
-        with self._uow:
-            self._rating_repo.add(rating)
-            self._uow.commit()
+        async with self._uow:
+            await self._rating_repo.add(rating)
+            await self._uow.commit()
         return SubmitRatingResult(
             rating_id=rating.id,
             project_id=project.id,

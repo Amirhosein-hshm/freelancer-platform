@@ -20,13 +20,13 @@ class RemoveFieldUseCase(UseCase[RemoveFieldCommand, RemoveFieldResult]):
         self._template_repo = template_repo
         self._uow = uow
 
-    def execute(self, request: RemoveFieldCommand) -> RemoveFieldResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: RemoveFieldCommand) -> RemoveFieldResult:
+        await self._authorization_service.require_permission(
             request.actor_id, PERMISSION_FORM_MANAGE
         )
-        template = self._template_repo.get_by_id(request.template_id)
-        with self._uow:
+        template = await self._template_repo.get_by_id(request.template_id)
+        async with self._uow:
             template.remove_field(request.field_id)
-            self._template_repo.update(template)
-            self._uow.commit()
+            await self._template_repo.update(template)
+            await self._uow.commit()
         return RemoveFieldResult(field_id=request.field_id)

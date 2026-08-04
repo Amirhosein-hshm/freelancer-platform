@@ -13,6 +13,6 @@ class GetFreelancerProfileUseCase(
     def __init__(self, profile_repo: IFreelancerProfileRepository) -> None:
         self._profile_repo = profile_repo
 
-    def execute(self, request: GetFreelancerProfileQuery) -> FreelancerProfileResult:
-        profile = self._profile_repo.get_by_id(request.profile_id)
+    async def execute(self, request: GetFreelancerProfileQuery) -> FreelancerProfileResult:
+        profile = await self._profile_repo.get_by_id(request.profile_id)
         return to_profile_result(profile)

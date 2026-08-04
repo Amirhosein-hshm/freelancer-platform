@@ -19,13 +19,13 @@ class UpdateFormTemplateUseCase(
         self._authorization_service = authorization_service
         self._template_repo = template_repo
 
-    def execute(self, request: UpdateFormTemplateCommand) -> UpdateFormTemplateResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: UpdateFormTemplateCommand) -> UpdateFormTemplateResult:
+        await self._authorization_service.require_permission(
             request.actor_id, PERMISSION_FORM_MANAGE
         )
         request.validate()
-        template = self._template_repo.get_by_id(request.template_id)
+        template = await self._template_repo.get_by_id(request.template_id)
         template.require_draft("update its name")
         template.name = request.name
-        self._template_repo.update(template)
+        await self._template_repo.update(template)
         return UpdateFormTemplateResult(template_id=template.id, name=template.name)

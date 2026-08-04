@@ -26,20 +26,20 @@ class UploadResumeUseCase(UseCase[UploadResumeCommand, UploadResumeResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: UploadResumeCommand) -> UploadResumeResult:
-        profile = self._profile_repo.get_by_user_id(request.user_id)
+    async def execute(self, request: UploadResumeCommand) -> UploadResumeResult:
+        profile = await self._profile_repo.get_by_user_id(request.user_id)
         try:
-            self._file_storage.get_metadata(request.file_asset_id)
+            await self._file_storage.get_metadata(request.file_asset_id)
         except (KeyError, FileNotFoundError) as exc:
             raise ValidationError(
                 f"File asset {request.file_asset_id} does not exist."
             ) from exc
-        existing = self._resume_repo.list_by_profile(profile.id)
+        existing = await self._resume_repo.list_by_profile(profile.id)
         version_no = max((r.version_no for r in existing), default=0) + 1
-        previous = self._resume_repo.get_current(profile.id)
-        now = self._clock.now()
+        previous = await self._resume_repo.get_current(profile.id)
+        now = await self._clock.now()
         resume = Resume(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             freelancer_profile_id=profile.id,
             file_asset_id=request.file_asset_id,
             version_no=version_no,
@@ -47,10 +47,10 @@ class UploadResumeUseCase(UseCase[UploadResumeCommand, UploadResumeResult]):
             is_current=True,
             created_at=now,
         )
-        with self._uow:
-            self._resume_repo.add(resume)
+        async with self._uow:
+            await self._resume_repo.add(resume)
             if previous is not None and previous.id != resume.id:
                 previous.is_current = False
-                self._resume_repo.update(previous)
-            self._uow.commit()
+                await self._resume_repo.update(previous)
+            await self._uow.commit()
         return UploadResumeResult(resume_id=resume.id, version_no=resume.version_no)

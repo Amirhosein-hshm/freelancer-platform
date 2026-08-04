@@ -37,16 +37,16 @@ class RegisterUserUseCase(UseCase[RegisterUserCommand, RegisterUserResult]):
         self._notification_service = notification_service
         self._uow = uow
 
-    def execute(self, request: RegisterUserCommand) -> RegisterUserResult:
+    async def execute(self, request: RegisterUserCommand) -> RegisterUserResult:
         request.validate()
         email = Email(request.email)
-        if self._user_repo.exists_by_email(email):
+        if await self._user_repo.exists_by_email(email):
             raise DuplicateEmailError(f"Email {email.value} is already registered.")
-        role = self._role_repo.get_by_key(DEFAULT_REGISTER_ROLE_KEY)
-        password_hash = PasswordHash(self._password_hasher.hash(request.password))
-        now = self._clock.now()
+        role = await self._role_repo.get_by_key(DEFAULT_REGISTER_ROLE_KEY)
+        password_hash = PasswordHash(await self._password_hasher.hash(request.password))
+        now = await self._clock.now()
         user = User(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             email=email,
             phone=None,
             password_hash=password_hash,
@@ -56,19 +56,19 @@ class RegisterUserUseCase(UseCase[RegisterUserCommand, RegisterUserResult]):
             created_at=now,
         )
         user_role = UserRole(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             user_id=user.id,
             role_id=role.id,
             assigned_by_user_id=user.id,
             assigned_at=now,
             created_at=now,
         )
-        with self._uow:
-            self._user_repo.add(user)
-            self._user_role_repo.add(user_role)
-            self._uow.commit()
-        verification_token = self._id_generator.new_id()
-        self._notification_service.send_verification_email(email.value, verification_token)
+        async with self._uow:
+            await self._user_repo.add(user)
+            await self._user_role_repo.add(user_role)
+            await self._uow.commit()
+        verification_token = await self._id_generator.new_id()
+        await self._notification_service.send_verification_email(email.value, verification_token)
         return RegisterUserResult(
             user_id=user.id,
             email=email.value,

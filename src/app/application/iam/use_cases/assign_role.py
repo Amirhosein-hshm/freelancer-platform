@@ -30,26 +30,26 @@ class AssignRoleUseCase(UseCase[AssignRoleCommand, AssignRoleResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: AssignRoleCommand) -> AssignRoleResult:
-        self._authorization_service.require_permission(request.actor_id, "user.assign_role")
-        user = self._user_repo.get_by_id(request.target_user_id)
-        role = self._role_repo.get_by_key(request.role_key)
-        if self._user_role_repo.find_active(user.id, role.id) is not None:
+    async def execute(self, request: AssignRoleCommand) -> AssignRoleResult:
+        await self._authorization_service.require_permission(request.actor_id, "user.assign_role")
+        user = await self._user_repo.get_by_id(request.target_user_id)
+        role = await self._role_repo.get_by_key(request.role_key)
+        if await self._user_role_repo.find_active(user.id, role.id) is not None:
             raise RoleAlreadyAssignedError(
                 f"Role '{role.role_key}' is already assigned to user {user.id}."
             )
-        now = self._clock.now()
+        now = await self._clock.now()
         user_role = UserRole(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             user_id=user.id,
             role_id=role.id,
             assigned_by_user_id=request.actor_id,
             assigned_at=now,
             created_at=now,
         )
-        with self._uow:
-            self._user_role_repo.add(user_role)
-            self._uow.commit()
+        async with self._uow:
+            await self._user_role_repo.add(user_role)
+            await self._uow.commit()
         return AssignRoleResult(
             user_role_id=user_role.id,
             user_id=user.id,

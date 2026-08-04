@@ -48,13 +48,13 @@ class AdminCreateProjectOnBehalfUseCase(
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: CreateProjectOnBehalfCommand) -> CreateProjectResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: CreateProjectOnBehalfCommand) -> CreateProjectResult:
+        await self._authorization_service.require_permission(
             request.actor_id, PERMISSION_PROJECT_CREATE_ON_BEHALF
         )
-        self._user_repo.get_by_id(request.target_customer_user_id)
+        await self._user_repo.get_by_id(request.target_customer_user_id)
         request.validate()
-        return _create_project(
+        return await _create_project(
             customer_user_id=request.target_customer_user_id,
             created_by_user_id=request.actor_id,
             category_id=request.category_id,

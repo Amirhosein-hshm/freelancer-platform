@@ -29,21 +29,21 @@ class AssignTicketUseCase(UseCase[AssignTicketCommand, AssignTicketResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: AssignTicketCommand) -> AssignTicketResult:
-        self._authorization_service.require_permission(
+    async def execute(self, request: AssignTicketCommand) -> AssignTicketResult:
+        await self._authorization_service.require_permission(
             request.actor_id, PERMISSION_TICKET_ASSIGN
         )
-        ticket = self._ticket_repo.get_by_id(request.ticket_id)
-        ensure_participant(self._participant_repo, ticket.id, request.actor_id)
-        now = self._clock.now()
-        with self._uow:
+        ticket = await self._ticket_repo.get_by_id(request.ticket_id)
+        await ensure_participant(self._participant_repo, ticket.id, request.actor_id)
+        now = await self._clock.now()
+        async with self._uow:
             ticket.assign(request.assignee_user_id)
-            if not self._participant_repo.is_participant(
+            if not await self._participant_repo.is_participant(
                 ticket.id, request.assignee_user_id
             ):
-                self._participant_repo.add(
+                await self._participant_repo.add(
                     TicketParticipant(
-                        id=self._id_generator.new_id(),
+                        id=await self._id_generator.new_id(),
                         ticket_id=ticket.id,
                         user_id=request.assignee_user_id,
                         participant_role=TicketParticipantRole.ASSIGNEE,
@@ -52,8 +52,8 @@ class AssignTicketUseCase(UseCase[AssignTicketCommand, AssignTicketResult]):
                         created_at=now,
                     )
                 )
-            self._ticket_repo.update(ticket)
-            self._uow.commit()
+            await self._ticket_repo.update(ticket)
+            await self._uow.commit()
         return AssignTicketResult(
             ticket_id=ticket.id,
             assigned_to_user_id=ticket.assigned_to_user_id or request.assignee_user_id,

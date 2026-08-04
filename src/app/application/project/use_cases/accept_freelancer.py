@@ -40,22 +40,22 @@ class AcceptFreelancerUseCase(UseCase[AcceptFreelancerCommand, AcceptFreelancerR
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: AcceptFreelancerCommand) -> AcceptFreelancerResult:
-        application = self._application_repo.get_by_id(request.application_id)
-        project = self._project_repo.get_by_id(application.project_id)
-        authorize_owned_action(
+    async def execute(self, request: AcceptFreelancerCommand) -> AcceptFreelancerResult:
+        application = await self._application_repo.get_by_id(request.application_id)
+        project = await self._project_repo.get_by_id(application.project_id)
+        await authorize_owned_action(
             self._authorization_service,
             request.actor_id,
             project.customer_user_id,
             PERMISSION_PROJECT_MANAGE_OWN,
             PERMISSION_PROJECT_MANAGE_ANY,
         )
-        now = self._clock.now()
-        with self._uow:
+        now = await self._clock.now()
+        async with self._uow:
             application.accept(request.actor_id, now)
-            self._application_repo.update(application)
+            await self._application_repo.update(application)
             project.assign_freelancer(application.id, now)
-            record_status_history(
+            await record_status_history(
                 self._status_history_repo,
                 self._id_generator,
                 project.id,
@@ -65,15 +65,15 @@ class AcceptFreelancerUseCase(UseCase[AcceptFreelancerCommand, AcceptFreelancerR
                 f"Freelancer application {application.id} accepted.",
                 now,
             )
-            for other in self._application_repo.list_by_project(project.id):
+            for other in await self._application_repo.list_by_project(project.id):
                 if other.id != application.id and other.status in (
                     ProjectApplicationStatus.APPLIED,
                     ProjectApplicationStatus.SHORTLISTED,
                 ):
                     other.reject(request.actor_id, now, "Another freelancer was selected.")
-                    self._application_repo.update(other)
-            self._project_repo.update(project)
-            self._uow.commit()
+                    await self._application_repo.update(other)
+            await self._project_repo.update(project)
+            await self._uow.commit()
         return AcceptFreelancerResult(
             project_id=project.id,
             selected_application_id=project.selected_application_id or application.id,

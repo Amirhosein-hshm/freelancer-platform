@@ -5,23 +5,23 @@ from app.domain.shared.types import EntityId
 
 
 class FakePortfolioItemRepository(IPortfolioItemRepository):
-    def __init__(self) -> None:
+    async def __init__(self) -> None:
         self._store: dict[str, PortfolioItem] = {}
 
-    def add(self, item: PortfolioItem) -> None:
+    async def add(self, item: PortfolioItem) -> None:
         self._store[item.id] = item
 
-    def get_by_id(self, item_id: EntityId) -> PortfolioItem:
+    async def get_by_id(self, item_id: EntityId) -> PortfolioItem:
         try:
             return self._store[item_id]
         except KeyError:
             raise PortfolioItemNotFoundError(f"Portfolio item {item_id} not found.") from None
 
-    def list_by_profile(self, profile_id: EntityId) -> list[PortfolioItem]:
+    async def list_by_profile(self, profile_id: EntityId) -> list[PortfolioItem]:
         return [i for i in self._store.values() if i.freelancer_profile_id == profile_id]
 
-    def update(self, item: PortfolioItem) -> None:
+    async def update(self, item: PortfolioItem) -> None:
         self._store[item.id] = item
 
-    def delete(self, item_id: EntityId) -> None:
+    async def delete(self, item_id: EntityId) -> None:
         self._store.pop(item_id, None)

@@ -18,11 +18,11 @@ class ActivateUserUseCase(UseCase[ActivateUserCommand, ActivateUserResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: ActivateUserCommand) -> ActivateUserResult:
-        self._authorization_service.require_permission(request.actor_id, "user.activate")
-        user = self._user_repo.get_by_id(request.target_user_id)
-        with self._uow:
+    async def execute(self, request: ActivateUserCommand) -> ActivateUserResult:
+        await self._authorization_service.require_permission(request.actor_id, "user.activate")
+        user = await self._user_repo.get_by_id(request.target_user_id)
+        async with self._uow:
             user.activate()
-            self._user_repo.update(user)
-            self._uow.commit()
+            await self._user_repo.update(user)
+            await self._uow.commit()
         return ActivateUserResult(user_id=user.id, status=user.status.value)

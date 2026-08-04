@@ -26,18 +26,18 @@ class WithdrawApplicationUseCase(
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: WithdrawApplicationCommand) -> WithdrawApplicationResult:
-        application = self._application_repo.get_by_id(request.application_id)
-        profile = self._profile_repo.get_by_user_id(request.actor_id)
+    async def execute(self, request: WithdrawApplicationCommand) -> WithdrawApplicationResult:
+        application = await self._application_repo.get_by_id(request.application_id)
+        profile = await self._profile_repo.get_by_user_id(request.actor_id)
         if application.freelancer_profile_id != profile.id:
             raise PermissionDeniedError(
                 f"User {request.actor_id} does not own application {request.application_id}."
             )
-        now = self._clock.now()
-        with self._uow:
+        now = await self._clock.now()
+        async with self._uow:
             application.withdraw(now)
-            self._application_repo.update(application)
-            self._uow.commit()
+            await self._application_repo.update(application)
+            await self._uow.commit()
         return WithdrawApplicationResult(
             application_id=application.id,
             status=application.status,

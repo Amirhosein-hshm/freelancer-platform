@@ -9,18 +9,21 @@ class FakeRolePermissionRepository(IRolePermissionRepository):
         self._store: list[RolePermission] = []
         self._permission_repo = permission_repo
 
-    def add(self, role_permission: RolePermission) -> None:
+    async def add(self, role_permission: RolePermission) -> None:
         self._store.append(role_permission)
 
-    def list_permissions_for_role(self, role_id: EntityId) -> list[Permission]:
+    async def list_permissions_for_role(self, role_id: EntityId) -> list[Permission]:
         permission_ids = [
             rp.permission_id for rp in self._store if rp.role_id == role_id
         ]
         if self._permission_repo is None:
             return []
-        return [self._permission_repo.get_by_id(permission_id) for permission_id in permission_ids]
+        return [
+            await self._permission_repo.get_by_id(permission_id)
+            for permission_id in permission_ids
+        ]
 
-    def remove(self, role_id: EntityId, permission_id: EntityId) -> None:
+    async def remove(self, role_id: EntityId, permission_id: EntityId) -> None:
         self._store = [
             rp
             for rp in self._store

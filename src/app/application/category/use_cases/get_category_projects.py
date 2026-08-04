@@ -30,9 +30,9 @@ class GetCategoryProjectsUseCase(
         self._category_repo = category_repo
         self._project_repo = project_repo
 
-    def execute(self, request: GetCategoryProjectsQuery) -> GetCategoryProjectsResult:
-        self._category_repo.get_by_id(request.category_id)
-        projects = self._project_repo.list_by_category(request.category_id)
+    async def execute(self, request: GetCategoryProjectsQuery) -> GetCategoryProjectsResult:
+        await self._category_repo.get_by_id(request.category_id)
+        projects = await self._project_repo.list_by_category(request.category_id)
         return GetCategoryProjectsResult(
             category_id=request.category_id,
             projects=[to_project_result(p) for p in projects],

@@ -26,10 +26,10 @@ class GetProjectDetailsUseCase(UseCase[GetProjectDetailsQuery, GetProjectDetails
         self._application_repo = application_repo
         self._delivery_repo = delivery_repo
 
-    def execute(self, request: GetProjectDetailsQuery) -> GetProjectDetailsResult:
-        project = self._project_repo.get_by_id(request.project_id)
-        applications = self._application_repo.list_by_project(project.id)
-        deliveries = self._delivery_repo.list_by_project(project.id)
+    async def execute(self, request: GetProjectDetailsQuery) -> GetProjectDetailsResult:
+        project = await self._project_repo.get_by_id(request.project_id)
+        applications = await self._application_repo.list_by_project(project.id)
+        deliveries = await self._delivery_repo.list_by_project(project.id)
         return GetProjectDetailsResult(
             project=to_project_result(project),
             applications=[to_application_result(a) for a in applications],

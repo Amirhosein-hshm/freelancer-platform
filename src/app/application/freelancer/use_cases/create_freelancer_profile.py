@@ -28,19 +28,19 @@ class CreateFreelancerProfileUseCase(
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: CreateFreelancerProfileCommand) -> CreateFreelancerProfileResult:
+    async def execute(self, request: CreateFreelancerProfileCommand) -> CreateFreelancerProfileResult:
         request.validate()
         try:
-            self._profile_repo.get_by_user_id(request.user_id)
+            await self._profile_repo.get_by_user_id(request.user_id)
         except FreelancerProfileNotFoundError:
             pass
         else:
             raise DuplicateFreelancerProfileError(
                 f"A freelancer profile already exists for user {request.user_id}."
             )
-        now = self._clock.now()
+        now = await self._clock.now()
         profile = FreelancerProfile(
-            id=self._id_generator.new_id(),
+            id=await self._id_generator.new_id(),
             user_id=request.user_id,
             current_level_id=None,
             approval_status=FreelancerApprovalStatus.PENDING,
@@ -59,7 +59,7 @@ class CreateFreelancerProfileUseCase(
             deleted_at=None,
             created_at=now,
         )
-        with self._uow:
-            self._profile_repo.add(profile)
-            self._uow.commit()
+        async with self._uow:
+            await self._profile_repo.add(profile)
+            await self._uow.commit()
         return CreateFreelancerProfileResult(profile_id=profile.id)

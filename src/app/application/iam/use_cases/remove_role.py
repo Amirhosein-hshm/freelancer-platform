@@ -27,22 +27,22 @@ class RemoveRoleUseCase(UseCase[RemoveRoleCommand, RemoveRoleResult]):
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: RemoveRoleCommand) -> RemoveRoleResult:
-        self._authorization_service.require_permission(request.actor_id, "user.remove_role")
-        user = self._user_repo.get_by_id(request.target_user_id)
-        role = self._role_repo.get_by_key(request.role_key)
+    async def execute(self, request: RemoveRoleCommand) -> RemoveRoleResult:
+        await self._authorization_service.require_permission(request.actor_id, "user.remove_role")
+        user = await self._user_repo.get_by_id(request.target_user_id)
+        role = await self._role_repo.get_by_key(request.role_key)
         if role.is_system:
             raise SystemRoleImmutableError(
                 f"System role '{role.role_key}' cannot be removed."
             )
-        user_role = self._user_role_repo.find_active(user.id, role.id)
+        user_role = await self._user_role_repo.find_active(user.id, role.id)
         if user_role is None:
             raise UserRoleNotFoundError(
                 f"No active role '{role.role_key}' for user {user.id}."
             )
-        now = self._clock.now()
-        with self._uow:
+        now = await self._clock.now()
+        async with self._uow:
             user_role.revoke(now)
-            self._user_role_repo.update(user_role)
-            self._uow.commit()
+            await self._user_role_repo.update(user_role)
+            await self._uow.commit()
         return RemoveRoleResult(user_id=user.id, role_id=role.id, revoked_at=now)

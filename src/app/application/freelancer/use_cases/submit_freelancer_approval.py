@@ -18,14 +18,14 @@ class SubmitFreelancerApprovalUseCase(
         self._profile_repo = profile_repo
         self._uow = uow
 
-    def execute(
+    async def execute(
         self, request: SubmitFreelancerApprovalCommand
     ) -> SubmitFreelancerApprovalResult:
-        profile = self._profile_repo.get_by_user_id(request.user_id)
-        with self._uow:
+        profile = await self._profile_repo.get_by_user_id(request.user_id)
+        async with self._uow:
             profile.submit_for_approval()
-            self._profile_repo.update(profile)
-            self._uow.commit()
+            await self._profile_repo.update(profile)
+            await self._uow.commit()
         return SubmitFreelancerApprovalResult(
             profile_id=profile.id,
             approval_status=profile.approval_status,

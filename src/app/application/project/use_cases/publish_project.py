@@ -37,19 +37,19 @@ class PublishProjectUseCase(UseCase[PublishProjectCommand, PublishProjectResult]
         self._clock = clock
         self._uow = uow
 
-    def execute(self, request: PublishProjectCommand) -> PublishProjectResult:
-        project = self._project_repo.get_by_id(request.project_id)
-        authorize_owned_action(
+    async def execute(self, request: PublishProjectCommand) -> PublishProjectResult:
+        project = await self._project_repo.get_by_id(request.project_id)
+        await authorize_owned_action(
             self._authorization_service,
             request.actor_id,
             project.customer_user_id,
             PERMISSION_PROJECT_MANAGE_OWN,
             PERMISSION_PROJECT_MANAGE_ANY,
         )
-        now = self._clock.now()
-        with self._uow:
+        now = await self._clock.now()
+        async with self._uow:
             project.publish(now)
-            record_status_history(
+            await record_status_history(
                 self._status_history_repo,
                 self._id_generator,
                 project.id,
@@ -60,7 +60,7 @@ class PublishProjectUseCase(UseCase[PublishProjectCommand, PublishProjectResult]
                 now,
             )
             project.start_collecting_applications()
-            record_status_history(
+            await record_status_history(
                 self._status_history_repo,
                 self._id_generator,
                 project.id,
@@ -70,6 +70,6 @@ class PublishProjectUseCase(UseCase[PublishProjectCommand, PublishProjectResult]
                 None,
                 now,
             )
-            self._project_repo.update(project)
-            self._uow.commit()
+            await self._project_repo.update(project)
+            await self._uow.commit()
         return PublishProjectResult(project_id=project.id, status=project.status)

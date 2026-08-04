@@ -22,17 +22,17 @@ class UpdatePortfolioItemUseCase(
         self._profile_repo = profile_repo
         self._portfolio_item_repo = portfolio_item_repo
 
-    def _owned_item(self, profile_id: str, item_id: str) -> PortfolioItem:
-        item = self._portfolio_item_repo.get_by_id(item_id)
+    async def _owned_item(self, profile_id: str, item_id: str) -> PortfolioItem:
+        item = await self._portfolio_item_repo.get_by_id(item_id)
         if item.freelancer_profile_id != profile_id:
             raise PortfolioItemNotFoundError(
                 f"Portfolio item {item_id} not found for this profile."
             )
         return item
 
-    def execute(self, request: UpdatePortfolioItemCommand) -> UpdatePortfolioItemResult:
+    async def execute(self, request: UpdatePortfolioItemCommand) -> UpdatePortfolioItemResult:
         request.validate()
-        profile = self._profile_repo.get_by_user_id(request.user_id)
+        profile = await self._profile_repo.get_by_user_id(request.user_id)
         item = self._owned_item(profile.id, request.item_id)
         item.title = request.title
         item.description = request.description
@@ -40,5 +40,5 @@ class UpdatePortfolioItemUseCase(
         item.file_asset_id = request.file_asset_id
         item.display_order = request.display_order
         item.is_featured = request.is_featured
-        self._portfolio_item_repo.update(item)
+        await self._portfolio_item_repo.update(item)
         return UpdatePortfolioItemResult(item_id=item.id)

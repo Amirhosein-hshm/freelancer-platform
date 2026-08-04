@@ -6,19 +6,19 @@ from app.domain.shared.types import EntityId
 
 
 class FakeProjectApplicationRepository(IProjectApplicationRepository):
-    def __init__(self) -> None:
+    async def __init__(self) -> None:
         self._store: dict[str, ProjectApplication] = {}
 
-    def add(self, application: ProjectApplication) -> None:
+    async def add(self, application: ProjectApplication) -> None:
         self._store[application.id] = application
 
-    def get_by_id(self, application_id: EntityId) -> ProjectApplication:
+    async def get_by_id(self, application_id: EntityId) -> ProjectApplication:
         try:
             return self._store[application_id]
         except KeyError:
             raise ApplicationNotFoundError(f"Application {application_id} not found.") from None
 
-    def find_by_project_and_freelancer(
+    async def find_by_project_and_freelancer(
         self, project_id: EntityId, freelancer_profile_id: EntityId
     ) -> ProjectApplication | None:
         for application in self._store.values():
@@ -29,10 +29,10 @@ class FakeProjectApplicationRepository(IProjectApplicationRepository):
                 return application
         return None
 
-    def list_by_project(self, project_id: EntityId) -> list[ProjectApplication]:
+    async def list_by_project(self, project_id: EntityId) -> list[ProjectApplication]:
         return [a for a in self._store.values() if a.project_id == project_id]
 
-    def count_active_for_freelancer(self, freelancer_profile_id: EntityId) -> int:
+    async def count_active_for_freelancer(self, freelancer_profile_id: EntityId) -> int:
         active = (
             ProjectApplicationStatus.APPLIED,
             ProjectApplicationStatus.SHORTLISTED,
@@ -44,5 +44,5 @@ class FakeProjectApplicationRepository(IProjectApplicationRepository):
             if a.freelancer_profile_id == freelancer_profile_id and a.status in active
         )
 
-    def update(self, application: ProjectApplication) -> None:
+    async def update(self, application: ProjectApplication) -> None:
         self._store[application.id] = application

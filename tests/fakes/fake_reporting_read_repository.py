@@ -11,7 +11,7 @@ from app.domain.reporting.repositories import IReportingReadRepository
 
 
 class FakeReportingReadRepository(IReportingReadRepository):
-    def __init__(self) -> None:
+    async def __init__(self) -> None:
         self.dashboard = DashboardStatistics(
             total_users=10,
             active_projects=3,
@@ -30,17 +30,17 @@ class FakeReportingReadRepository(IReportingReadRepository):
             total_customers=6, active_projects=3, completed_projects=5
         )
 
-    def get_dashboard_statistics(self) -> DashboardStatistics:
+    async def get_dashboard_statistics(self) -> DashboardStatistics:
         return self.dashboard
 
-    def get_user_statistics(self) -> UserStatistics:
+    async def get_user_statistics(self) -> UserStatistics:
         return self.users
 
-    def get_project_statistics(self) -> ProjectStatistics:
+    async def get_project_statistics(self) -> ProjectStatistics:
         return self.projects
 
-    def get_freelancer_statistics(self) -> FreelancerStatistics:
+    async def get_freelancer_statistics(self) -> FreelancerStatistics:
         return self.freelancers
 
-    def get_customer_statistics(self) -> CustomerStatistics:
+    async def get_customer_statistics(self) -> CustomerStatistics:
         return self.customers
