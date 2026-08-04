@@ -7,7 +7,7 @@ from app.application.project.dto import (
     FormValueInput,
 )
 from app.application.project.use_cases.create_project import CreateProjectUseCase
-from app.application.shared.exceptions import FormValidationError
+from app.application.shared.exceptions import FormValidationError, PermissionDeniedError
 from app.domain.category.exceptions import CategoryNotFoundError
 from app.domain.form.entities import FormField, FormTemplate
 from app.domain.form.enums import FormFieldType, FormTemplateStatus
@@ -88,7 +88,6 @@ def build_use_case(
 def base_command(**overrides: object) -> CreateProjectCommand:
     fields: dict[str, object] = {
         "actor_id": "customer-1",
-        "customer_user_id": "customer-1",
         "category_id": "cat-1",
         "title": "Build an API",
         "description": "REST API for orders",
@@ -119,7 +118,7 @@ class TestCreateProjectUseCase:
         uow,
         make_category,
     ):
-        authorization_service.grant("customer-1", "project.create")
+        authorization_service.grant("customer-1", "project.create_own")
         make_category(category_id="cat-1")
         seed_published_template(form_template_repo)
         use_case = build_use_case(
@@ -140,9 +139,39 @@ class TestCreateProjectUseCase:
         assert result.status == ProjectStatus.DRAFT
         assert project.project_code.value.startswith("PRJ-2026-")
         assert project.customer_user_id == "customer-1"
+        assert project.created_by_user_id == "customer-1"
         assert project.form_template_id == "template-1"
         assert uow.committed is True
         assert len(status_history_repo.list_by_project(project.id)) == 1
+
+    def test_create_project_without_permission_raises(
+        self,
+        authorization_service,
+        project_repo,
+        category_repo,
+        form_template_repo,
+        status_history_repo,
+        project_code_generator,
+        id_generator,
+        clock,
+        uow,
+        make_category,
+    ):
+        make_category(category_id="cat-1")
+        use_case = build_use_case(
+            authorization_service,
+            project_repo,
+            category_repo,
+            form_template_repo,
+            status_history_repo,
+            project_code_generator,
+            id_generator,
+            clock,
+            uow,
+        )
+
+        with pytest.raises(PermissionDeniedError):
+            use_case.execute(base_command())
 
     def test_unknown_category_raises(
         self,
@@ -156,7 +185,7 @@ class TestCreateProjectUseCase:
         clock,
         uow,
     ):
-        authorization_service.grant("customer-1", "project.create")
+        authorization_service.grant("customer-1", "project.create_own")
         use_case = build_use_case(
             authorization_service,
             project_repo,
@@ -185,7 +214,7 @@ class TestCreateProjectUseCase:
         uow,
         make_category,
     ):
-        authorization_service.grant("customer-1", "project.create")
+        authorization_service.grant("customer-1", "project.create_own")
         make_category(category_id="cat-1")
         use_case = build_use_case(
             authorization_service,
@@ -215,7 +244,7 @@ class TestCreateProjectUseCase:
         uow,
         make_category,
     ):
-        authorization_service.grant("customer-1", "project.create")
+        authorization_service.grant("customer-1", "project.create_own")
         make_category(category_id="cat-1")
         seed_published_template(form_template_repo)
         use_case = build_use_case(
@@ -246,7 +275,7 @@ class TestCreateProjectUseCase:
         uow,
         make_category,
     ):
-        authorization_service.grant("customer-1", "project.create")
+        authorization_service.grant("customer-1", "project.create_own")
         make_category(category_id="cat-1")
         seed_published_template(form_template_repo)
         use_case = build_use_case(

@@ -32,6 +32,7 @@ def to_project_result(project: Project) -> ProjectResult:
         assigned_supervisor_user_id=project.assigned_supervisor_user_id,
         selected_application_id=project.selected_application_id,
         application_deadline=project.application_deadline,
+        created_by_user_id=project.created_by_user_id,
         created_at=project.created_at,
     )
 

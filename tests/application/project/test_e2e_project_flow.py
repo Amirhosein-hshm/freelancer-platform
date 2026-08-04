@@ -58,7 +58,7 @@ def test_full_project_lifecycle(
     make_profile,
     make_level,
 ):
-    authorization_service.grant("customer-1", "project.create")
+    authorization_service.grant("customer-1", "project.create_own")
     authorization_service.grant("customer-1", "project.manage_own")
     authorization_service.grant("freelancer-1", "project.apply")
     authorization_service.grant("admin-1", "form.manage")
@@ -122,7 +122,6 @@ def test_full_project_lifecycle(
     created = create_project.execute(
         CreateProjectCommand(
             actor_id="customer-1",
-            customer_user_id="customer-1",
             category_id="cat-1",
             title="Build an API",
             description="REST API for orders",

@@ -31,7 +31,7 @@ class TestRevokePermissionUseCase:
         permission_repo.add(
             Permission(
                 id="perm-1",
-                permission_key="project.create",
+                permission_key="project.create_own",
                 module="project",
                 action="create",
                 created_at=NOW,
@@ -55,7 +55,7 @@ class TestRevokePermissionUseCase:
         permission_repo.add(
             Permission(
                 id="perm-1",
-                permission_key="project.create",
+                permission_key="project.create_own",
                 module="project",
                 action="create",
                 created_at=NOW,
@@ -77,7 +77,7 @@ class TestRevokePermissionUseCase:
         permission_repo.add(
             Permission(
                 id="perm-1",
-                permission_key="project.create",
+                permission_key="project.create_own",
                 module="project",
                 action="create",
                 created_at=NOW,

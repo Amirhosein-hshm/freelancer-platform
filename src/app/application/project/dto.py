@@ -44,6 +44,7 @@ class ProjectResult:
     assigned_supervisor_user_id: EntityId | None
     selected_application_id: EntityId | None
     application_deadline: datetime | None
+    created_by_user_id: EntityId | None
     created_at: datetime
 
 
@@ -78,7 +79,30 @@ class DeliveryResult:
 @dataclass(frozen=True)
 class CreateProjectCommand:
     actor_id: EntityId
-    customer_user_id: EntityId
+    category_id: EntityId
+    title: str
+    description: str
+    visibility: ProjectVisibility
+    budget_type: BudgetType
+    currency_code: str
+    fixed_budget: Decimal | None = None
+    budget_min: Decimal | None = None
+    budget_max: Decimal | None = None
+    priority: ProjectPriority = ProjectPriority.NORMAL
+    application_deadline: datetime | None = None
+    form_values: list[FormValueInput] = field(default_factory=list)
+
+    def validate(self) -> None:
+        if not self.title.strip() or not self.description.strip():
+            raise ValidationError("title and description are required.")
+        if not self.currency_code.strip():
+            raise ValidationError("currency_code is required.")
+
+
+@dataclass(frozen=True)
+class CreateProjectOnBehalfCommand:
+    actor_id: EntityId
+    target_customer_user_id: EntityId
     category_id: EntityId
     title: str
     description: str

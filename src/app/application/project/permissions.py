@@ -1,4 +1,6 @@
-PERMISSION_PROJECT_CREATE = "project.create"
+PERMISSION_PROJECT_CREATE_OWN = "project.create_own"
+PERMISSION_PROJECT_CREATE_ON_BEHALF = "project.create_on_behalf"
 PERMISSION_PROJECT_APPLY = "project.apply"
+PERMISSION_PROJECT_APPLY_ON_BEHALF = "project.apply_on_behalf"
 PERMISSION_PROJECT_MANAGE_OWN = "project.manage_own"
 PERMISSION_PROJECT_MANAGE_ANY = "project.manage_any"

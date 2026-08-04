@@ -55,6 +55,7 @@ class Project(AggregateRoot):
     cancelled_at: datetime | None
     locked_at: datetime | None
     deleted_at: datetime | None
+    created_by_user_id: EntityId | None = None
 
     def publish(self, at: datetime) -> None:
         self._ensure_unlocked()
