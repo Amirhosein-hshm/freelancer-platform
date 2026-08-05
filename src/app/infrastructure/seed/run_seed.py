@@ -118,6 +118,7 @@ async def _seed_admin_user(session, now: datetime) -> None:
             role_id=admin_role_id,
             assigned_by_user_id="system-seed",
             assigned_at=now,
+            created_at=now,
             revoked_at=None,
             is_active=True,
         )
