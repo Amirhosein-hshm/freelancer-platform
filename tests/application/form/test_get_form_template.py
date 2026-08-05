@@ -37,38 +37,38 @@ def seed_published(template, field_type=FormFieldType.SELECT) -> None:
 
 
 class TestGetFormTemplateUseCase:
-    def test_returns_published_template(self, template_repo, make_template):
-        template = make_template(
+    async def test_returns_published_template(self, template_repo, make_template):
+        template = await make_template(
             template_id="template-1", status=FormTemplateStatus.PUBLISHED
         )
         seed_published(template)
         use_case = GetFormTemplateUseCase(template_repo=template_repo)
 
-        result = use_case.execute(GetFormTemplateQuery(category_id="cat-1"))
+        result = await use_case.execute(GetFormTemplateQuery(category_id="cat-1"))
 
         assert result.template_id == "template-1"
         assert result.status == FormTemplateStatus.PUBLISHED
         assert result.fields[0].field_key == "category"
         assert result.fields[0].options[0].option_key == "backend"
 
-    def test_returns_latest_published_version(self, template_repo, make_template):
-        make_template(
+    async def test_returns_latest_published_version(self, template_repo, make_template):
+        await make_template(
             template_id="template-1", category_id="cat-1", version_no=1,
             status=FormTemplateStatus.PUBLISHED,
         )
-        make_template(
+        await make_template(
             template_id="template-2", category_id="cat-1", version_no=2,
             status=FormTemplateStatus.PUBLISHED,
         )
         use_case = GetFormTemplateUseCase(template_repo=template_repo)
 
-        result = use_case.execute(GetFormTemplateQuery(category_id="cat-1"))
+        result = await use_case.execute(GetFormTemplateQuery(category_id="cat-1"))
 
         assert result.template_id == "template-2"
 
-    def test_no_published_template_raises(self, template_repo, make_template):
-        make_template(template_id="template-1")
+    async def test_no_published_template_raises(self, template_repo, make_template):
+        await make_template(template_id="template-1")
         use_case = GetFormTemplateUseCase(template_repo=template_repo)
 
         with pytest.raises(FormTemplateNotFoundError):
-            use_case.execute(GetFormTemplateQuery(category_id="cat-1"))
+            await use_case.execute(GetFormTemplateQuery(category_id="cat-1"))

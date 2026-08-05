@@ -4,7 +4,7 @@ from app.domain.ticketing.repositories import ITicketParticipantRepository
 
 
 class FakeTicketParticipantRepository(ITicketParticipantRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: list[TicketParticipant] = []
 
     async def add(self, participant: TicketParticipant) -> None:

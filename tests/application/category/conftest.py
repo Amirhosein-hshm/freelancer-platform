@@ -23,7 +23,7 @@ def user_repo() -> FakeUserRepository:
 def make_user(user_repo: FakeUserRepository):
     hasher = FakePasswordHasher()
 
-    def _make(
+    async def _make(
         user_id: str = "sup-1",
         email: str = "supervisor@example.com",
         status: UserStatus = UserStatus.ACTIVE,
@@ -33,14 +33,14 @@ def make_user(user_repo: FakeUserRepository):
             id=user_id,
             email=Email(email),
             phone=None,
-            password_hash=PasswordHash(hasher.hash("secret")),
+            password_hash=PasswordHash(await hasher.hash("secret")),
             first_name="Jane",
             last_name="Supervisor",
             status=status,
             created_at=NOW,
             **overrides,  # type: ignore[arg-type]
         )
-        user_repo.add(user)
+        await user_repo.add(user)
         return user
 
     return _make
@@ -58,7 +58,7 @@ def category_supervisor_repo() -> FakeCategorySupervisorRepository:
 
 @pytest.fixture
 def make_category(category_repo: FakeCategoryRepository):
-    def _make(category_id: str = "cat-1", slug: str = "web-development", **overrides: object) -> Category:
+    async def _make(category_id: str = "cat-1", slug: str = "web-development", **overrides: object) -> Category:
         fields: dict[str, object] = {
             "id": category_id,
             "parent_category_id": None,
@@ -72,7 +72,7 @@ def make_category(category_repo: FakeCategoryRepository):
         }
         fields.update(overrides)
         category = Category(**fields)  # type: ignore[arg-type]
-        category_repo.add(category)
+        await category_repo.add(category)
         return category
 
     return _make

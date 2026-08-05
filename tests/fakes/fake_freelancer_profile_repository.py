@@ -6,7 +6,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeFreelancerProfileRepository(IFreelancerProfileRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: dict[str, FreelancerProfile] = {}
         self._by_user_id: dict[str, FreelancerProfile] = {}
 

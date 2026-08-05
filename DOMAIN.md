@@ -1,21 +1,32 @@
-# DOMAIN.md — مشخصات لایه Domain
+# DOMAIN.md — Domain Layer Specification
 
-این فایل مرجع دقیق برای پیاده‌سازی `app/domain/*` است. هر بخش شامل: Entity/Value Object،
-قوانین کسب‌وکار داخل Entity، Exceptionهای اختصاصی، و Repository Interface است.
+> **Phase 2 note:** as of Phase 2, every method on every Repository Interface listed below
+> (`I*Repository`) becomes `async def`, and every caller in `application`/`infrastructure`
+> `await`s it — required for FastAPI + async SQLAlchemy. This document keeps the sync `def`
+> notation below for readability, since the signatures themselves (parameters, return types,
+> raised exceptions) are otherwise unchanged; treat every `def foo(...)` on a Repository
+> Interface as `async def foo(...)`. Entities, Value Objects, and their own methods (e.g.
+> `Project.assign_freelancer(...)`) stay synchronous — they are pure in-memory state
+> transitions with no I/O, and remain `def`, not `async def`.
+
+This file is the exact reference for implementing `app/domain/*`. Each section includes:
+Entity/Value Object, business rules inside the Entity, dedicated Exceptions, and Repository
+Interface.
 
 ## 0. Shared Kernel (`domain/shared`)
 
 ```python
 # domain/shared/types.py
-EntityId = str  # UUID4 به صورت رشته؛ تولید آن با IIdGenerator در application انجام می‌شود
-                  # (domain خودش UUID تولید نمی‌کند تا از side effect دور بماند مگر با تزریق)
+EntityId = str  # UUID4 as a string; generated via IIdGenerator in application
+                  # (domain never generates UUIDs itself, to stay free of side effects
+                  #  unless injected)
 
 # domain/shared/entity.py
 class Entity(ABC):
     id: EntityId
     created_at: datetime
     updated_at: datetime | None
-    # eq/hash بر اساس id
+    # eq/hash based on id
 
 class AggregateRoot(Entity):
     _domain_events: list[DomainEvent]
@@ -24,7 +35,7 @@ class AggregateRoot(Entity):
 
 # domain/shared/value_object.py
 @dataclass(frozen=True)
-class ValueObject(ABC): ...   # eq بر اساس همه فیلدها
+class ValueObject(ABC): ...   # eq based on all fields
 
 # domain/shared/exceptions.py
 class DomainError(Exception): ...
@@ -43,8 +54,8 @@ class IEventPublisher(ABC):
     def publish(self, events: list[DomainEvent]) -> None: ...
 ```
 
-جزئیات کامل سلسله‌مراتب Exception در `ERROR_HANDLING.md` آمده است — همه Exceptionهای
-اختصاصی هر context باید از یکی از کلاس‌های بالا ارث‌بری کنند، نه مستقیماً از `Exception`.
+Full Exception hierarchy detail is in `ERROR_HANDLING.md` — every context-specific
+Exception must inherit from one of the classes above, never directly from `Exception`.
 
 ---
 
@@ -52,11 +63,11 @@ class IEventPublisher(ABC):
 
 ### Value Objects
 
-- `Email(value: str)` — validate با regex ساده در `__post_init__`؛ در غیر این صورت
-  `InvalidEmailError` (ارث از `BusinessRuleViolationError`).
-- `PasswordHash(value: str)` — فقط wrapper، هش‌سازی واقعی در `application` از طریق
-  `IPasswordHasher` انجام می‌شود؛ Entity هرگز plaintext password نمی‌بیند.
-- `PhoneNumber(value: str)` — validate فرمت ساده.
+- `Email(value: str)` — validated with a simple regex in `__post_init__`; otherwise
+  `InvalidEmailError` (inherits `BusinessRuleViolationError`).
+- `PasswordHash(value: str)` — just a wrapper; real hashing happens in `application` via
+  `IPasswordHasher`; the Entity never sees plaintext passwords.
+- `PhoneNumber(value: str)` — simple format validation.
 
 ### Enums
 
@@ -80,14 +91,14 @@ class User(AggregateRoot):
     deleted_at: datetime | None
 
     def activate(self) -> None: ...          # PENDING/BLOCKED -> ACTIVE
-    def block(self, reason: str) -> None: ... # ACTIVE -> BLOCKED, رد می‌کند اگر ARCHIVED
+    def block(self, reason: str) -> None: ... # ACTIVE -> BLOCKED, raises if ARCHIVED
     def record_login(self, at: datetime) -> None: ...
     def change_password(self, new_hash: PasswordHash, at: datetime) -> None: ...
     def soft_delete(self, at: datetime) -> None: ...
     def is_active(self) -> bool: ...
 ```
 
-قانون: `block()` روی کاربر `ARCHIVED` باید `InvalidStateTransitionError` بدهد.
+Rule: `block()` on an `ARCHIVED` user must raise `InvalidStateTransitionError`.
 
 ```python
 @dataclass
@@ -97,8 +108,8 @@ class Role(Entity):
     description: str | None
     is_system: bool
     def rename(self, name: str) -> None: ...
-    # قانون: role با is_system=True قابل حذف نیست -> در Use Case چک می‌شود
-    # ولی امکان تغییر role_key هرگز فراهم نمی‌شود (immutable business key)
+    # rule: a role with is_system=True cannot be deleted -> checked in Use Case
+    # but role_key can never be changed (immutable business key)
 
 @dataclass
 class Permission(Entity):
@@ -152,6 +163,8 @@ class UserAlreadyBlockedError(InvalidStateTransitionError): ...
 class RoleAlreadyAssignedError(BusinessRuleViolationError): ...
 class SystemRoleImmutableError(BusinessRuleViolationError): ...
 class PermissionAlreadyGrantedError(UniqueConstraintViolationError): ...
+class CannotDeleteSelfError(BusinessRuleViolationError): ...
+class LastAdminCannotBeDeletedError(BusinessRuleViolationError): ...
 ```
 
 ### Repository Interfaces
@@ -187,6 +200,8 @@ class IUserRoleRepository(ABC):
     def add(self, user_role: UserRole) -> None: ...
     def find_active(self, user_id: EntityId, role_id: EntityId) -> UserRole | None: ...
     def list_active_roles_for_user(self, user_id: EntityId) -> list[Role]: ...
+    def list_active_user_ids_for_role(self, role_id: EntityId) -> list[EntityId]: ...
+    # ^ used by the last-active-admin guard in AdminDeleteUserUseCase.
     def update(self, user_role: UserRole) -> None: ...
 
 class IRolePermissionRepository(ABC):
@@ -197,6 +212,8 @@ class IRolePermissionRepository(ABC):
 class IRefreshTokenRepository(ABC):
     def add(self, token: RefreshToken) -> None: ...
     def get_by_jti(self, jti: str) -> RefreshToken: ...
+    def find_by_token_hash(self, token_hash: str) -> RefreshToken | None: ...
+    def update(self, token: RefreshToken) -> None: ...
     def revoke_all_for_user(self, user_id: EntityId, at: datetime) -> None: ...
 ```
 
@@ -243,9 +260,11 @@ class FreelancerProfile(AggregateRoot):
     hourly_rate_max: Decimal | None
     is_available: bool
     deleted_at: datetime | None
+    created_by_user_id: EntityId | None = None
+    # ^ on-behalf audit field per AUTHORIZATION.md §3.2 (defaults to the user id in the
+    #   self-service case; holds the admin id in AdminCreateFreelancerProfileOnBehalfUseCase).
 
     def submit_for_approval(self) -> None: ...
-        # فقط از PENDING/REJECTED مجاز؛ در غیر این صورت InvalidStateTransitionError
     def approve(self, admin_id: EntityId, at: datetime, note: str | None) -> None: ...
     def reject(self, admin_id: EntityId, at: datetime, note: str) -> None: ...
     def suspend(self, admin_id: EntityId, at: datetime, note: str) -> None: ...
@@ -253,7 +272,6 @@ class FreelancerProfile(AggregateRoot):
     def is_approved(self) -> bool: ...
     def set_availability(self, available: bool) -> None: ...
     def update_rate_range(self, min_rate: Decimal, max_rate: Decimal) -> None: ...
-        # قانون: min_rate <= max_rate وگرنه BusinessRuleViolationError
 
 @dataclass
 class FreelancerLevelHistory(Entity):
@@ -307,10 +325,16 @@ class IFreelancerProfileRepository(ABC):
 
 class IFreelancerLevelRepository(ABC):
     def get_by_id(self, level_id: EntityId) -> FreelancerLevel: ...
+    def get_by_key(self, level_key: str) -> FreelancerLevel: ...
     def list_active(self) -> list[FreelancerLevel]: ...
+
+class IFreelancerLevelHistoryRepository(ABC):
+    def add(self, history: FreelancerLevelHistory) -> None: ...
+    def list_by_profile(self, profile_id: EntityId) -> list[FreelancerLevelHistory]: ...
 
 class IResumeRepository(ABC):
     def add(self, resume: Resume) -> None: ...
+    def update(self, resume: Resume) -> None: ...
     def list_by_profile(self, profile_id: EntityId) -> list[Resume]: ...
     def get_current(self, profile_id: EntityId) -> Resume | None: ...
 
@@ -341,6 +365,7 @@ class Category(Entity):
     deleted_at: datetime | None
     def deactivate(self) -> None: ...
     def rename(self, name: str, slug: str) -> None: ...
+    def soft_delete(self, at: datetime) -> None: ...
 
 @dataclass
 class CategorySupervisor(Entity):
@@ -353,7 +378,8 @@ class CategorySupervisor(Entity):
     revoked_at: datetime | None
     def revoke(self, at: datetime) -> None: ...
     def promote(self) -> None: ...
-        # is_primary -> True (هنگام حذف مدیر اصلی، اولین مدیر فعال جایگزین می‌شود)
+        # is_primary -> True (when the primary supervisor is removed, the next active one
+        # is promoted)
 ```
 
 ### Domain Exceptions
@@ -362,6 +388,7 @@ class CategorySupervisor(Entity):
 class CategoryNotFoundError(EntityNotFoundError): ...
 class DuplicateCategorySlugError(UniqueConstraintViolationError): ...
 class SupervisorAlreadyAssignedError(BusinessRuleViolationError): ...
+class SupervisorAssignmentNotFoundError(EntityNotFoundError): ...
 ```
 
 ### Repository Interfaces
@@ -416,7 +443,9 @@ class FormField(Entity):
     options: list[FormFieldOption]
     is_active: bool
     def add_option(self, option: FormFieldOption) -> None: ...
-        # قانون: فقط برای field_type in {SELECT, MULTI_SELECT}
+        # rule: only for field_type in {SELECT, MULTI_SELECT}
+    def change_type(self, new_type: FormFieldType) -> None: ...
+    def get_option(self, option_key: str) -> FormFieldOption | None: ...
 
 @dataclass
 class FormTemplate(AggregateRoot):
@@ -432,17 +461,21 @@ class FormTemplate(AggregateRoot):
     deleted_at: datetime | None
 
     def add_field(self, field: FormField) -> None: ...
-        # قانون: فقط وقتی status == DRAFT
+        # rule: only when status == DRAFT
+    def remove_field(self, field_id: EntityId) -> None: ...
     def publish(self, published_by: EntityId, at: datetime) -> None: ...
-        # قانون: باید حداقل یک field داشته باشد؛ DRAFT -> PUBLISHED
-    def new_draft_version(self, new_version_no: int) -> "FormTemplate": ...
-        # کپی نسخه جدید برای ویرایش بدون اثر روی پروژه‌های قدیمی
+        # rule: must have at least one field; DRAFT -> PUBLISHED
+    def new_draft_version(self, new_version_no: int, at: datetime) -> "FormTemplate": ...
+    def require_draft(self, action: str) -> None: ...
 ```
 
 ### Domain Exceptions
 
 ```python
 class FormTemplateNotFoundError(EntityNotFoundError): ...
+class FieldNotFoundError(EntityNotFoundError): ...
+class DuplicateFieldKeyError(UniqueConstraintViolationError): ...
+class DuplicateOptionKeyError(UniqueConstraintViolationError): ...
 class FormTemplateAlreadyPublishedError(InvalidStateTransitionError): ...
 class FormTemplateHasNoFieldsError(BusinessRuleViolationError): ...
 class InvalidFieldOptionError(BusinessRuleViolationError): ...
@@ -488,17 +521,18 @@ class Budget:
     max_amount: Decimal | None
     currency_code: str
     def __post_init__(self) -> None: ...
-        # قانون: fixed لازم دارد fixed_amount; range لازم دارد min<=max
+        # rule: fixed requires fixed_amount; range requires min<=max
 
 @dataclass(frozen=True)
 class ProjectCode:
-    value: str   # مثل "PRJ-2026-001" — validate فرمت
+    value: str   # e.g. "PRJ-2026-001" — format validated
 ```
 
-### Entities (Project به عنوان Aggregate Root؛ ProjectApplication و ProjectDelivery
+### Entities
 
-Aggregateهای مجزا هستند که با `project_id` reference می‌کنند تا Aggregateها کوچک بمانند —
-هماهنگی بین آن‌ها به عهده Application Layer/Domain Service است)
+Project is the Aggregate Root; ProjectApplication and ProjectDelivery are separate
+Aggregates referencing `project_id` to keep Aggregates small — coordination between them is
+the responsibility of the Application Layer/Domain Service.
 
 ```python
 @dataclass
@@ -522,38 +556,28 @@ class Project(AggregateRoot):
     cancelled_at: datetime | None
     locked_at: datetime | None
     deleted_at: datetime | None
+    created_by_user_id: EntityId | None = None
+    # ^ on-behalf audit field per AUTHORIZATION.md §3.2 (self-service: equals
+    #   customer_user_id; on-behalf: the admin's actor_id).
 
-    # --- State machine methods (قوانین انتقال وضعیت اینجا اجرا می‌شوند) ---
     def publish(self, at: datetime) -> None: ...
-        # DRAFT -> PUBLISHED ; در غیر این صورت InvalidStateTransitionError
     def start_collecting_applications(self) -> None: ...
-        # PUBLISHED -> COLLECTING_APPLICATIONS
     def assign_freelancer(self, application_id: EntityId, at: datetime) -> None: ...
-        # COLLECTING_APPLICATIONS -> ASSIGNED
-        # قانون: اگر از قبل selected_application_id ست شده -> BusinessRuleViolationError
-        #        (Only one selected freelancer per project)
     def start(self, at: datetime) -> None: ...
-        # ASSIGNED -> IN_PROGRESS
     def mark_delivery_submitted(self) -> None: ...
-        # IN_PROGRESS/REVISION_REQUESTED -> DELIVERY_SUBMITTED
     def move_to_supervisor_review(self) -> None: ...
-        # DELIVERY_SUBMITTED -> UNDER_SUPERVISOR_REVIEW (فقط اگر assigned_supervisor_user_id ست شده)
     def move_to_customer_review(self) -> None: ...
-        # UNDER_SUPERVISOR_REVIEW -> AWAITING_CUSTOMER_REVIEW
-        # یا DELIVERY_SUBMITTED -> AWAITING_CUSTOMER_REVIEW (اگر ناظر ندارد)
     def request_revision(self) -> None: ...
-        # UNDER_SUPERVISOR_REVIEW/AWAITING_CUSTOMER_REVIEW -> REVISION_REQUESTED
     def complete(self, at: datetime) -> None: ...
-        # AWAITING_CUSTOMER_REVIEW -> COMPLETED ; بعد از آن locked_at ست می‌شود
+        # sets completed_at and locked_at
     def cancel(self, at: datetime, reason: str) -> None: ...
-        # از هر وضعیتِ غیر از COMPLETED/CANCELLED مجاز است
+        # sets cancelled_at and locked_at
     def is_locked(self) -> bool: ...
-        # قانون کلی: COMPLETED/CANCELLED -> locked؛ هر متد تغییردهنده باید ابتدا
-        # این را چک کند و BusinessRuleViolationError("project is locked") بدهد.
+        # COMPLETED/CANCELLED -> locked; every mutator checks this first and raises
+        # ProjectLockedError
     def can_accept_applications(self) -> bool: ...
     def has_supervisor(self) -> bool: ...
     def is_application_deadline_passed(self, at: datetime) -> bool: ...
-        # application_deadline ست شده و at > deadline -> True
 
 @dataclass
 class ProjectApplication(AggregateRoot):
@@ -569,14 +593,13 @@ class ProjectApplication(AggregateRoot):
     decision_note: str | None
     withdrawn_at: datetime | None
     submitted_by_user_id: EntityId | None = None
-        # مم‌ودِ ثبت درخواست (audit؛ می‌تواند در حالت on-behalf از freelancer_profile_id متفاوت باشد)
+        # audit: who actually submitted the application (may differ from
+        # freelancer_profile_id's owning user on the admin on-behalf path)
 
     def shortlist(self) -> None: ...
     def accept(self, decided_by: EntityId, at: datetime) -> None: ...
-        # فقط از APPLIED/SHORTLISTED
     def reject(self, decided_by: EntityId, at: datetime, note: str | None) -> None: ...
     def withdraw(self, at: datetime) -> None: ...
-        # فقط از APPLIED/SHORTLISTED؛ بعد از ACCEPTED مجاز نیست
 
 @dataclass
 class ProjectDelivery(AggregateRoot):
@@ -591,8 +614,10 @@ class ProjectDelivery(AggregateRoot):
     superseded_by_delivery_id: EntityId | None
     file_asset_ids: list[EntityId]
 
+    def mark_under_review(self) -> None: ...
     def approve(self, reviewer_id: EntityId, at: datetime) -> None: ...
     def reject(self, reviewer_id: EntityId, at: datetime) -> None: ...
+    def mark_revised(self) -> None: ...
     def supersede(self, new_delivery_id: EntityId) -> None: ...
 
 @dataclass
@@ -622,27 +647,24 @@ class ProjectStatusHistory(Entity):
 
 ### Domain Services (`domain/project/services.py`)
 
-قوانین کسب‌وکاری که به بیش از یک Aggregate وابسته‌اند، در Domain Service (pure function/
-stateless class) قرار می‌گیرند، نه در Use Case مستقیماً:
-
 ```python
 class RevisionPolicy:
     MAX_REVISIONS = 3
     @staticmethod
     def can_request_new_revision(existing_requests: list[ProjectRevisionRequest]) -> bool:
         return len(existing_requests) < RevisionPolicy.MAX_REVISIONS
-        # اگر False -> Use Case باید MaxRevisionsExceededError بدهد
     @staticmethod
     def ensure_can_request_new_revision(existing_requests: list[ProjectRevisionRequest]) -> None:
-        # اگر به سقف رسیده -> MaxRevisionsExceededError
+        # raises MaxRevisionsExceededError if at the cap
+        ...
 
 class FreelancerEligibilityPolicy:
     @staticmethod
     def is_eligible_to_apply(
         level: "FreelancerLevel", project: Project, active_application_count: int
     ) -> bool: ...
-        # اگر level غیرفعال باشد -> False
-        # چک can_apply_public/private_projects و max_active_applications
+        # returns False if level is inactive
+        # checks can_apply_public/private_projects and max_active_applications
 ```
 
 ### Domain Exceptions
@@ -659,6 +681,8 @@ class DeliveryNotFoundError(EntityNotFoundError): ...
 class MaxRevisionsExceededError(BusinessRuleViolationError): ...
 class FreelancerNotEligibleError(BusinessRuleViolationError): ...
 class ApplicationDeadlineExpiredError(BusinessRuleViolationError): ...
+class InvalidBudgetError(BusinessRuleViolationError): ...
+class InvalidProjectCodeError(BusinessRuleViolationError): ...
 ```
 
 ### Repository Interfaces
@@ -672,6 +696,7 @@ class IProjectRepository(ABC):
     def list_by_customer(self, customer_user_id: EntityId, status: ProjectStatus | None = None) -> list[Project]: ...
     def list_available_for_freelancer(self, level_id: EntityId) -> list[Project]: ...
     def list_by_supervisor(self, supervisor_user_id: EntityId) -> list[Project]: ...
+    def list_by_category(self, category_id: EntityId) -> list[Project]: ...
 
 class IProjectApplicationRepository(ABC):
     def add(self, application: ProjectApplication) -> None: ...
@@ -740,6 +765,7 @@ class ISupervisorReviewRepository(ABC):
     def get_by_delivery(self, project_delivery_id: EntityId) -> SupervisorReview: ...
     def find_by_delivery(self, project_delivery_id: EntityId) -> SupervisorReview | None: ...
     def list_pending_for_supervisor(self, supervisor_user_id: EntityId) -> list[SupervisorReview]: ...
+    def update(self, review: SupervisorReview) -> None: ...
 ```
 
 ---
@@ -754,7 +780,7 @@ class CustomerReview(Entity):
     project_id: EntityId
     project_delivery_id: EntityId
     customer_user_id: EntityId
-    decision: ReviewStatus     # از review.enums استفاده مجدد می‌شود
+    decision: ReviewStatus     # reused from review.enums
     comment: str | None
     reviewed_at: datetime
 
@@ -780,6 +806,10 @@ class InvalidRatingScoreError(BusinessRuleViolationError): ...
 class RatingAlreadyExistsError(UniqueConstraintViolationError): ...
 class ProjectNotCompletedError(BusinessRuleViolationError): ...
 ```
+
+> **Verify before Phase 2**: confirm whether `CustomerReviewNotApprovedError` (used by
+> `SubmitRatingUseCase` to enforce that the referenced `CustomerReview.decision ==
+APPROVED`) has been added here.
 
 ### Repository Interfaces
 
@@ -826,10 +856,12 @@ class Ticket(AggregateRoot):
     closed_at: datetime | None
     last_message_at: datetime | None
     deleted_at: datetime | None
+    submitted_by_user_id: EntityId | None = None
+    # ^ on-behalf audit field per AUTHORIZATION.md §3.2 (created_by_user_id holds the
+    #   target/requester; this field records the admin when created on their behalf).
 
     def assign(self, user_id: EntityId) -> None: ...
     def close(self, by_user_id: EntityId, at: datetime) -> None: ...
-        # قانون: تیکت CLOSED/ARCHIVED دیگر پیام جدید قبول نمی‌کند
     def touch_last_message(self, at: datetime) -> None: ...
     def is_closed(self) -> bool: ...
 
@@ -886,8 +918,8 @@ class ITicketParticipantRepository(ABC):
 
 ## 9. Reporting & Analytics (`domain/reporting`) — Read-Only
 
-این context فقط Read Model و یک Repository برای Query دارد؛ Entity قابل تغییر ندارد
-(بدون write side). خروجی‌ها به شکل dataclassهای ساده (نه Aggregate) برگردانده می‌شوند:
+This context has only a Read Model and a Query Repository; no mutable Entity (no write
+side). Outputs are simple dataclasses (not Aggregates):
 
 ```python
 @dataclass(frozen=True)
@@ -911,28 +943,27 @@ class IReportingReadRepository(ABC):
     def get_customer_statistics(self) -> "CustomerStatistics": ...
 ```
 
-نکته: چون این context صرفاً Query/Aggregation روی داده‌های سایر contextهاست، منطقی است
-که Repository آن در فاز ۲ مستقیماً روی چند جدول join بزند؛ در فاز ۱ فقط Interface و
-Read Model DTOها تعریف می‌شوند (بدون پیاده‌سازی).
+Because this context is purely Query/Aggregation over other contexts' data, its Phase 2
+repository implementation may join directly across several tables.
 
 ---
 
-## 10. قوانین کسب‌وکار سراسری (Cross-Context Business Rules)
+## 10. Cross-Context Business Rules
 
-این‌ها باید حتماً در سطح Entity/Domain Service پیاده شوند (نه فقط در application):
+These must be implemented at the Entity/Domain Service level (not only in application):
 
-1. هر Project حداکثر یک `selected_application_id` دارد → `Project.assign_freelancer`.
-2. Supervisor فقط پروژه‌های Category خودش را می‌بیند → چک در Use Case از طریق
-   `ICategorySupervisorRepository.is_supervisor_of` قبل از فراخوانی متد Entity.
-3. Freelancer فقط پروژه‌های متناسب با سطح خودش را می‌تواند Apply کند →
+1. A Project has at most one `selected_application_id` → `Project.assign_freelancer`.
+2. A Supervisor only sees projects in their own Category →
+   `ICategorySupervisorRepository.is_supervisor_of`, feeding the two-tier
+   `review.decide_own`/`review.decide_any` check (`AUTHORIZATION.md`).
+3. A Freelancer may only apply to projects matching their level →
    `FreelancerEligibilityPolicy`.
-4. حداکثر تعداد Revision = 3 → `RevisionPolicy`.
-5. پروژه Completed غیرقابل تغییر است → `Project.is_locked()` در همه متدهای mutator چک شود.
-6. Rating فقط بعد از Completion مجاز است → چک `project.status == COMPLETED` در
-   Use Case سطح Application (چون Rating به Aggregate دیگری تعلق دارد) +
-   Exception اختصاصی `ProjectNotCompletedError`.
-7. فقط Admin می‌تواند Freelancer را Approve کند → این یک قانون Authorization است، نه
-   Domain rule؛ در `application` از طریق `IAuthorizationService` چک می‌شود
-   (نگاه کن `APPLICATION.md` بخش Authorization).
-8. Reporting فقط Read Operation دارد → به همین دلیل هیچ Entity/Aggregate mutable در
-   این context تعریف نشده است.
+4. Maximum Revision count = 3 → `RevisionPolicy`, enforced on every revision-creating path.
+5. A Completed project is immutable → `Project.is_locked()` checked in every mutator.
+6. Rating is only allowed after Completion → checked via `project.status == COMPLETED` at
+   the Application layer + `ProjectNotCompletedError`.
+7. Only Admin can Approve a Freelancer → an Authorization rule, not a Domain rule; checked
+   via `IAuthorizationService` in `application`.
+8. Reporting is Read-Only → no mutable Entity/Aggregate in this context.
+9. Owned-resource mutations use the two-tier `_own`/`_any` convention; creation-on-behalf
+   uses the Self vs. On-Behalf Pattern B split — see `AUTHORIZATION.md` for both.

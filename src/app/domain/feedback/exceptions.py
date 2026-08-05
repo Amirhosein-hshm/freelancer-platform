@@ -14,3 +14,7 @@ class RatingAlreadyExistsError(UniqueConstraintViolationError):
 
 class ProjectNotCompletedError(BusinessRuleViolationError):
     """Raised when an action requires the project to be completed."""
+
+
+class CustomerReviewNotApprovedError(BusinessRuleViolationError):
+    """Raised when rating requires an approved customer review."""

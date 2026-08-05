@@ -7,7 +7,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeRefreshTokenRepository(IRefreshTokenRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: dict[str, RefreshToken] = {}
         self._by_hash: dict[str, RefreshToken] = {}
 

@@ -37,7 +37,7 @@ def make_ticket(
     ticket_repo: FakeTicketRepository,
     participant_repo: FakeTicketParticipantRepository,
 ):
-    def _make(
+    async def _make(
         ticket_id: str = "ticket-1",
         created_by: str = "user-1",
         status: TicketStatus = TicketStatus.OPEN,
@@ -62,8 +62,8 @@ def make_ticket(
         }
         fields.update(overrides)
         ticket = Ticket(**fields)  # type: ignore[arg-type]
-        ticket_repo.add(ticket)
-        participant_repo.add(
+        await ticket_repo.add(ticket)
+        await participant_repo.add(
             TicketParticipant(
                 id=f"participant-{ticket_id}-{created_by}",
                 ticket_id=ticket_id,

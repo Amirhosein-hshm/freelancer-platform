@@ -171,6 +171,16 @@ class ApplyForProjectResult:
 
 
 @dataclass(frozen=True)
+class AdminApplyForProjectOnBehalfCommand:
+    actor_id: EntityId
+    target_freelancer_profile_id: EntityId
+    project_id: EntityId
+    cover_letter: str | None = None
+    proposed_amount: Decimal | None = None
+    proposed_days: int | None = None
+
+
+@dataclass(frozen=True)
 class WithdrawApplicationCommand:
     actor_id: EntityId
     application_id: EntityId

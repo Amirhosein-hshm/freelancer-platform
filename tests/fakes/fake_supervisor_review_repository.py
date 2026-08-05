@@ -6,7 +6,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeSupervisorReviewRepository(ISupervisorReviewRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: dict[str, SupervisorReview] = {}
 
     async def add(self, review: SupervisorReview) -> None:

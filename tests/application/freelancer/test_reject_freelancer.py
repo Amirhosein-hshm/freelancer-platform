@@ -17,34 +17,34 @@ def build_use_case(authorization_service, profile_repo, clock, uow) -> RejectFre
 
 
 class TestRejectFreelancerUseCase:
-    def test_reject_pending(self, authorization_service, profile_repo, clock, uow, make_profile):
+    async def test_reject_pending(self, authorization_service, profile_repo, clock, uow, make_profile):
         authorization_service.grant("admin", "freelancer.approve")
-        make_profile(profile_id="profile-1")
+        await make_profile(profile_id="profile-1")
         use_case = build_use_case(authorization_service, profile_repo, clock, uow)
 
-        result = use_case.execute(
+        result = await use_case.execute(
             RejectFreelancerCommand(actor_id="admin", profile_id="profile-1", note="No portfolio")
         )
 
         assert result.approval_status == FreelancerApprovalStatus.REJECTED
-        assert profile_repo.get_by_id("profile-1").approval_note == "No portfolio"
+        assert (await profile_repo.get_by_id("profile-1")).approval_note == "No portfolio"
         assert uow.committed is True
 
-    def test_requires_permission(self, authorization_service, profile_repo, clock, uow, make_profile):
-        make_profile(profile_id="profile-1")
+    async def test_requires_permission(self, authorization_service, profile_repo, clock, uow, make_profile):
+        await make_profile(profile_id="profile-1")
         use_case = build_use_case(authorization_service, profile_repo, clock, uow)
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(
+            await use_case.execute(
                 RejectFreelancerCommand(actor_id="admin", profile_id="profile-1", note="x")
             )
 
-    def test_reject_approved_raises(self, authorization_service, profile_repo, clock, uow, make_profile):
+    async def test_reject_approved_raises(self, authorization_service, profile_repo, clock, uow, make_profile):
         authorization_service.grant("admin", "freelancer.approve")
-        make_profile(profile_id="profile-1", approval_status=FreelancerApprovalStatus.APPROVED)
+        await make_profile(profile_id="profile-1", approval_status=FreelancerApprovalStatus.APPROVED)
         use_case = build_use_case(authorization_service, profile_repo, clock, uow)
 
         with pytest.raises(InvalidStateTransitionError):
-            use_case.execute(
+            await use_case.execute(
                 RejectFreelancerCommand(actor_id="admin", profile_id="profile-1", note="x")
             )

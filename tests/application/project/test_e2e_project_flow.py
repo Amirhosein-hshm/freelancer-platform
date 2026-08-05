@@ -38,7 +38,7 @@ from app.domain.project.enums import (
 NOW = datetime(2026, 8, 2, tzinfo=UTC)
 
 
-def test_full_project_lifecycle(
+async def test_full_project_lifecycle(
     authorization_service,
     project_repo,
     category_repo,
@@ -62,9 +62,9 @@ def test_full_project_lifecycle(
     authorization_service.grant("customer-1", "project.manage_own")
     authorization_service.grant("freelancer-1", "project.apply")
     authorization_service.grant("admin-1", "form.manage")
-    make_category(category_id="cat-1")
+    await make_category(category_id="cat-1")
     make_level(level_id="level-1", max_active_applications=3)
-    make_profile(profile_id="profile-1", user_id="freelancer-1")
+    await make_profile(profile_id="profile-1", user_id="freelancer-1")
 
     create_template = CreateFormTemplateUseCase(
         authorization_service=authorization_service,
@@ -73,7 +73,7 @@ def test_full_project_lifecycle(
         clock=clock,
         uow=uow,
     )
-    template_result = create_template.execute(
+    template_result = await create_template.execute(
         CreateFormTemplateCommand(
             actor_id="admin-1",
             category_id="cat-1",
@@ -88,7 +88,7 @@ def test_full_project_lifecycle(
         clock=clock,
         uow=uow,
     )
-    add_field_result = add_field.execute(
+    add_field_result = await add_field.execute(
         AddFieldCommand(
             actor_id="admin-1",
             template_id=template_result.template_id,
@@ -104,7 +104,7 @@ def test_full_project_lifecycle(
         clock=clock,
         uow=uow,
     )
-    publish_template.execute(
+    await publish_template.execute(
         PublishFormTemplateCommand(template_id=template_result.template_id, published_by="admin-1")
     )
 
@@ -119,7 +119,7 @@ def test_full_project_lifecycle(
         clock=clock,
         uow=uow,
     )
-    created = create_project.execute(
+    created = await create_project.execute(
         CreateProjectCommand(
             actor_id="customer-1",
             category_id="cat-1",
@@ -142,7 +142,7 @@ def test_full_project_lifecycle(
         clock=clock,
         uow=uow,
     )
-    published = publish_project.execute(
+    published = await publish_project.execute(
         PublishProjectCommand(actor_id="customer-1", project_id=created.project_id)
     )
     assert published.status == ProjectStatus.COLLECTING_APPLICATIONS
@@ -157,7 +157,7 @@ def test_full_project_lifecycle(
         clock=clock,
         uow=uow,
     )
-    application = apply.execute(
+    application = await apply.execute(
         ApplyForProjectCommand(
             actor_id="freelancer-1",
             project_id=created.project_id,
@@ -174,7 +174,7 @@ def test_full_project_lifecycle(
         clock=clock,
         uow=uow,
     )
-    accepted = accept.execute(
+    accepted = await accept.execute(
         AcceptFreelancerCommand(actor_id="customer-1", application_id=application.application_id)
     )
     assert accepted.status == ProjectStatus.ASSIGNED
@@ -187,7 +187,7 @@ def test_full_project_lifecycle(
         clock=clock,
         uow=uow,
     )
-    started = start.execute(
+    started = await start.execute(
         StartProjectCommand(actor_id="customer-1", project_id=created.project_id)
     )
     assert started.status == ProjectStatus.IN_PROGRESS
@@ -203,7 +203,7 @@ def test_full_project_lifecycle(
         clock=clock,
         uow=uow,
     )
-    first_delivery = submit.execute(
+    first_delivery = await submit.execute(
         SubmitDeliveryCommand(actor_id="freelancer-1", project_id=created.project_id, delivery_note="v1")
     )
     assert first_delivery.project_status == ProjectStatus.AWAITING_CUSTOMER_REVIEW
@@ -218,17 +218,17 @@ def test_full_project_lifecycle(
         clock=clock,
         uow=uow,
     )
-    revised = revise.execute(
+    revised = await revise.execute(
         RequestRevisionCommand(actor_id="customer-1", project_id=created.project_id, reason="Fix auth")
     )
     assert revised.project_status == ProjectStatus.REVISION_REQUESTED
 
-    second_delivery = submit.execute(
+    second_delivery = await submit.execute(
         SubmitDeliveryCommand(actor_id="freelancer-1", project_id=created.project_id, delivery_note="v2")
     )
     assert second_delivery.version_no == 2
     assert second_delivery.project_status == ProjectStatus.AWAITING_CUSTOMER_REVIEW
-    assert delivery_repo.get_by_id(first_delivery.delivery_id).status.value == "superseded"
+    assert (await delivery_repo.get_by_id(first_delivery.delivery_id)).status.value == "superseded"
 
     complete = CompleteProjectUseCase(
         authorization_service=authorization_service,
@@ -238,12 +238,12 @@ def test_full_project_lifecycle(
         clock=clock,
         uow=uow,
     )
-    completed = complete.execute(
+    completed = await complete.execute(
         CompleteProjectCommand(actor_id="customer-1", project_id=created.project_id)
     )
     assert completed.status == ProjectStatus.COMPLETED
 
-    project = project_repo.get_by_id(created.project_id)
+    project = await project_repo.get_by_id(created.project_id)
     assert project.is_locked() is True
     assert project.completed_at == NOW
-    assert len(revision_repo.list_by_project(project.id)) == 1
+    assert len(await revision_repo.list_by_project(project.id)) == 1

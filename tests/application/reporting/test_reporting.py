@@ -29,18 +29,18 @@ def build_dashboard(auth, read_repo):
 
 
 class TestReportingUseCases:
-    def test_dashboard_statistics(self):
+    async def test_dashboard_statistics(self):
         auth = FakeAuthorizationService()
         auth.grant("admin-1", "reporting.read")
         read_repo = FakeReportingReadRepository()
         use_case = build_dashboard(auth, read_repo)
 
-        result = use_case.execute(ReportingQuery(actor_id="admin-1"))
+        result = await use_case.execute(ReportingQuery(actor_id="admin-1"))
 
         assert result.total_users == 10
         assert result.total_revenue == Decimal("1200.00")
 
-    def test_user_statistics(self):
+    async def test_user_statistics(self):
         auth = FakeAuthorizationService()
         auth.grant("admin-1", "reporting.read")
         use_case = GetUserStatisticsUseCase(
@@ -48,11 +48,11 @@ class TestReportingUseCases:
             reporting_read_repo=FakeReportingReadRepository(),
         )
 
-        result = use_case.execute(ReportingQuery(actor_id="admin-1"))
+        result = await use_case.execute(ReportingQuery(actor_id="admin-1"))
 
         assert result.verified_users == 8
 
-    def test_project_statistics(self):
+    async def test_project_statistics(self):
         auth = FakeAuthorizationService()
         auth.grant("admin-1", "reporting.read")
         use_case = GetProjectStatisticsUseCase(
@@ -60,11 +60,11 @@ class TestReportingUseCases:
             reporting_read_repo=FakeReportingReadRepository(),
         )
 
-        result = use_case.execute(ReportingQuery(actor_id="admin-1"))
+        result = await use_case.execute(ReportingQuery(actor_id="admin-1"))
 
         assert result.completed == 5
 
-    def test_freelancer_statistics(self):
+    async def test_freelancer_statistics(self):
         auth = FakeAuthorizationService()
         auth.grant("admin-1", "reporting.read")
         use_case = GetFreelancerStatisticsUseCase(
@@ -72,12 +72,12 @@ class TestReportingUseCases:
             reporting_read_repo=FakeReportingReadRepository(),
         )
 
-        result = use_case.execute(ReportingQuery(actor_id="admin-1"))
+        result = await use_case.execute(ReportingQuery(actor_id="admin-1"))
 
         assert result.approved_freelancers == 3
         assert result.average_rating == Decimal("4.5")
 
-    def test_customer_statistics(self):
+    async def test_customer_statistics(self):
         auth = FakeAuthorizationService()
         auth.grant("admin-1", "reporting.read")
         use_case = GetCustomerStatisticsUseCase(
@@ -85,11 +85,11 @@ class TestReportingUseCases:
             reporting_read_repo=FakeReportingReadRepository(),
         )
 
-        result = use_case.execute(ReportingQuery(actor_id="admin-1"))
+        result = await use_case.execute(ReportingQuery(actor_id="admin-1"))
 
         assert result.total_customers == 6
 
-    def test_system_analytics_composes_all_views(self):
+    async def test_system_analytics_composes_all_views(self):
         auth = FakeAuthorizationService()
         auth.grant("admin-1", "reporting.read")
         use_case = GetSystemAnalyticsUseCase(
@@ -97,7 +97,7 @@ class TestReportingUseCases:
             reporting_read_repo=FakeReportingReadRepository(),
         )
 
-        result = use_case.execute(ReportingQuery(actor_id="admin-1"))
+        result = await use_case.execute(ReportingQuery(actor_id="admin-1"))
 
         assert result.dashboard.total_freelancers == 4
         assert result.users.total_users == 10
@@ -105,9 +105,9 @@ class TestReportingUseCases:
         assert result.freelancers.pending_freelancers == 1
         assert result.customers.active_projects == 3
 
-    def test_missing_permission_raises(self):
+    async def test_missing_permission_raises(self):
         auth = FakeAuthorizationService()
         use_case = build_dashboard(auth, FakeReportingReadRepository())
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(ReportingQuery(actor_id="user-1"))
+            await use_case.execute(ReportingQuery(actor_id="user-1"))

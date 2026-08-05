@@ -28,7 +28,7 @@ def project_repo() -> FakeProjectRepository:
 
 @pytest.fixture
 def make_project(project_repo: FakeProjectRepository):
-    def _make(
+    async def _make(
         project_id: str = "project-1",
         category_id: str = "cat-1",
         status: ProjectStatus = ProjectStatus.COLLECTING_APPLICATIONS,
@@ -65,28 +65,28 @@ def make_project(project_repo: FakeProjectRepository):
         }
         fields.update(overrides)
         project = Project(**fields)  # type: ignore[arg-type]
-        project_repo.add(project)
+        await project_repo.add(project)
         return project
 
     return _make
 
 
 class TestGetCategoryProjectsUseCase:
-    def test_returns_open_projects_of_category(self, category_repo, project_repo, make_category, make_project):
-        make_category(category_id="cat-1")
-        make_project(project_id="project-1", category_id="cat-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
-        make_project(project_id="project-2", category_id="cat-1", status=ProjectStatus.PUBLISHED)
-        make_project(project_id="project-3", category_id="cat-1", status=ProjectStatus.IN_PROGRESS)
-        make_project(project_id="project-4", category_id="cat-2", status=ProjectStatus.COLLECTING_APPLICATIONS)
+    async def test_returns_open_projects_of_category(self, category_repo, project_repo, make_category, make_project):
+        await make_category(category_id="cat-1")
+        await make_project(project_id="project-1", category_id="cat-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
+        await make_project(project_id="project-2", category_id="cat-1", status=ProjectStatus.PUBLISHED)
+        await make_project(project_id="project-3", category_id="cat-1", status=ProjectStatus.IN_PROGRESS)
+        await make_project(project_id="project-4", category_id="cat-2", status=ProjectStatus.COLLECTING_APPLICATIONS)
         use_case = GetCategoryProjectsUseCase(category_repo=category_repo, project_repo=project_repo)
 
-        result = use_case.execute(GetCategoryProjectsQuery(category_id="cat-1"))
+        result = await use_case.execute(GetCategoryProjectsQuery(category_id="cat-1"))
 
         assert [p.project_id for p in result.projects] == ["project-1", "project-2"]
         assert result.category_id == "cat-1"
 
-    def test_unknown_category_raises(self, category_repo, project_repo):
+    async def test_unknown_category_raises(self, category_repo, project_repo):
         use_case = GetCategoryProjectsUseCase(category_repo=category_repo, project_repo=project_repo)
 
         with pytest.raises(CategoryNotFoundError):
-            use_case.execute(GetCategoryProjectsQuery(category_id="missing"))
+            await use_case.execute(GetCategoryProjectsQuery(category_id="missing"))

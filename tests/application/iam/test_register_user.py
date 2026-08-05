@@ -32,7 +32,7 @@ def build_use_case(
 
 
 class TestRegisterUserUseCase:
-    def test_register_creates_pending_user_with_customer_role(
+    async def test_register_creates_pending_user_with_customer_role(
         self,
         user_repo,
         user_role_repo,
@@ -48,7 +48,7 @@ class TestRegisterUserUseCase:
             id_generator, clock, notification_service, uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             RegisterUserCommand(
                 email="new@example.com", password="pw", first_name="Ada", last_name="Lovelace"
             )
@@ -56,13 +56,13 @@ class TestRegisterUserUseCase:
 
         assert result.status == UserStatus.PENDING.value
         assert result.email == "new@example.com"
-        user = user_repo.get_by_email(Email("new@example.com"))
+        user = await user_repo.get_by_email(Email("new@example.com"))
         assert user.status == UserStatus.PENDING
-        assert user_role_repo.find_active(user.id, "role-customer") is not None
+        assert (await user_role_repo.find_active(user.id, "role-customer")) is not None
         assert uow.committed is True
         assert notification_service.verification_tokens
 
-    def test_register_duplicate_email_raises(
+    async def test_register_duplicate_email_raises(
         self,
         user_repo,
         user_role_repo,
@@ -74,20 +74,20 @@ class TestRegisterUserUseCase:
         uow,
         make_user,
     ):
-        make_user(email="dup@example.com")
+        await make_user(email="dup@example.com")
         use_case = build_use_case(
             user_repo, user_role_repo, role_repo, password_hasher,
             id_generator, clock, notification_service, uow,
         )
 
         with pytest.raises(DuplicateEmailError):
-            use_case.execute(
+            await use_case.execute(
                 RegisterUserCommand(
                     email="dup@example.com", password="pw", first_name="A", last_name="B"
                 )
             )
 
-    def test_register_invalid_email_raises(
+    async def test_register_invalid_email_raises(
         self,
         user_repo,
         user_role_repo,
@@ -104,13 +104,13 @@ class TestRegisterUserUseCase:
         )
 
         with pytest.raises(InvalidEmailError):
-            use_case.execute(
+            await use_case.execute(
                 RegisterUserCommand(
                     email="not-an-email", password="pw", first_name="A", last_name="B"
                 )
             )
 
-    def test_register_missing_fields_raises_validation_error(
+    async def test_register_missing_fields_raises_validation_error(
         self,
         user_repo,
         user_role_repo,
@@ -127,11 +127,11 @@ class TestRegisterUserUseCase:
         )
 
         with pytest.raises(ValidationError):
-            use_case.execute(
+            await use_case.execute(
                 RegisterUserCommand(email="", password="", first_name="", last_name="")
             )
 
-    def test_register_missing_default_role_raises(
+    async def test_register_missing_default_role_raises(
         self,
         user_repo,
         user_role_repo,
@@ -147,7 +147,7 @@ class TestRegisterUserUseCase:
         )
 
         with pytest.raises(RoleNotFoundError):
-            use_case.execute(
+            await use_case.execute(
                 RegisterUserCommand(
                     email="new@example.com", password="pw", first_name="A", last_name="B"
                 )

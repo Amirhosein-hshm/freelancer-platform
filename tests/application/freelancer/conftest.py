@@ -94,7 +94,7 @@ def make_level(level_repo: FakeFreelancerLevelRepository):
 
 @pytest.fixture
 def make_profile(profile_repo: FakeFreelancerProfileRepository):
-    def _make(
+    async def _make(
         profile_id: str = "profile-1",
         user_id: str = "user-1",
         **overrides: object,
@@ -121,7 +121,7 @@ def make_profile(profile_repo: FakeFreelancerProfileRepository):
         }
         fields.update(overrides)
         profile = FreelancerProfile(**fields)  # type: ignore[arg-type]
-        profile_repo.add(profile)
+        await profile_repo.add(profile)
         return profile
 
     return _make
@@ -129,7 +129,7 @@ def make_profile(profile_repo: FakeFreelancerProfileRepository):
 
 @pytest.fixture
 def make_portfolio_item(portfolio_item_repo: FakePortfolioItemRepository):
-    def _make(item_id: str = "item-1", profile_id: str = "profile-1", **overrides: object) -> PortfolioItem:
+    async def _make(item_id: str = "item-1", profile_id: str = "profile-1", **overrides: object) -> PortfolioItem:
         fields: dict[str, object] = {
             "id": item_id,
             "freelancer_profile_id": profile_id,
@@ -144,7 +144,7 @@ def make_portfolio_item(portfolio_item_repo: FakePortfolioItemRepository):
         }
         fields.update(overrides)
         item = PortfolioItem(**fields)  # type: ignore[arg-type]
-        portfolio_item_repo.add(item)
+        await portfolio_item_repo.add(item)
         return item
 
     return _make

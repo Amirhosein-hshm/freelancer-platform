@@ -13,12 +13,12 @@ def build_use_case(authorization_service, category_repo, uow) -> UpdateCategoryU
 
 
 class TestUpdateCategoryUseCase:
-    def test_update_category_succeeds(self, authorization_service, category_repo, uow, make_category):
+    async def test_update_category_succeeds(self, authorization_service, category_repo, uow, make_category):
         authorization_service.grant("admin", "category.manage")
-        make_category(category_id="cat-1", slug="old-slug")
+        await make_category(category_id="cat-1", slug="old-slug")
         use_case = build_use_case(authorization_service, category_repo, uow)
 
-        result = use_case.execute(
+        result = await use_case.execute(
             UpdateCategoryCommand(
                 actor_id="admin", category_id="cat-1", name="New Name", slug="new-slug"
             )
@@ -26,38 +26,38 @@ class TestUpdateCategoryUseCase:
 
         assert result.name == "New Name"
         assert result.slug == "new-slug"
-        assert category_repo.get_by_id("cat-1").name == "New Name"
+        assert (await category_repo.get_by_id("cat-1")).name == "New Name"
 
-    def test_update_duplicate_slug_raises(
+    async def test_update_duplicate_slug_raises(
         self, authorization_service, category_repo, uow, make_category
     ):
         authorization_service.grant("admin", "category.manage")
-        make_category(category_id="cat-1", slug="cat-one")
-        make_category(category_id="cat-2", slug="taken")
+        await make_category(category_id="cat-1", slug="cat-one")
+        await make_category(category_id="cat-2", slug="taken")
         use_case = build_use_case(authorization_service, category_repo, uow)
 
         with pytest.raises(DuplicateCategorySlugError):
-            use_case.execute(
+            await use_case.execute(
                 UpdateCategoryCommand(actor_id="admin", category_id="cat-1", name="X", slug="taken")
             )
 
-    def test_update_unknown_category_raises(self, authorization_service, category_repo, uow):
+    async def test_update_unknown_category_raises(self, authorization_service, category_repo, uow):
         authorization_service.grant("admin", "category.manage")
         use_case = build_use_case(authorization_service, category_repo, uow)
 
         with pytest.raises(CategoryNotFoundError):
-            use_case.execute(
+            await use_case.execute(
                 UpdateCategoryCommand(actor_id="admin", category_id="ghost", name="X", slug="x")
             )
 
-    def test_update_missing_fields_raises_validation(
+    async def test_update_missing_fields_raises_validation(
         self, authorization_service, category_repo, uow, make_category
     ):
         authorization_service.grant("admin", "category.manage")
-        make_category(category_id="cat-1")
+        await make_category(category_id="cat-1")
         use_case = build_use_case(authorization_service, category_repo, uow)
 
         with pytest.raises(ValidationError):
-            use_case.execute(
+            await use_case.execute(
                 UpdateCategoryCommand(actor_id="admin", category_id="cat-1", name="", slug="")
             )

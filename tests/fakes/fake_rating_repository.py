@@ -6,7 +6,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeRatingRepository(IRatingRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: list[Rating] = []
 
     async def add(self, rating: Rating) -> None:
@@ -24,7 +24,7 @@ class FakeRatingRepository(IRatingRepository):
     async def average_score_for_freelancer(
         self, freelancer_profile_id: EntityId
     ) -> Decimal | None:
-        scores = [r.score for r in self.list_by_freelancer(freelancer_profile_id)]
+        scores = [r.score for r in await self.list_by_freelancer(freelancer_profile_id)]
         if not scores:
             return None
         return Decimal(sum(scores)) / Decimal(len(scores))

@@ -11,7 +11,7 @@ from app.domain.reporting.repositories import IReportingReadRepository
 
 
 class FakeReportingReadRepository(IReportingReadRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self.dashboard = DashboardStatistics(
             total_users=10,
             active_projects=3,

@@ -24,11 +24,11 @@ def build_use_case(
 
 
 class TestRevokePermissionUseCase:
-    def test_revoke_permission_success(
+    async def test_revoke_permission_success(
         self, authorization_service, role_repo, permission_repo, role_permission_repo, uow
     ):
         authorization_service.grant("admin", "user.revoke_permission")
-        permission_repo.add(
+        await permission_repo.add(
             Permission(
                 id="perm-1",
                 permission_key="project.create_own",
@@ -41,7 +41,7 @@ class TestRevokePermissionUseCase:
             authorization_service, role_repo, permission_repo, role_permission_repo, uow
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             RevokePermissionCommand(actor_id="admin", role_id="role-customer", permission_id="perm-1")
         )
 
@@ -49,10 +49,10 @@ class TestRevokePermissionUseCase:
         assert result.permission_id == "perm-1"
         assert uow.committed is True
 
-    def test_revoke_permission_requires_permission(
+    async def test_revoke_permission_requires_permission(
         self, authorization_service, role_repo, permission_repo, role_permission_repo, uow
     ):
-        permission_repo.add(
+        await permission_repo.add(
             Permission(
                 id="perm-1",
                 permission_key="project.create_own",
@@ -66,15 +66,15 @@ class TestRevokePermissionUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(
+            await use_case.execute(
                 RevokePermissionCommand(actor_id="admin", role_id="role-customer", permission_id="perm-1")
             )
 
-    def test_revoke_permission_system_role_raises(
+    async def test_revoke_permission_system_role_raises(
         self, authorization_service, role_repo, permission_repo, role_permission_repo, uow
     ):
         authorization_service.grant("admin", "user.revoke_permission")
-        permission_repo.add(
+        await permission_repo.add(
             Permission(
                 id="perm-1",
                 permission_key="project.create_own",
@@ -88,6 +88,6 @@ class TestRevokePermissionUseCase:
         )
 
         with pytest.raises(SystemRoleImmutableError):
-            use_case.execute(
+            await use_case.execute(
                 RevokePermissionCommand(actor_id="admin", role_id="role-system", permission_id="perm-1")
             )

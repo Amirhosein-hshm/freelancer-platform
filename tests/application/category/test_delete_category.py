@@ -15,23 +15,23 @@ def build_use_case(authorization_service, category_repo, clock, uow) -> DeleteCa
 
 
 class TestDeleteCategoryUseCase:
-    def test_delete_soft_deletes_category(
+    async def test_delete_soft_deletes_category(
         self, authorization_service, category_repo, clock, uow, make_category
     ):
         authorization_service.grant("admin", "category.manage")
-        make_category(category_id="cat-1")
+        await make_category(category_id="cat-1")
         use_case = build_use_case(authorization_service, category_repo, clock, uow)
 
-        result = use_case.execute(DeleteCategoryCommand(actor_id="admin", category_id="cat-1"))
+        result = await use_case.execute(DeleteCategoryCommand(actor_id="admin", category_id="cat-1"))
 
         assert result.category_id == "cat-1"
-        category = category_repo.get_by_id("cat-1")
-        assert category.deleted_at == clock.now()
-        assert category_repo.list_active() == []
+        category = await category_repo.get_by_id("cat-1")
+        assert category.deleted_at == await clock.now()
+        assert await category_repo.list_active() == []
 
-    def test_delete_unknown_category_raises(self, authorization_service, category_repo, clock, uow):
+    async def test_delete_unknown_category_raises(self, authorization_service, category_repo, clock, uow):
         authorization_service.grant("admin", "category.manage")
         use_case = build_use_case(authorization_service, category_repo, clock, uow)
 
         with pytest.raises(CategoryNotFoundError):
-            use_case.execute(DeleteCategoryCommand(actor_id="admin", category_id="ghost"))
+            await use_case.execute(DeleteCategoryCommand(actor_id="admin", category_id="ghost"))

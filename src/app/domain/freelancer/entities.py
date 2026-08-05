@@ -47,6 +47,7 @@ class FreelancerProfile(AggregateRoot):
     hourly_rate_max: Decimal | None
     is_available: bool
     deleted_at: datetime | None
+    created_by_user_id: EntityId | None = None
 
     def submit_for_approval(self) -> None:
         if self.approval_status in (

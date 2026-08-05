@@ -37,8 +37,8 @@ def category_repo() -> FakeCategoryRepository:
 
 
 @pytest.fixture
-def make_category(category_repo: FakeCategoryRepository):
-    def _make(category_id: str = "cat-1", **overrides: object) -> Category:
+async def make_category(category_repo: FakeCategoryRepository):
+    async def _make(category_id: str = "cat-1", **overrides: object) -> Category:
         fields: dict[str, object] = {
             "id": category_id,
             "parent_category_id": None,
@@ -52,7 +52,7 @@ def make_category(category_repo: FakeCategoryRepository):
         }
         fields.update(overrides)
         category = Category(**fields)  # type: ignore[arg-type]
-        category_repo.add(category)
+        await category_repo.add(category)
         return category
 
     return _make
@@ -104,8 +104,12 @@ def make_level(level_repo: FakeFreelancerLevelRepository):
 
 
 @pytest.fixture
-def make_profile(profile_repo: FakeFreelancerProfileRepository):
-    def _make(profile_id: str = "profile-1", user_id: str = "freelancer-1", **overrides: object) -> FreelancerProfile:
+async def make_profile(profile_repo: FakeFreelancerProfileRepository):
+    async def _make(
+        profile_id: str = "profile-1",
+        user_id: str = "freelancer-1",
+        **overrides: object,
+    ) -> FreelancerProfile:
         fields: dict[str, object] = {
             "id": profile_id,
             "user_id": user_id,
@@ -128,7 +132,7 @@ def make_profile(profile_repo: FakeFreelancerProfileRepository):
         }
         fields.update(overrides)
         profile = FreelancerProfile(**fields)  # type: ignore[arg-type]
-        profile_repo.add(profile)
+        await profile_repo.add(profile)
         return profile
 
     return _make
@@ -160,8 +164,8 @@ def review_repo() -> FakeSupervisorReviewRepository:
 
 
 @pytest.fixture
-def make_project(project_repo: FakeProjectRepository):
-    def _make(
+async def make_project(project_repo: FakeProjectRepository):
+    async def _make(
         project_id: str = "project-1",
         customer_user_id: str = "customer-1",
         status: ProjectStatus = ProjectStatus.DRAFT,
@@ -198,7 +202,7 @@ def make_project(project_repo: FakeProjectRepository):
         }
         fields.update(overrides)
         project = Project(**fields)  # type: ignore[arg-type]
-        project_repo.add(project)
+        await project_repo.add(project)
         return project
 
     return _make

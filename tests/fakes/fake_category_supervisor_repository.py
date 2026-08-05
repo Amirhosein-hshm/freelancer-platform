@@ -4,7 +4,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeCategorySupervisorRepository(ICategorySupervisorRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: list[CategorySupervisor] = []
 
     async def add(self, link: CategorySupervisor) -> None:

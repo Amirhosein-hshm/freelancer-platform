@@ -35,7 +35,7 @@ def build_use_case(
 
 
 class TestLoginUserUseCase:
-    def test_login_success_issues_tokens_and_records_login(
+    async def test_login_success_issues_tokens_and_records_login(
         self,
         user_repo,
         user_role_repo,
@@ -47,8 +47,8 @@ class TestLoginUserUseCase:
         uow,
         make_user,
     ):
-        user = make_user(user_id="u1", email="a@b.com")
-        user_role_repo.add(
+        user = await make_user(user_id="u1", email="a@b.com")
+        await user_role_repo.add(
             UserRole(
                 id="ur-1",
                 user_id=user.id,
@@ -63,16 +63,16 @@ class TestLoginUserUseCase:
             token_service, id_generator, clock, uow,
         )
 
-        result = use_case.execute(LoginUserCommand(email="a@b.com", password="secret"))
+        result = await use_case.execute(LoginUserCommand(email="a@b.com", password="secret"))
 
         assert result.user_id == user.id
         assert "customer" in result.access_token
         assert result.refresh_token_jti
-        stored = refresh_token_repo.get_by_jti(result.refresh_token_jti)
+        stored = await refresh_token_repo.get_by_jti(result.refresh_token_jti)
         assert stored.user_id == user.id
-        assert user_repo.get_by_id(user.id).last_login_at == NOW
+        assert (await user_repo.get_by_id(user.id)).last_login_at == NOW
 
-    def test_login_wrong_email_raises_invalid_credentials(
+    async def test_login_wrong_email_raises_invalid_credentials(
         self,
         user_repo,
         user_role_repo,
@@ -84,16 +84,16 @@ class TestLoginUserUseCase:
         uow,
         make_user,
     ):
-        make_user(email="a@b.com")
+        await make_user(email="a@b.com")
         use_case = build_use_case(
             user_repo, user_role_repo, refresh_token_repo, password_hasher,
             token_service, id_generator, clock, uow,
         )
 
         with pytest.raises(InvalidCredentialsError):
-            use_case.execute(LoginUserCommand(email="missing@b.com", password="secret"))
+            await use_case.execute(LoginUserCommand(email="missing@b.com", password="secret"))
 
-    def test_login_wrong_password_raises_invalid_credentials(
+    async def test_login_wrong_password_raises_invalid_credentials(
         self,
         user_repo,
         user_role_repo,
@@ -105,16 +105,16 @@ class TestLoginUserUseCase:
         uow,
         make_user,
     ):
-        make_user(email="a@b.com", password="correct")
+        await make_user(email="a@b.com", password="correct")
         use_case = build_use_case(
             user_repo, user_role_repo, refresh_token_repo, password_hasher,
             token_service, id_generator, clock, uow,
         )
 
         with pytest.raises(InvalidCredentialsError):
-            use_case.execute(LoginUserCommand(email="a@b.com", password="wrong"))
+            await use_case.execute(LoginUserCommand(email="a@b.com", password="wrong"))
 
-    def test_login_inactive_user_raises_not_active(
+    async def test_login_inactive_user_raises_not_active(
         self,
         user_repo,
         user_role_repo,
@@ -126,16 +126,16 @@ class TestLoginUserUseCase:
         uow,
         make_user,
     ):
-        make_user(email="a@b.com", status=UserStatus.PENDING)
+        await make_user(email="a@b.com", status=UserStatus.PENDING)
         use_case = build_use_case(
             user_repo, user_role_repo, refresh_token_repo, password_hasher,
             token_service, id_generator, clock, uow,
         )
 
         with pytest.raises(UserNotActiveError):
-            use_case.execute(LoginUserCommand(email="a@b.com", password="secret"))
+            await use_case.execute(LoginUserCommand(email="a@b.com", password="secret"))
 
-    def test_login_missing_fields_raises_validation_error(
+    async def test_login_missing_fields_raises_validation_error(
         self,
         user_repo,
         user_role_repo,
@@ -152,4 +152,4 @@ class TestLoginUserUseCase:
         )
 
         with pytest.raises(ValidationError):
-            use_case.execute(LoginUserCommand(email="", password=""))
+            await use_case.execute(LoginUserCommand(email="", password=""))

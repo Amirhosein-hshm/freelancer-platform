@@ -27,7 +27,7 @@ def build_use_case(
 
 
 class TestAssignSupervisorUseCase:
-    def test_assign_supervisor_succeeds(
+    async def test_assign_supervisor_succeeds(
         self,
         authorization_service,
         category_repo,
@@ -40,8 +40,8 @@ class TestAssignSupervisorUseCase:
         make_user,
     ):
         authorization_service.grant("admin", "category.assign_supervisor")
-        make_category(category_id="cat-1")
-        make_user(user_id="sup-1")
+        await make_category(category_id="cat-1")
+        await make_user(user_id="sup-1")
         use_case = build_use_case(
             authorization_service,
             category_repo,
@@ -52,15 +52,15 @@ class TestAssignSupervisorUseCase:
             uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             AssignSupervisorCommand(actor_id="admin", category_id="cat-1", supervisor_user_id="sup-1")
         )
 
         assert result.supervisor_user_id == "sup-1"
-        assert category_supervisor_repo.is_supervisor_of("sup-1", "cat-1") is True
+        assert (await category_supervisor_repo.is_supervisor_of("sup-1", "cat-1")) is True
         assert uow.committed is True
 
-    def test_assign_supervisor_requires_permission(
+    async def test_assign_supervisor_requires_permission(
         self,
         authorization_service,
         category_repo,
@@ -71,7 +71,7 @@ class TestAssignSupervisorUseCase:
         uow,
         make_category,
     ):
-        make_category(category_id="cat-1")
+        await make_category(category_id="cat-1")
         use_case = build_use_case(
             authorization_service,
             category_repo,
@@ -83,11 +83,11 @@ class TestAssignSupervisorUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(
+            await use_case.execute(
                 AssignSupervisorCommand(actor_id="admin", category_id="cat-1", supervisor_user_id="sup-1")
             )
 
-    def test_assign_duplicate_supervisor_raises(
+    async def test_assign_duplicate_supervisor_raises(
         self,
         authorization_service,
         category_repo,
@@ -100,8 +100,8 @@ class TestAssignSupervisorUseCase:
         make_user,
     ):
         authorization_service.grant("admin", "category.assign_supervisor")
-        make_category(category_id="cat-1")
-        make_user(user_id="sup-1")
+        await make_category(category_id="cat-1")
+        await make_user(user_id="sup-1")
         first = AssignSupervisorUseCase(
             authorization_service,
             category_repo,
@@ -111,7 +111,7 @@ class TestAssignSupervisorUseCase:
             clock,
             uow,
         )
-        first.execute(
+        await first.execute(
             AssignSupervisorCommand(actor_id="admin", category_id="cat-1", supervisor_user_id="sup-1")
         )
         use_case = build_use_case(
@@ -125,11 +125,11 @@ class TestAssignSupervisorUseCase:
         )
 
         with pytest.raises(SupervisorAlreadyAssignedError):
-            use_case.execute(
+            await use_case.execute(
                 AssignSupervisorCommand(actor_id="admin", category_id="cat-1", supervisor_user_id="sup-1")
             )
 
-    def test_assign_unknown_category_raises(
+    async def test_assign_unknown_category_raises(
         self,
         authorization_service,
         category_repo,
@@ -151,6 +151,6 @@ class TestAssignSupervisorUseCase:
         )
 
         with pytest.raises(CategoryNotFoundError):
-            use_case.execute(
+            await use_case.execute(
                 AssignSupervisorCommand(actor_id="admin", category_id="ghost", supervisor_user_id="sup-1")
             )

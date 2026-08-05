@@ -4,7 +4,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeProjectStatusHistoryRepository(IProjectStatusHistoryRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: list[ProjectStatusHistory] = []
 
     async def add(self, history: ProjectStatusHistory) -> None:

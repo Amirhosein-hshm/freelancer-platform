@@ -4,7 +4,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeFreelancerLevelHistoryRepository(IFreelancerLevelHistoryRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: list[FreelancerLevelHistory] = []
 
     async def add(self, history: FreelancerLevelHistory) -> None:

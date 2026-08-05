@@ -69,14 +69,14 @@ def seed_supervisor_flow(
     delivery_repo,
     review_repo,
 ):
-    def _seed(
+    async def _seed(
         supervisor_user_id: str = "supervisor-1",
         project_id: str = "project-1",
         delivery_id: str = "delivery-1",
         category_id: str = "cat-1",
         with_review: bool = True,
     ) -> ProjectDelivery:
-        category_repo.add(
+        await category_repo.add(
             Category(
                 id=category_id,
                 parent_category_id=None,
@@ -89,7 +89,7 @@ def seed_supervisor_flow(
                 created_at=NOW,
             )
         )
-        category_supervisor_repo.add(
+        await category_supervisor_repo.add(
             CategorySupervisor(
                 id=f"{category_id}-supervisor-{supervisor_user_id}",
                 category_id=category_id,
@@ -101,7 +101,7 @@ def seed_supervisor_flow(
                 created_at=NOW,
             )
         )
-        project_repo.add(
+        await project_repo.add(
             Project(
                 id=project_id,
                 project_code=ProjectCode("PRJ-2026-001"),
@@ -146,9 +146,9 @@ def seed_supervisor_flow(
             file_asset_ids=[],
             created_at=NOW,
         )
-        delivery_repo.add(delivery)
+        await delivery_repo.add(delivery)
         if with_review:
-            review_repo.add(
+            await review_repo.add(
                 SupervisorReview(
                     id=f"review-{delivery_id}",
                     project_delivery_id=delivery_id,

@@ -176,3 +176,60 @@ class RevokePermissionCommand:
 class RevokePermissionResult:
     role_id: EntityId
     permission_id: EntityId
+
+
+@dataclass(frozen=True)
+class AdminCreateUserCommand:
+    actor_id: EntityId
+    email: str
+    password: str
+    first_name: str
+    last_name: str
+
+    def validate(self) -> None:
+        if not self.email.strip() or not self.password:
+            raise ValidationError("email and password are required.")
+        if not self.first_name.strip() or not self.last_name.strip():
+            raise ValidationError("first_name and last_name are required.")
+
+
+@dataclass(frozen=True)
+class AdminCreateUserResult:
+    user_id: EntityId
+    email: str
+    status: str
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class AdminUpdateUserCommand:
+    actor_id: EntityId
+    target_user_id: EntityId
+    first_name: str | None = None
+    last_name: str | None = None
+    phone: str | None = None
+
+    def validate(self) -> None:
+        if self.first_name is not None and not self.first_name.strip():
+            raise ValidationError("first_name cannot be empty.")
+        if self.last_name is not None and not self.last_name.strip():
+            raise ValidationError("last_name cannot be empty.")
+
+
+@dataclass(frozen=True)
+class AdminUpdateUserResult:
+    user_id: EntityId
+    first_name: str
+    last_name: str
+
+
+@dataclass(frozen=True)
+class AdminDeleteUserCommand:
+    actor_id: EntityId
+    target_user_id: EntityId
+
+
+@dataclass(frozen=True)
+class AdminDeleteUserResult:
+    user_id: EntityId
+    deleted_at: datetime

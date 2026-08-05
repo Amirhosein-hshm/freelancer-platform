@@ -63,7 +63,7 @@ def status_history_repo() -> FakeProjectStatusHistoryRepository:
 
 @pytest.fixture
 def make_project(project_repo: FakeProjectRepository):
-    def _make(
+    async def _make(
         project_id: str = "project-1",
         status: ProjectStatus = ProjectStatus.AWAITING_CUSTOMER_REVIEW,
         **overrides: object,
@@ -99,7 +99,7 @@ def make_project(project_repo: FakeProjectRepository):
         }
         fields.update(overrides)
         project = Project(**fields)  # type: ignore[arg-type]
-        project_repo.add(project)
+        await project_repo.add(project)
         return project
 
     return _make
@@ -107,7 +107,7 @@ def make_project(project_repo: FakeProjectRepository):
 
 @pytest.fixture
 def make_application(application_repo: FakeProjectApplicationRepository):
-    def _make(
+    async def _make(
         app_id: str = "app-1", profile_id: str = "profile-1", **overrides: object
     ) -> ProjectApplication:
         fields: dict[str, object] = {
@@ -127,7 +127,7 @@ def make_application(application_repo: FakeProjectApplicationRepository):
         }
         fields.update(overrides)
         application = ProjectApplication(**fields)  # type: ignore[arg-type]
-        application_repo.add(application)
+        await application_repo.add(application)
         return application
 
     return _make
@@ -135,7 +135,7 @@ def make_application(application_repo: FakeProjectApplicationRepository):
 
 @pytest.fixture
 def make_delivery(delivery_repo: FakeProjectDeliveryRepository):
-    def _make(
+    async def _make(
         delivery_id: str = "delivery-1", status: DeliveryStatus = DeliveryStatus.SUBMITTED
     ) -> ProjectDelivery:
         delivery = ProjectDelivery(
@@ -152,7 +152,7 @@ def make_delivery(delivery_repo: FakeProjectDeliveryRepository):
             file_asset_ids=[],
             created_at=NOW,
         )
-        delivery_repo.add(delivery)
+        await delivery_repo.add(delivery)
         return delivery
 
     return _make
@@ -160,7 +160,7 @@ def make_delivery(delivery_repo: FakeProjectDeliveryRepository):
 
 @pytest.fixture
 def make_customer_review(customer_review_repo: FakeCustomerReviewRepository):
-    def _make(
+    async def _make(
         review_id: str = "review-1",
         decision: ReviewStatus = ReviewStatus.APPROVED,
         **overrides: object,
@@ -177,7 +177,7 @@ def make_customer_review(customer_review_repo: FakeCustomerReviewRepository):
         }
         fields.update(overrides)
         review = CustomerReview(**fields)  # type: ignore[arg-type]
-        customer_review_repo.add(review)
+        await customer_review_repo.add(review)
         return review
 
     return _make
@@ -185,7 +185,7 @@ def make_customer_review(customer_review_repo: FakeCustomerReviewRepository):
 
 @pytest.fixture
 def make_rating(rating_repo: FakeRatingRepository):
-    def _make(rating_id: str = "rating-1", **overrides: object) -> Rating:
+    async def _make(rating_id: str = "rating-1", **overrides: object) -> Rating:
         fields: dict[str, object] = {
             "id": rating_id,
             "customer_review_id": "review-1",
@@ -199,7 +199,7 @@ def make_rating(rating_repo: FakeRatingRepository):
         }
         fields.update(overrides)
         rating = Rating(**fields)  # type: ignore[arg-type]
-        rating_repo.add(rating)
+        await rating_repo.add(rating)
         return rating
 
     return _make

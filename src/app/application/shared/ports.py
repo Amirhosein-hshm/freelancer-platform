@@ -128,7 +128,7 @@ class IRealtimeNotifier(ABC):
     """
 
     @abstractmethod
-    async def notify_user(self, user_id: EntityId, event_type: str, payload: dict) -> None: ...
+    async def notify_user(self, user_id: EntityId, event_type: str, payload: dict[str, object]) -> None: ...
 
 
 class IFileStorageService(ABC):

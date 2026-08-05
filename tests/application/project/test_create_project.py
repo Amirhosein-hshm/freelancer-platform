@@ -16,7 +16,7 @@ from app.domain.project.enums import BudgetType, ProjectStatus, ProjectVisibilit
 from tests.application.project.conftest import NOW
 
 
-def seed_published_template(template_repo) -> FormTemplate:
+async def seed_published_template(template_repo) -> FormTemplate:
     template = FormTemplate(
         id="template-1",
         category_id="cat-1",
@@ -57,7 +57,7 @@ def seed_published_template(template_repo) -> FormTemplate:
         ],
         created_at=NOW,
     )
-    template_repo.add(template)
+    await template_repo.add(template)
     return template
 
 
@@ -105,7 +105,7 @@ def base_command(**overrides: object) -> CreateProjectCommand:
 
 
 class TestCreateProjectUseCase:
-    def test_create_project_succeeds(
+    async def test_create_project_succeeds(
         self,
         authorization_service,
         project_repo,
@@ -119,8 +119,8 @@ class TestCreateProjectUseCase:
         make_category,
     ):
         authorization_service.grant("customer-1", "project.create_own")
-        make_category(category_id="cat-1")
-        seed_published_template(form_template_repo)
+        await make_category(category_id="cat-1")
+        await seed_published_template(form_template_repo)
         use_case = build_use_case(
             authorization_service,
             project_repo,
@@ -133,18 +133,18 @@ class TestCreateProjectUseCase:
             uow,
         )
 
-        result = use_case.execute(base_command())
+        result = await use_case.execute(base_command())
 
-        project = project_repo.get_by_id(result.project_id)
+        project = await project_repo.get_by_id(result.project_id)
         assert result.status == ProjectStatus.DRAFT
         assert project.project_code.value.startswith("PRJ-2026-")
         assert project.customer_user_id == "customer-1"
         assert project.created_by_user_id == "customer-1"
         assert project.form_template_id == "template-1"
         assert uow.committed is True
-        assert len(status_history_repo.list_by_project(project.id)) == 1
+        assert len(await status_history_repo.list_by_project(project.id)) == 1
 
-    def test_create_project_without_permission_raises(
+    async def test_create_project_without_permission_raises(
         self,
         authorization_service,
         project_repo,
@@ -157,7 +157,7 @@ class TestCreateProjectUseCase:
         uow,
         make_category,
     ):
-        make_category(category_id="cat-1")
+        await make_category(category_id="cat-1")
         use_case = build_use_case(
             authorization_service,
             project_repo,
@@ -171,9 +171,9 @@ class TestCreateProjectUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(base_command())
+            await use_case.execute(base_command())
 
-    def test_unknown_category_raises(
+    async def test_unknown_category_raises(
         self,
         authorization_service,
         project_repo,
@@ -199,9 +199,9 @@ class TestCreateProjectUseCase:
         )
 
         with pytest.raises(CategoryNotFoundError):
-            use_case.execute(base_command())
+            await use_case.execute(base_command())
 
-    def test_missing_published_template_raises(
+    async def test_missing_published_template_raises(
         self,
         authorization_service,
         project_repo,
@@ -215,7 +215,7 @@ class TestCreateProjectUseCase:
         make_category,
     ):
         authorization_service.grant("customer-1", "project.create_own")
-        make_category(category_id="cat-1")
+        await make_category(category_id="cat-1")
         use_case = build_use_case(
             authorization_service,
             project_repo,
@@ -229,9 +229,9 @@ class TestCreateProjectUseCase:
         )
 
         with pytest.raises(FormTemplateNotFoundError):
-            use_case.execute(base_command())
+            await use_case.execute(base_command())
 
-    def test_missing_required_field_value_raises_form_validation(
+    async def test_missing_required_field_value_raises_form_validation(
         self,
         authorization_service,
         project_repo,
@@ -245,8 +245,8 @@ class TestCreateProjectUseCase:
         make_category,
     ):
         authorization_service.grant("customer-1", "project.create_own")
-        make_category(category_id="cat-1")
-        seed_published_template(form_template_repo)
+        await make_category(category_id="cat-1")
+        await seed_published_template(form_template_repo)
         use_case = build_use_case(
             authorization_service,
             project_repo,
@@ -260,9 +260,9 @@ class TestCreateProjectUseCase:
         )
 
         with pytest.raises(FormValidationError):
-            use_case.execute(base_command(form_values=[]))
+            await use_case.execute(base_command(form_values=[]))
 
-    def test_invalid_decimal_raises_form_validation(
+    async def test_invalid_decimal_raises_form_validation(
         self,
         authorization_service,
         project_repo,
@@ -276,8 +276,8 @@ class TestCreateProjectUseCase:
         make_category,
     ):
         authorization_service.grant("customer-1", "project.create_own")
-        make_category(category_id="cat-1")
-        seed_published_template(form_template_repo)
+        await make_category(category_id="cat-1")
+        await seed_published_template(form_template_repo)
         use_case = build_use_case(
             authorization_service,
             project_repo,
@@ -291,7 +291,7 @@ class TestCreateProjectUseCase:
         )
 
         with pytest.raises(FormValidationError):
-            use_case.execute(
+            await use_case.execute(
                 base_command(
                     form_values=[
                         FormValueInput(field_id="field-1", value="Order service"),

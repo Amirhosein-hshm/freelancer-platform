@@ -21,7 +21,7 @@ from app.domain.project.enums import (
 from app.domain.project.value_objects import ProjectCode
 
 
-def add_application(application_repo, app_id: str, now) -> ProjectApplication:
+async def add_application(application_repo, app_id: str, now) -> ProjectApplication:
     application = ProjectApplication(
         id=app_id,
         project_id="project-1",
@@ -37,17 +37,18 @@ def add_application(application_repo, app_id: str, now) -> ProjectApplication:
         withdrawn_at=None,
         created_at=now,
     )
-    application_repo.add(application)
+    await application_repo.add(application)
     return application
 
 
 class TestGetProjectDetailsUseCase:
-    def test_details_include_applications_and_deliveries(
+    async def test_details_include_applications_and_deliveries(
         self, project_repo, application_repo, delivery_repo, clock, make_project
     ):
-        make_project(project_id="project-1", status=ProjectStatus.IN_PROGRESS)
-        add_application(application_repo, "app-1", clock.now())
-        delivery_repo.add(
+        await make_project(project_id="project-1", status=ProjectStatus.IN_PROGRESS)
+        await add_application(application_repo, "app-1", await clock.now())
+        now = await clock.now()
+        await delivery_repo.add(
             ProjectDelivery(
                 id="delivery-1",
                 project_id="project-1",
@@ -55,12 +56,12 @@ class TestGetProjectDetailsUseCase:
                 submitted_by_user_id="freelancer-1",
                 status=DeliveryStatus.SUBMITTED,
                 delivery_note=None,
-                submitted_at=clock.now(),
+                submitted_at=now,
                 reviewed_at=None,
                 reviewer_user_id=None,
                 superseded_by_delivery_id=None,
                 file_asset_ids=[],
-                created_at=clock.now(),
+                created_at=now,
             )
         )
         use_case = GetProjectDetailsUseCase(
@@ -69,7 +70,7 @@ class TestGetProjectDetailsUseCase:
             delivery_repo=delivery_repo,
         )
 
-        result = use_case.execute(GetProjectDetailsQuery(project_id="project-1"))
+        result = await use_case.execute(GetProjectDetailsQuery(project_id="project-1"))
 
         assert result.project.project_id == "project-1"
         assert result.project.project_code == "PRJ-2026-001"
@@ -78,33 +79,33 @@ class TestGetProjectDetailsUseCase:
 
 
 class TestGetMyProjectsUseCase:
-    def test_lists_projects_for_customer(self, project_repo, make_project):
-        make_project(project_id="project-1", customer_user_id="customer-1")
-        make_project(
+    async def test_lists_projects_for_customer(self, project_repo, make_project):
+        await make_project(project_id="project-1", customer_user_id="customer-1")
+        await make_project(
             project_id="project-2",
             customer_user_id="customer-1",
             project_code=ProjectCode("PRJ-2026-002"),
         )
-        make_project(
+        await make_project(
             project_id="project-3",
             customer_user_id="other-customer",
             project_code=ProjectCode("PRJ-2026-003"),
         )
         use_case = GetMyProjectsUseCase(project_repo=project_repo)
 
-        result = use_case.execute(GetMyProjectsQuery(customer_user_id="customer-1"))
+        result = await use_case.execute(GetMyProjectsQuery(customer_user_id="customer-1"))
 
         assert [p.project_id for p in result.projects] == ["project-1", "project-2"]
 
 
 class TestGetAvailableProjectsUseCase:
-    def test_returns_open_projects_for_approved_freelancer(
+    async def test_returns_open_projects_for_approved_freelancer(
         self, project_repo, profile_repo, level_repo, make_project, make_profile, make_level
     ):
         make_level(level_id="level-1")
-        make_profile(profile_id="profile-1", user_id="freelancer-1")
-        make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
-        make_project(
+        await make_profile(profile_id="profile-1", user_id="freelancer-1")
+        await make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
+        await make_project(
             project_id="project-2",
             status=ProjectStatus.IN_PROGRESS,
             project_code=ProjectCode("PRJ-2026-002"),
@@ -113,12 +114,12 @@ class TestGetAvailableProjectsUseCase:
             project_repo=project_repo, profile_repo=profile_repo, level_repo=level_repo
         )
 
-        result = use_case.execute(GetAvailableProjectsQuery(actor_id="freelancer-1"))
+        result = await use_case.execute(GetAvailableProjectsQuery(actor_id="freelancer-1"))
 
         assert [p.project_id for p in result.projects] == ["project-1"]
 
-    def test_unapproved_freelancer_raises(self, project_repo, profile_repo, level_repo, make_profile):
-        make_profile(
+    async def test_unapproved_freelancer_raises(self, project_repo, profile_repo, level_repo, make_profile):
+        await make_profile(
             profile_id="profile-1",
             user_id="freelancer-1",
             approval_status=FreelancerApprovalStatus.PENDING,
@@ -128,4 +129,4 @@ class TestGetAvailableProjectsUseCase:
         )
 
         with pytest.raises(FreelancerNotApprovedError):
-            use_case.execute(GetAvailableProjectsQuery(actor_id="freelancer-1"))
+            await use_case.execute(GetAvailableProjectsQuery(actor_id="freelancer-1"))

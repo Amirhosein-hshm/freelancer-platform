@@ -36,7 +36,7 @@ def build_apply(
     )
 
 
-def seed_application(
+async def seed_application(
     application_repo, app_id: str = "app-1", project_id: str = "project-1", **overrides: object
 ) -> ProjectApplication:
     fields: dict[str, object] = {
@@ -55,11 +55,11 @@ def seed_application(
         "created_at": None,
     }
     fields.update(overrides)
-    return application_repo.add(ProjectApplication(**fields))  # type: ignore[arg-type]
+    return await application_repo.add(ProjectApplication(**fields))  # type: ignore[arg-type]
 
 
 class TestApplyForProjectUseCase:
-    def test_apply_succeeds(
+    async def test_apply_succeeds(
         self,
         authorization_service,
         project_repo,
@@ -74,14 +74,14 @@ class TestApplyForProjectUseCase:
         make_level,
     ):
         authorization_service.grant("freelancer-1", "project.apply")
-        make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
+        await make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
         make_level(level_id="level-1", max_active_applications=3)
-        make_profile(profile_id="profile-1", user_id="freelancer-1")
+        await make_profile(profile_id="profile-1", user_id="freelancer-1")
         use_case = build_apply(
             authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             ApplyForProjectCommand(
                 actor_id="freelancer-1",
                 project_id="project-1",
@@ -89,14 +89,14 @@ class TestApplyForProjectUseCase:
             )
         )
 
-        application = application_repo.get_by_id(result.application_id)
+        application = await application_repo.get_by_id(result.application_id)
         assert result.status == ProjectApplicationStatus.APPLIED
         assert application.project_id == "project-1"
         assert application.freelancer_profile_id == "profile-1"
         assert application.submitted_by_user_id == "freelancer-1"
         assert uow.committed is True
 
-    def test_project_not_accepting_applications_raises(
+    async def test_project_not_accepting_applications_raises(
         self,
         authorization_service,
         project_repo,
@@ -111,17 +111,17 @@ class TestApplyForProjectUseCase:
         make_level,
     ):
         authorization_service.grant("freelancer-1", "project.apply")
-        make_project(project_id="project-1", status=ProjectStatus.ASSIGNED)
+        await make_project(project_id="project-1", status=ProjectStatus.ASSIGNED)
         make_level(level_id="level-1")
-        make_profile(profile_id="profile-1", user_id="freelancer-1")
+        await make_profile(profile_id="profile-1", user_id="freelancer-1")
         use_case = build_apply(
             authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
         )
 
         with pytest.raises(FreelancerNotEligibleError):
-            use_case.execute(ApplyForProjectCommand(actor_id="freelancer-1", project_id="project-1"))
+            await use_case.execute(ApplyForProjectCommand(actor_id="freelancer-1", project_id="project-1"))
 
-    def test_unapproved_freelancer_raises(
+    async def test_unapproved_freelancer_raises(
         self,
         authorization_service,
         project_repo,
@@ -136,9 +136,9 @@ class TestApplyForProjectUseCase:
         make_level,
     ):
         authorization_service.grant("freelancer-1", "project.apply")
-        make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
+        await make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
         make_level(level_id="level-1")
-        make_profile(
+        await make_profile(
             profile_id="profile-1",
             user_id="freelancer-1",
             approval_status=FreelancerApprovalStatus.PENDING,
@@ -148,9 +148,9 @@ class TestApplyForProjectUseCase:
         )
 
         with pytest.raises(FreelancerNotApprovedError):
-            use_case.execute(ApplyForProjectCommand(actor_id="freelancer-1", project_id="project-1"))
+            await use_case.execute(ApplyForProjectCommand(actor_id="freelancer-1", project_id="project-1"))
 
-    def test_duplicate_application_raises(
+    async def test_duplicate_application_raises(
         self,
         authorization_service,
         project_repo,
@@ -165,10 +165,11 @@ class TestApplyForProjectUseCase:
         make_level,
     ):
         authorization_service.grant("freelancer-1", "project.apply")
-        make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
+        await make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
         make_level(level_id="level-1")
-        make_profile(profile_id="profile-1", user_id="freelancer-1")
-        application_repo.add(
+        await make_profile(profile_id="profile-1", user_id="freelancer-1")
+        now = await clock.now()
+        await application_repo.add(
             ProjectApplication(
                 id="app-1",
                 project_id="project-1",
@@ -177,12 +178,12 @@ class TestApplyForProjectUseCase:
                 cover_letter=None,
                 proposed_amount=None,
                 proposed_days=None,
-                applied_at=clock.now(),
+                applied_at=now,
                 decided_by_user_id=None,
                 decided_at=None,
                 decision_note=None,
                 withdrawn_at=None,
-                created_at=clock.now(),
+                created_at=now,
             )
         )
         use_case = build_apply(
@@ -190,9 +191,9 @@ class TestApplyForProjectUseCase:
         )
 
         with pytest.raises(DuplicateApplicationError):
-            use_case.execute(ApplyForProjectCommand(actor_id="freelancer-1", project_id="project-1"))
+            await use_case.execute(ApplyForProjectCommand(actor_id="freelancer-1", project_id="project-1"))
 
-    def test_ineligible_due_to_active_count(
+    async def test_ineligible_due_to_active_count(
         self,
         authorization_service,
         project_repo,
@@ -207,10 +208,11 @@ class TestApplyForProjectUseCase:
         make_level,
     ):
         authorization_service.grant("freelancer-1", "project.apply")
-        make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
+        await make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
         make_level(level_id="level-1", max_active_applications=1)
-        make_profile(profile_id="profile-1", user_id="freelancer-1")
-        application_repo.add(
+        await make_profile(profile_id="profile-1", user_id="freelancer-1")
+        now = await clock.now()
+        await application_repo.add(
             ProjectApplication(
                 id="app-0",
                 project_id="other-project",
@@ -219,12 +221,12 @@ class TestApplyForProjectUseCase:
                 cover_letter=None,
                 proposed_amount=None,
                 proposed_days=None,
-                applied_at=clock.now(),
+                applied_at=now,
                 decided_by_user_id=None,
                 decided_at=None,
                 decision_note=None,
                 withdrawn_at=None,
-                created_at=clock.now(),
+                created_at=now,
             )
         )
         use_case = build_apply(
@@ -232,9 +234,9 @@ class TestApplyForProjectUseCase:
         )
 
         with pytest.raises(FreelancerNotEligibleError):
-            use_case.execute(ApplyForProjectCommand(actor_id="freelancer-1", project_id="project-1"))
+            await use_case.execute(ApplyForProjectCommand(actor_id="freelancer-1", project_id="project-1"))
 
-    def test_application_deadline_passed_raises(
+    async def test_application_deadline_passed_raises(
         self,
         authorization_service,
         project_repo,
@@ -249,21 +251,21 @@ class TestApplyForProjectUseCase:
         make_level,
     ):
         authorization_service.grant("freelancer-1", "project.apply")
-        make_project(
+        await make_project(
             project_id="project-1",
             status=ProjectStatus.COLLECTING_APPLICATIONS,
             application_deadline=datetime(2026, 7, 1, tzinfo=UTC),
         )
         make_level(level_id="level-1")
-        make_profile(profile_id="profile-1", user_id="freelancer-1")
+        await make_profile(profile_id="profile-1", user_id="freelancer-1")
         use_case = build_apply(
             authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
         )
 
         with pytest.raises(ApplicationDeadlineExpiredError):
-            use_case.execute(ApplyForProjectCommand(actor_id="freelancer-1", project_id="project-1"))
+            await use_case.execute(ApplyForProjectCommand(actor_id="freelancer-1", project_id="project-1"))
 
-    def test_apply_uses_submitted_by_actor(
+    async def test_apply_uses_submitted_by_actor(
         self,
         authorization_service,
         project_repo,
@@ -278,25 +280,26 @@ class TestApplyForProjectUseCase:
         make_level,
     ):
         authorization_service.grant("admin-1", "project.apply")
-        make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
+        await make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
         make_level(level_id="level-1")
-        make_profile(profile_id="profile-1", user_id="admin-1")
+        await make_profile(profile_id="profile-1", user_id="admin-1")
         use_case = build_apply(
             authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             ApplyForProjectCommand(actor_id="admin-1", project_id="project-1")
         )
 
-        application = application_repo.get_by_id(result.application_id)
+        application = await application_repo.get_by_id(result.application_id)
         assert application.submitted_by_user_id == "admin-1"
 
 
 class TestWithdrawApplicationUseCase:
-    def test_withdraw_succeeds(self, application_repo, profile_repo, clock, uow, make_profile):
-        make_profile(profile_id="profile-1", user_id="freelancer-1")
-        application_repo.add(
+    async def test_withdraw_succeeds(self, application_repo, profile_repo, clock, uow, make_profile):
+        await make_profile(profile_id="profile-1", user_id="freelancer-1")
+        now = await clock.now()
+        await application_repo.add(
             ProjectApplication(
                 id="app-1",
                 project_id="project-1",
@@ -305,12 +308,12 @@ class TestWithdrawApplicationUseCase:
                 cover_letter=None,
                 proposed_amount=None,
                 proposed_days=None,
-                applied_at=clock.now(),
+                applied_at=now,
                 decided_by_user_id=None,
                 decided_at=None,
                 decision_note=None,
                 withdrawn_at=None,
-                created_at=clock.now(),
+                created_at=now,
             )
         )
         use_case = WithdrawApplicationUseCase(
@@ -320,16 +323,17 @@ class TestWithdrawApplicationUseCase:
             uow=uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             WithdrawApplicationCommand(actor_id="freelancer-1", application_id="app-1")
         )
 
         assert result.status == ProjectApplicationStatus.WITHDRAWN
-        assert application_repo.get_by_id("app-1").withdrawn_at == clock.now()
+        assert (await application_repo.get_by_id("app-1")).withdrawn_at == await clock.now()
 
-    def test_non_owner_raises(self, application_repo, profile_repo, clock, uow, make_profile):
-        make_profile(profile_id="profile-1", user_id="freelancer-1")
-        application_repo.add(
+    async def test_non_owner_raises(self, application_repo, profile_repo, clock, uow, make_profile):
+        await make_profile(profile_id="profile-1", user_id="freelancer-1")
+        now = await clock.now()
+        await application_repo.add(
             ProjectApplication(
                 id="app-1",
                 project_id="project-1",
@@ -338,12 +342,12 @@ class TestWithdrawApplicationUseCase:
                 cover_letter=None,
                 proposed_amount=None,
                 proposed_days=None,
-                applied_at=clock.now(),
+                applied_at=now,
                 decided_by_user_id=None,
                 decided_at=None,
                 decision_note=None,
                 withdrawn_at=None,
-                created_at=clock.now(),
+                created_at=now,
             )
         )
         use_case = WithdrawApplicationUseCase(
@@ -354,6 +358,6 @@ class TestWithdrawApplicationUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(
+            await use_case.execute(
                 WithdrawApplicationCommand(actor_id="freelancer-1", application_id="app-1")
             )

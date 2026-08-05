@@ -20,15 +20,15 @@ def build_send(
 
 
 class TestSendMessageUseCase:
-    def test_send_message_touches_last_message(
+    async def test_send_message_touches_last_message(
         self, ticket_repo, message_repo, participant_repo, id_generator, clock, uow, make_ticket
     ):
-        make_ticket(ticket_id="ticket-1")
+        await make_ticket(ticket_id="ticket-1")
         use_case = build_send(
             ticket_repo, message_repo, participant_repo, id_generator, clock, uow
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             SendMessageCommand(
                 actor_id="user-1",
                 ticket_id="ticket-1",
@@ -36,36 +36,36 @@ class TestSendMessageUseCase:
             )
         )
 
-        message = message_repo.list_by_ticket("ticket-1")[0]
+        message = (await message_repo.list_by_ticket("ticket-1"))[0]
         assert message.sender_user_id == "user-1"
         assert message.message_type == TicketMessageType.TEXT
         assert message.body == "Can you check this?"
-        assert ticket_repo.get_by_id("ticket-1").last_message_at == clock.now()
+        assert (await ticket_repo.get_by_id("ticket-1")).last_message_at == await clock.now()
         assert result.message_id == message.id
         assert uow.committed is True
 
-    def test_closed_ticket_raises(
+    async def test_closed_ticket_raises(
         self, ticket_repo, message_repo, participant_repo, id_generator, clock, uow, make_ticket
     ):
-        make_ticket(ticket_id="ticket-1", status=TicketStatus.CLOSED)
+        await make_ticket(ticket_id="ticket-1", status=TicketStatus.CLOSED)
         use_case = build_send(
             ticket_repo, message_repo, participant_repo, id_generator, clock, uow
         )
 
         with pytest.raises(TicketClosedError):
-            use_case.execute(
+            await use_case.execute(
                 SendMessageCommand(actor_id="user-1", ticket_id="ticket-1", body="Hi")
             )
 
-    def test_non_participant_raises(
+    async def test_non_participant_raises(
         self, ticket_repo, message_repo, participant_repo, id_generator, clock, uow, make_ticket
     ):
-        make_ticket(ticket_id="ticket-1")
+        await make_ticket(ticket_id="ticket-1")
         use_case = build_send(
             ticket_repo, message_repo, participant_repo, id_generator, clock, uow
         )
 
         with pytest.raises(NotTicketParticipantError):
-            use_case.execute(
+            await use_case.execute(
                 SendMessageCommand(actor_id="intruder", ticket_id="ticket-1", body="Hi")
             )

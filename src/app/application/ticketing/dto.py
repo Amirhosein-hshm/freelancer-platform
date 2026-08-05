@@ -26,6 +26,16 @@ class CreateTicketResult:
 
 
 @dataclass(frozen=True)
+class CreateTicketOnBehalfCommand:
+    actor_id: EntityId
+    target_user_id: EntityId
+    subject: str
+    related_project_id: EntityId | None = None
+    related_category_id: EntityId | None = None
+    priority: TicketPriority = TicketPriority.NORMAL
+
+
+@dataclass(frozen=True)
 class AssignTicketCommand:
     actor_id: EntityId
     ticket_id: EntityId

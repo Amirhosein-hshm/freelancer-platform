@@ -17,35 +17,35 @@ class TestBlockUserUseCase:
             uow=uow,
         )
 
-    def test_block_requires_permission(self, authorization_service, user_repo, clock, uow, make_user):
-        make_user(user_id="u1", status=UserStatus.ACTIVE)
+    async def test_block_requires_permission(self, authorization_service, user_repo, clock, uow, make_user):
+        await make_user(user_id="u1", status=UserStatus.ACTIVE)
         use_case = self.build(authorization_service, user_repo, clock, uow)
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(BlockUserCommand(actor_id="admin", target_user_id="u1", reason="abuse"))
+            await use_case.execute(BlockUserCommand(actor_id="admin", target_user_id="u1", reason="abuse"))
 
-    def test_block_succeeds_with_permission(
+    async def test_block_succeeds_with_permission(
         self, authorization_service, user_repo, clock, uow, make_user
     ):
         authorization_service.grant("admin", "user.block")
-        make_user(user_id="u1", status=UserStatus.ACTIVE)
+        await make_user(user_id="u1", status=UserStatus.ACTIVE)
         use_case = self.build(authorization_service, user_repo, clock, uow)
 
-        result = use_case.execute(
+        result = await use_case.execute(
             BlockUserCommand(actor_id="admin", target_user_id="u1", reason="abuse")
         )
 
         assert result.status == UserStatus.BLOCKED.value
-        assert user_repo.get_by_id("u1").status == UserStatus.BLOCKED
+        assert (await user_repo.get_by_id("u1")).status == UserStatus.BLOCKED
 
-    def test_block_unknown_user_raises(
+    async def test_block_unknown_user_raises(
         self, authorization_service, user_repo, clock, uow
     ):
         authorization_service.grant("admin", "user.block")
         use_case = self.build(authorization_service, user_repo, clock, uow)
 
         with pytest.raises(UserNotFoundError):
-            use_case.execute(BlockUserCommand(actor_id="admin", target_user_id="ghost", reason="x"))
+            await use_case.execute(BlockUserCommand(actor_id="admin", target_user_id="ghost", reason="x"))
 
 
 class TestActivateUserUseCase:
@@ -57,28 +57,28 @@ class TestActivateUserUseCase:
             uow=uow,
         )
 
-    def test_activate_requires_permission(self, authorization_service, user_repo, clock, uow, make_user):
-        make_user(user_id="u1", status=UserStatus.BLOCKED)
+    async def test_activate_requires_permission(self, authorization_service, user_repo, clock, uow, make_user):
+        await make_user(user_id="u1", status=UserStatus.BLOCKED)
         use_case = self.build(authorization_service, user_repo, clock, uow)
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(ActivateUserCommand(actor_id="admin", target_user_id="u1"))
+            await use_case.execute(ActivateUserCommand(actor_id="admin", target_user_id="u1"))
 
-    def test_activate_succeeds_with_permission(
+    async def test_activate_succeeds_with_permission(
         self, authorization_service, user_repo, clock, uow, make_user
     ):
         authorization_service.grant("admin", "user.activate")
-        make_user(user_id="u1", status=UserStatus.BLOCKED)
+        await make_user(user_id="u1", status=UserStatus.BLOCKED)
         use_case = self.build(authorization_service, user_repo, clock, uow)
 
-        result = use_case.execute(ActivateUserCommand(actor_id="admin", target_user_id="u1"))
+        result = await use_case.execute(ActivateUserCommand(actor_id="admin", target_user_id="u1"))
 
         assert result.status == UserStatus.ACTIVE.value
-        assert user_repo.get_by_id("u1").status == UserStatus.ACTIVE
+        assert (await user_repo.get_by_id("u1")).status == UserStatus.ACTIVE
 
-    def test_activate_unknown_user_raises(self, authorization_service, user_repo, clock, uow):
+    async def test_activate_unknown_user_raises(self, authorization_service, user_repo, clock, uow):
         authorization_service.grant("admin", "user.activate")
         use_case = self.build(authorization_service, user_repo, clock, uow)
 
         with pytest.raises(UserNotFoundError):
-            use_case.execute(ActivateUserCommand(actor_id="admin", target_user_id="ghost"))
+            await use_case.execute(ActivateUserCommand(actor_id="admin", target_user_id="ghost"))

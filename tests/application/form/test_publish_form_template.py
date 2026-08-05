@@ -35,31 +35,31 @@ def add_field(template) -> None:
 
 
 class TestPublishFormTemplateUseCase:
-    def test_publish_with_fields(
+    async def test_publish_with_fields(
         self, template_repo, clock, uow, make_template, authorization_service
     ):
-        template = make_template(template_id="template-1")
+        template = await make_template(template_id="template-1")
         add_field(template)
         authorization_service.grant("admin-1", "form.manage")
         use_case = build_use_case(template_repo, clock, uow, authorization_service)
 
-        result = use_case.execute(
+        result = await use_case.execute(
             PublishFormTemplateCommand(template_id="template-1", published_by="admin-1")
         )
 
         assert result.status == FormTemplateStatus.PUBLISHED
-        assert result.published_at == clock.now()
-        assert template_repo.get_by_id("template-1").published_by_user_id == "admin-1"
+        assert result.published_at == (await clock.now())
+        assert (await template_repo.get_by_id("template-1")).published_by_user_id == "admin-1"
         assert uow.committed is True
 
-    def test_publish_without_fields_raises(
+    async def test_publish_without_fields_raises(
         self, template_repo, clock, uow, make_template, authorization_service
     ):
-        make_template(template_id="template-1")
+        await make_template(template_id="template-1")
         authorization_service.grant("admin-1", "form.manage")
         use_case = build_use_case(template_repo, clock, uow, authorization_service)
 
         with pytest.raises(FormTemplateHasNoFieldsError):
-            use_case.execute(
+            await use_case.execute(
                 PublishFormTemplateCommand(template_id="template-1", published_by="admin-1")
             )

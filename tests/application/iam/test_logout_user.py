@@ -10,7 +10,7 @@ from app.domain.iam.exceptions import RefreshTokenNotFoundError
 NOW = datetime(2026, 8, 2, tzinfo=UTC)
 
 
-def make_refresh_token(refresh_token_repo, jti: str = "jti-1") -> RefreshToken:
+async def make_refresh_token(refresh_token_repo, jti: str = "jti-1") -> RefreshToken:
     token = RefreshToken(
         id="token-1",
         user_id="user-1",
@@ -20,7 +20,7 @@ def make_refresh_token(refresh_token_repo, jti: str = "jti-1") -> RefreshToken:
         expires_at=NOW + timedelta(days=30),
         created_at=NOW,
     )
-    refresh_token_repo.add(token)
+    await refresh_token_repo.add(token)
     return token
 
 
@@ -29,18 +29,18 @@ def build_use_case(refresh_token_repo, clock, uow) -> LogoutUserUseCase:
 
 
 class TestLogoutUserUseCase:
-    def test_logout_revokes_token(self, refresh_token_repo, clock, uow):
-        token = make_refresh_token(refresh_token_repo)
+    async def test_logout_revokes_token(self, refresh_token_repo, clock, uow):
+        token = await make_refresh_token(refresh_token_repo)
         use_case = build_use_case(refresh_token_repo, clock, uow)
 
-        result = use_case.execute(LogoutUserCommand(refresh_token_jti=token.jti))
+        result = await use_case.execute(LogoutUserCommand(refresh_token_jti=token.jti))
 
         assert result.user_id == token.user_id
-        assert refresh_token_repo.get_by_jti(token.jti).revoked_at == NOW
+        assert (await refresh_token_repo.get_by_jti(token.jti)).revoked_at == NOW
         assert uow.committed is True
 
-    def test_logout_unknown_jti_raises(self, refresh_token_repo, clock, uow):
+    async def test_logout_unknown_jti_raises(self, refresh_token_repo, clock, uow):
         use_case = build_use_case(refresh_token_repo, clock, uow)
 
         with pytest.raises(RefreshTokenNotFoundError):
-            use_case.execute(LogoutUserCommand(refresh_token_jti="missing-jti"))
+            await use_case.execute(LogoutUserCommand(refresh_token_jti="missing-jti"))

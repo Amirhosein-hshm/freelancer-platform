@@ -36,7 +36,7 @@ def build_use_case(
 
 
 class TestGrantPermissionUseCase:
-    def test_grant_permission_success(
+    async def test_grant_permission_success(
         self,
         authorization_service,
         role_repo,
@@ -47,7 +47,7 @@ class TestGrantPermissionUseCase:
         uow,
     ):
         authorization_service.grant("admin", "user.grant_permission")
-        permission_repo.add(
+        await permission_repo.add(
             Permission(
                 id="perm-1",
                 permission_key="project.create_own",
@@ -61,15 +61,15 @@ class TestGrantPermissionUseCase:
             id_generator, clock, uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             GrantPermissionCommand(actor_id="admin", role_id="role-customer", permission_id="perm-1")
         )
 
         assert result.permission_id == "perm-1"
-        granted = role_permission_repo.list_permissions_for_role("role-customer")
+        granted = await role_permission_repo.list_permissions_for_role("role-customer")
         assert any(p.id == "perm-1" for p in granted)
 
-    def test_grant_permission_requires_permission(
+    async def test_grant_permission_requires_permission(
         self,
         authorization_service,
         role_repo,
@@ -85,11 +85,11 @@ class TestGrantPermissionUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(
+            await use_case.execute(
                 GrantPermissionCommand(actor_id="admin", role_id="role-customer", permission_id="perm-1")
             )
 
-    def test_grant_permission_already_granted_raises(
+    async def test_grant_permission_already_granted_raises(
         self,
         authorization_service,
         role_repo,
@@ -100,7 +100,7 @@ class TestGrantPermissionUseCase:
         uow,
     ):
         authorization_service.grant("admin", "user.grant_permission")
-        permission_repo.add(
+        await permission_repo.add(
             Permission(
                 id="perm-1", permission_key="x", module="m", action="a", created_at=NOW
             )
@@ -110,16 +110,16 @@ class TestGrantPermissionUseCase:
             id_generator, clock, uow,
         )
 
-        use_case.execute(
+        await use_case.execute(
             GrantPermissionCommand(actor_id="admin", role_id="role-customer", permission_id="perm-1")
         )
 
         with pytest.raises(PermissionAlreadyGrantedError):
-            use_case.execute(
+            await use_case.execute(
                 GrantPermissionCommand(actor_id="admin", role_id="role-customer", permission_id="perm-1")
             )
 
-    def test_grant_permission_unknown_role_raises(
+    async def test_grant_permission_unknown_role_raises(
         self,
         authorization_service,
         role_repo,
@@ -130,7 +130,7 @@ class TestGrantPermissionUseCase:
         uow,
     ):
         authorization_service.grant("admin", "user.grant_permission")
-        permission_repo.add(
+        await permission_repo.add(
             Permission(
                 id="perm-1", permission_key="x", module="m", action="a", created_at=NOW
             )
@@ -141,11 +141,11 @@ class TestGrantPermissionUseCase:
         )
 
         with pytest.raises(RoleNotFoundError):
-            use_case.execute(
+            await use_case.execute(
                 GrantPermissionCommand(actor_id="admin", role_id="ghost-role", permission_id="perm-1")
             )
 
-    def test_grant_permission_unknown_permission_raises(
+    async def test_grant_permission_unknown_permission_raises(
         self,
         authorization_service,
         role_repo,
@@ -162,6 +162,6 @@ class TestGrantPermissionUseCase:
         )
 
         with pytest.raises(PermissionNotFoundError):
-            use_case.execute(
+            await use_case.execute(
                 GrantPermissionCommand(actor_id="admin", role_id="role-customer", permission_id="ghost")
             )

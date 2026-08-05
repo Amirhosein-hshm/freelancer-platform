@@ -23,9 +23,9 @@ def user_repo() -> FakeUserRepository:
 
 
 @pytest.fixture
-def role_repo() -> FakeRoleRepository:
+async def role_repo() -> FakeRoleRepository:
     repo = FakeRoleRepository()
-    repo.add(
+    await repo.add(
         Role(
             id="role-customer",
             role_key="customer",
@@ -34,10 +34,10 @@ def role_repo() -> FakeRoleRepository:
             created_at=NOW,
         )
     )
-    repo.add(
+    await repo.add(
         Role(id="role-admin", role_key="admin", name="Admin", is_system=False, created_at=NOW)
     )
-    repo.add(
+    await repo.add(
         Role(id="role-system", role_key="system", name="System", is_system=True, created_at=NOW)
     )
     return repo
@@ -69,7 +69,7 @@ def refresh_token_repo() -> FakeRefreshTokenRepository:
 def make_user(user_repo: FakeUserRepository) -> "object":
     hasher = FakePasswordHasher()
 
-    def _make(
+    async def _make(
         user_id: str = "user-1",
         email: str = "user@example.com",
         status: UserStatus = UserStatus.ACTIVE,
@@ -80,14 +80,14 @@ def make_user(user_repo: FakeUserRepository) -> "object":
             id=user_id,
             email=Email(email),
             phone=None,
-            password_hash=PasswordHash(hasher.hash(password)),
+            password_hash=PasswordHash(await hasher.hash(password)),
             first_name="John",
             last_name="Doe",
             status=status,
             created_at=NOW,
             **overrides,  # type: ignore[arg-type]
         )
-        user_repo.add(user)
+        await user_repo.add(user)
         return user
 
     return _make

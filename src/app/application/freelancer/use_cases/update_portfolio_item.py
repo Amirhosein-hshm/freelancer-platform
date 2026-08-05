@@ -33,7 +33,7 @@ class UpdatePortfolioItemUseCase(
     async def execute(self, request: UpdatePortfolioItemCommand) -> UpdatePortfolioItemResult:
         request.validate()
         profile = await self._profile_repo.get_by_user_id(request.user_id)
-        item = self._owned_item(profile.id, request.item_id)
+        item = await self._owned_item(profile.id, request.item_id)
         item.title = request.title
         item.description = request.description
         item.external_url = request.external_url

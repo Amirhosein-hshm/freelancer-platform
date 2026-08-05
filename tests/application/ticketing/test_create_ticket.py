@@ -17,7 +17,7 @@ def build_create(
 
 
 class TestCreateTicketUseCase:
-    def test_create_ticket_adds_requester(
+    async def test_create_ticket_adds_requester(
         self,
         ticket_repo,
         participant_repo,
@@ -30,7 +30,7 @@ class TestCreateTicketUseCase:
             ticket_repo, participant_repo, ticket_code_generator, id_generator, clock, uow
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             CreateTicketCommand(
                 actor_id="user-1",
                 subject="Payment problem",
@@ -39,18 +39,18 @@ class TestCreateTicketUseCase:
             )
         )
 
-        ticket = ticket_repo.get_by_id(result.ticket_id)
+        ticket = await ticket_repo.get_by_id(result.ticket_id)
         assert ticket.status == TicketStatus.OPEN
         assert ticket.priority == TicketPriority.HIGH
         assert ticket.related_project_id == "project-1"
         assert result.ticket_code.startswith("TCK-2026-")
-        participants = participant_repo.list_by_ticket(ticket.id)
+        participants = await participant_repo.list_by_ticket(ticket.id)
         assert len(participants) == 1
         assert participants[0].user_id == "user-1"
         assert participants[0].participant_role == TicketParticipantRole.REQUESTER
         assert uow.committed is True
 
-    def test_default_priority_is_normal(
+    async def test_default_priority_is_normal(
         self,
         ticket_repo,
         participant_repo,
@@ -63,8 +63,8 @@ class TestCreateTicketUseCase:
             ticket_repo, participant_repo, ticket_code_generator, id_generator, clock, uow
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             CreateTicketCommand(actor_id="user-1", subject="Hello")
         )
 
-        assert ticket_repo.get_by_id(result.ticket_id).priority == TicketPriority.NORMAL
+        assert (await ticket_repo.get_by_id(result.ticket_id)).priority == TicketPriority.NORMAL

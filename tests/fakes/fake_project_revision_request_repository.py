@@ -4,7 +4,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeProjectRevisionRequestRepository(IProjectRevisionRequestRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: list[ProjectRevisionRequest] = []
 
     async def add(self, revision: ProjectRevisionRequest) -> None:

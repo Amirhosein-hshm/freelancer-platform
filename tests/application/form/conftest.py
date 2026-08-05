@@ -16,7 +16,7 @@ def template_repo() -> FakeFormTemplateRepository:
 
 @pytest.fixture
 def make_template(template_repo: FakeFormTemplateRepository):
-    def _make(
+    async def _make(
         template_id: str = "template-1",
         category_id: str = "cat-1",
         **overrides: object,
@@ -37,7 +37,7 @@ def make_template(template_repo: FakeFormTemplateRepository):
         }
         fields.update(overrides)
         template = FormTemplate(**fields)  # type: ignore[arg-type]
-        template_repo.add(template)
+        await template_repo.add(template)
         return template
 
     return _make

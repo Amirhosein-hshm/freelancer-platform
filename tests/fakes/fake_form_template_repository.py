@@ -6,7 +6,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeFormTemplateRepository(IFormTemplateRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: dict[str, FormTemplate] = {}
 
     async def add(self, template: FormTemplate) -> None:

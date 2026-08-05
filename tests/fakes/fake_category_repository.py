@@ -5,7 +5,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeCategoryRepository(ICategoryRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: dict[str, Category] = {}
         self._by_slug: dict[str, Category] = {}
 

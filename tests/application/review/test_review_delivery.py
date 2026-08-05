@@ -35,7 +35,7 @@ def build_review(
 
 
 class TestReviewDeliveryUseCase:
-    def test_review_approves(
+    async def test_review_approves(
         self,
         authorization_service,
         delivery_repo,
@@ -49,7 +49,7 @@ class TestReviewDeliveryUseCase:
         uow,
         seed_supervisor_flow,
     ):
-        seed_supervisor_flow()
+        await seed_supervisor_flow()
         authorization_service.grant("supervisor-1", "review.decide_own")
         use_case = build_review(
             authorization_service,
@@ -64,7 +64,7 @@ class TestReviewDeliveryUseCase:
             uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             ReviewDeliveryCommand(
                 actor_id="supervisor-1",
                 project_delivery_id="delivery-1",
@@ -74,9 +74,9 @@ class TestReviewDeliveryUseCase:
         )
 
         assert result.project_status == ProjectStatus.AWAITING_CUSTOMER_REVIEW
-        assert review_repo.get_by_delivery("delivery-1").decision == ReviewStatus.APPROVED
+        assert (await review_repo.get_by_delivery("delivery-1")).decision == ReviewStatus.APPROVED
 
-    def test_review_rejects(
+    async def test_review_rejects(
         self,
         authorization_service,
         delivery_repo,
@@ -90,7 +90,7 @@ class TestReviewDeliveryUseCase:
         uow,
         seed_supervisor_flow,
     ):
-        seed_supervisor_flow()
+        await seed_supervisor_flow()
         authorization_service.grant("supervisor-1", "review.decide_own")
         use_case = build_review(
             authorization_service,
@@ -105,7 +105,7 @@ class TestReviewDeliveryUseCase:
             uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             ReviewDeliveryCommand(
                 actor_id="supervisor-1",
                 project_delivery_id="delivery-1",
@@ -115,9 +115,9 @@ class TestReviewDeliveryUseCase:
         )
 
         assert result.project_status == ProjectStatus.REVISION_REQUESTED
-        assert review_repo.get_by_delivery("delivery-1").decision == ReviewStatus.REJECTED
+        assert (await review_repo.get_by_delivery("delivery-1")).decision == ReviewStatus.REJECTED
 
-    def test_pending_decision_is_rejected(
+    async def test_pending_decision_is_rejected(
         self,
         authorization_service,
         delivery_repo,
@@ -131,7 +131,7 @@ class TestReviewDeliveryUseCase:
         uow,
         seed_supervisor_flow,
     ):
-        seed_supervisor_flow()
+        await seed_supervisor_flow()
         authorization_service.grant("supervisor-1", "review.decide_own")
         use_case = build_review(
             authorization_service,
@@ -147,7 +147,7 @@ class TestReviewDeliveryUseCase:
         )
 
         with pytest.raises(ValidationError):
-            use_case.execute(
+            await use_case.execute(
                 ReviewDeliveryCommand(
                     actor_id="supervisor-1",
                     project_delivery_id="delivery-1",
@@ -155,7 +155,7 @@ class TestReviewDeliveryUseCase:
                 )
             )
 
-    def test_review_requires_project_under_supervisor_review(
+    async def test_review_requires_project_under_supervisor_review(
         self,
         authorization_service,
         delivery_repo,
@@ -169,10 +169,10 @@ class TestReviewDeliveryUseCase:
         uow,
         seed_supervisor_flow,
     ):
-        seed_supervisor_flow()
-        project = project_repo.get_by_id("project-1")
+        await seed_supervisor_flow()
+        project = await project_repo.get_by_id("project-1")
         project.status = ProjectStatus.AWAITING_CUSTOMER_REVIEW
-        project_repo.update(project)
+        await project_repo.update(project)
         authorization_service.grant("supervisor-1", "review.decide_own")
         use_case = build_review(
             authorization_service,
@@ -188,7 +188,7 @@ class TestReviewDeliveryUseCase:
         )
 
         with pytest.raises(InvalidStateTransitionError):
-            use_case.execute(
+            await use_case.execute(
                 ReviewDeliveryCommand(
                     actor_id="supervisor-1",
                     project_delivery_id="delivery-1",

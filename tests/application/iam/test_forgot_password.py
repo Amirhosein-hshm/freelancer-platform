@@ -13,19 +13,19 @@ def build_use_case(user_repo, id_generator, notification_service) -> ForgotPassw
 
 
 class TestForgotPasswordUseCase:
-    def test_sends_reset_email(self, user_repo, id_generator, notification_service, make_user):
-        make_user(email="user@example.com")
+    async def test_sends_reset_email(self, user_repo, id_generator, notification_service, make_user):
+        await make_user(email="user@example.com")
         use_case = build_use_case(user_repo, id_generator, notification_service)
 
-        result = use_case.execute(ForgotPasswordCommand(email="user@example.com"))
+        result = await use_case.execute(ForgotPasswordCommand(email="user@example.com"))
 
         assert result.email == "user@example.com"
         assert notification_service.reset_tokens
 
-    def test_unknown_email_succeeds_silently(self, user_repo, id_generator, notification_service):
+    async def test_unknown_email_succeeds_silently(self, user_repo, id_generator, notification_service):
         use_case = build_use_case(user_repo, id_generator, notification_service)
 
-        result = use_case.execute(ForgotPasswordCommand(email="ghost@example.com"))
+        result = await use_case.execute(ForgotPasswordCommand(email="ghost@example.com"))
 
         assert result.email == "ghost@example.com"
         assert notification_service.reset_tokens == []
@@ -33,14 +33,14 @@ class TestForgotPasswordUseCase:
             to == "ghost@example.com" for to, _subject, _body in notification_service.emails
         )
 
-    def test_invalid_email_raises(self, user_repo, id_generator, notification_service):
+    async def test_invalid_email_raises(self, user_repo, id_generator, notification_service):
         use_case = build_use_case(user_repo, id_generator, notification_service)
 
         with pytest.raises(InvalidEmailError):
-            use_case.execute(ForgotPasswordCommand(email="not-an-email"))
+            await use_case.execute(ForgotPasswordCommand(email="not-an-email"))
 
-    def test_empty_email_raises_validation(self, user_repo, id_generator, notification_service):
+    async def test_empty_email_raises_validation(self, user_repo, id_generator, notification_service):
         use_case = build_use_case(user_repo, id_generator, notification_service)
 
         with pytest.raises(ValidationError):
-            use_case.execute(ForgotPasswordCommand(email=""))
+            await use_case.execute(ForgotPasswordCommand(email=""))

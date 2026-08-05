@@ -12,6 +12,7 @@ from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.feedback.entities import Rating
 from app.domain.feedback.exceptions import (
+    CustomerReviewNotApprovedError,
     ProjectNotCompletedError,
     RatingAlreadyExistsError,
 )
@@ -21,6 +22,7 @@ from app.domain.project.repositories import (
     IProjectApplicationRepository,
     IProjectRepository,
 )
+from app.domain.review.enums import ReviewStatus
 
 
 class SubmitRatingUseCase(UseCase[SubmitRatingCommand, SubmitRatingResult]):
@@ -72,6 +74,11 @@ class SubmitRatingUseCase(UseCase[SubmitRatingCommand, SubmitRatingResult]):
             raise ValidationError(
                 f"Project {project.id} has no customer review yet; submit a review "
                 "before rating."
+            )
+        if customer_review.decision != ReviewStatus.APPROVED:
+            raise CustomerReviewNotApprovedError(
+                f"Project {project.id} cannot be rated until its customer review is "
+                f"approved (current decision: '{customer_review.decision.value}')."
             )
         now = await self._clock.now()
         rating = Rating(

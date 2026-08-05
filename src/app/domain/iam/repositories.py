@@ -75,6 +75,9 @@ class IUserRoleRepository(ABC):
     async def list_active_roles_for_user(self, user_id: EntityId) -> list[Role]: ...
 
     @abstractmethod
+    async def list_active_user_ids_for_role(self, role_id: EntityId) -> list[EntityId]: ...
+
+    @abstractmethod
     async def update(self, user_role: UserRole) -> None: ...
 
 

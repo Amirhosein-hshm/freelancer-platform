@@ -4,7 +4,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeResumeRepository(IResumeRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: list[Resume] = []
 
     async def add(self, resume: Resume) -> None:

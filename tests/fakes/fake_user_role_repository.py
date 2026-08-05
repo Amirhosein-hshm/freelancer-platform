@@ -5,7 +5,7 @@ from tests.fakes.fake_role_repository import FakeRoleRepository
 
 
 class FakeUserRoleRepository(IUserRoleRepository):
-    async def __init__(self, role_repo: FakeRoleRepository | None = None) -> None:
+    def __init__(self, role_repo: FakeRoleRepository | None = None) -> None:
         self._store: list[UserRole] = []
         self._role_repo = role_repo
 
@@ -28,7 +28,14 @@ class FakeUserRoleRepository(IUserRoleRepository):
         ]
         if self._role_repo is None:
             return []
-        return [self._role_repo.get_by_id(role_id) for role_id in role_ids]
+        return [await self._role_repo.get_by_id(role_id) for role_id in role_ids]
+
+    async def list_active_user_ids_for_role(self, role_id: EntityId) -> list[EntityId]:
+        return [
+            ur.user_id
+            for ur in self._store
+            if ur.role_id == role_id and ur.is_active
+        ]
 
     async def update(self, user_role: UserRole) -> None:
         for i, stored in enumerate(self._store):

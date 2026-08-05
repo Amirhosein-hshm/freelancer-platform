@@ -5,7 +5,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeRoleRepository(IRoleRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: dict[str, Role] = {}
         self._by_key: dict[str, Role] = {}
 

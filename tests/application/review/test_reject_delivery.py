@@ -34,7 +34,7 @@ def build_reject(
 
 
 class TestRejectDeliveryUseCase:
-    def test_reject_triggers_revision_request(
+    async def test_reject_triggers_revision_request(
         self,
         authorization_service,
         delivery_repo,
@@ -48,7 +48,7 @@ class TestRejectDeliveryUseCase:
         uow,
         seed_supervisor_flow,
     ):
-        seed_supervisor_flow()
+        await seed_supervisor_flow()
         authorization_service.grant("supervisor-1", "review.decide_own")
         use_case = build_reject(
             authorization_service,
@@ -63,7 +63,7 @@ class TestRejectDeliveryUseCase:
             uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             RejectDeliveryCommand(
                 actor_id="supervisor-1", project_delivery_id="delivery-1", reason="Buggy"
             )
@@ -71,16 +71,16 @@ class TestRejectDeliveryUseCase:
 
         assert result.decision == ReviewStatus.REJECTED
         assert result.project_status == ProjectStatus.REVISION_REQUESTED
-        assert delivery_repo.get_by_id("delivery-1").status == DeliveryStatus.REJECTED
-        assert review_repo.get_by_delivery("delivery-1").reject_reason == "Buggy"
-        revision = revision_repo.list_by_project("project-1")
+        assert (await delivery_repo.get_by_id("delivery-1")).status == DeliveryStatus.REJECTED
+        assert (await review_repo.get_by_delivery("delivery-1")).reject_reason == "Buggy"
+        revision = await revision_repo.list_by_project("project-1")
         assert len(revision) == 1
         assert revision[0].status == RevisionRequestStatus.OPEN
         assert revision[0].reason == "Buggy"
         assert revision[0].round_no == 1
         assert uow.committed is True
 
-    def test_non_supervisor_raises(
+    async def test_non_supervisor_raises(
         self,
         authorization_service,
         delivery_repo,
@@ -94,7 +94,7 @@ class TestRejectDeliveryUseCase:
         uow,
         seed_supervisor_flow,
     ):
-        seed_supervisor_flow()
+        await seed_supervisor_flow()
         use_case = build_reject(
             authorization_service,
             delivery_repo,
@@ -109,7 +109,7 @@ class TestRejectDeliveryUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(
+            await use_case.execute(
                 RejectDeliveryCommand(
                     actor_id="intruder", project_delivery_id="delivery-1", reason="Nope"
                 )

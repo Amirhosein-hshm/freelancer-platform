@@ -35,7 +35,7 @@ def build_approve(
 
 
 class TestApproveDeliveryUseCase:
-    def test_approve_moves_project_to_customer_review(
+    async def test_approve_moves_project_to_customer_review(
         self,
         authorization_service,
         delivery_repo,
@@ -49,7 +49,7 @@ class TestApproveDeliveryUseCase:
         uow,
         seed_supervisor_flow,
     ):
-        seed_supervisor_flow()
+        await seed_supervisor_flow()
         authorization_service.grant("supervisor-1", "review.decide_own")
         use_case = build_approve(
             authorization_service,
@@ -64,7 +64,7 @@ class TestApproveDeliveryUseCase:
             uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             ApproveDeliveryCommand(
                 actor_id="supervisor-1", project_delivery_id="delivery-1", notes="OK"
             )
@@ -72,15 +72,15 @@ class TestApproveDeliveryUseCase:
 
         assert result.decision == ReviewStatus.APPROVED
         assert result.project_status == ProjectStatus.AWAITING_CUSTOMER_REVIEW
-        assert delivery_repo.get_by_id("delivery-1").status == DeliveryStatus.APPROVED
-        review = review_repo.get_by_delivery("delivery-1")
+        assert (await delivery_repo.get_by_id("delivery-1")).status == DeliveryStatus.APPROVED
+        review = await review_repo.get_by_delivery("delivery-1")
         assert review.decision == ReviewStatus.APPROVED
         assert review.notes == "OK"
         assert uow.committed is True
-        history = status_history_repo.list_by_project("project-1")
+        history = await status_history_repo.list_by_project("project-1")
         assert history[-1].to_status == ProjectStatus.AWAITING_CUSTOMER_REVIEW
 
-    def test_non_supervisor_raises(
+    async def test_non_supervisor_raises(
         self,
         authorization_service,
         delivery_repo,
@@ -94,7 +94,7 @@ class TestApproveDeliveryUseCase:
         uow,
         seed_supervisor_flow,
     ):
-        seed_supervisor_flow()
+        await seed_supervisor_flow()
         use_case = build_approve(
             authorization_service,
             delivery_repo,
@@ -109,13 +109,13 @@ class TestApproveDeliveryUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(
+            await use_case.execute(
                 ApproveDeliveryCommand(
                     actor_id="intruder", project_delivery_id="delivery-1"
                 )
             )
 
-    def test_already_reviewed_raises(
+    async def test_already_reviewed_raises(
         self,
         authorization_service,
         delivery_repo,
@@ -129,9 +129,9 @@ class TestApproveDeliveryUseCase:
         uow,
         seed_supervisor_flow,
     ):
-        seed_supervisor_flow()
+        await seed_supervisor_flow()
         authorization_service.grant("supervisor-1", "review.decide_own")
-        review_repo.get_by_delivery("delivery-1").approve("pre-seeded", clock.now())
+        (await review_repo.get_by_delivery("delivery-1")).approve("pre-seeded", await clock.now())
         use_case = build_approve(
             authorization_service,
             delivery_repo,
@@ -146,11 +146,11 @@ class TestApproveDeliveryUseCase:
         )
 
         with pytest.raises(DeliveryAlreadyReviewedError):
-            use_case.execute(
+            await use_case.execute(
                 ApproveDeliveryCommand(actor_id="supervisor-1", project_delivery_id="delivery-1")
             )
 
-    def test_missing_pending_review_creates_one(
+    async def test_missing_pending_review_creates_one(
         self,
         authorization_service,
         delivery_repo,
@@ -164,7 +164,7 @@ class TestApproveDeliveryUseCase:
         uow,
         seed_supervisor_flow,
     ):
-        seed_supervisor_flow(with_review=False)
+        await seed_supervisor_flow(with_review=False)
         authorization_service.grant("supervisor-1", "review.decide_own")
         use_case = build_approve(
             authorization_service,
@@ -179,9 +179,9 @@ class TestApproveDeliveryUseCase:
             uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             ApproveDeliveryCommand(actor_id="supervisor-1", project_delivery_id="delivery-1")
         )
 
-        assert review_repo.get_by_delivery("delivery-1").decision == ReviewStatus.APPROVED
+        assert (await review_repo.get_by_delivery("delivery-1")).decision == ReviewStatus.APPROVED
         assert result.project_status == ProjectStatus.AWAITING_CUSTOMER_REVIEW

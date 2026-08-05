@@ -46,6 +46,22 @@ class CreateFreelancerProfileResult:
 
 
 @dataclass(frozen=True)
+class CreateFreelancerProfileOnBehalfCommand:
+    actor_id: EntityId
+    target_user_id: EntityId
+    display_name: str
+    headline: str | None = None
+    bio: str | None = None
+    country_code: str | None = None
+    city: str | None = None
+    timezone: str | None = None
+
+    def validate(self) -> None:
+        if not self.display_name.strip():
+            raise ValidationError("display_name is required.")
+
+
+@dataclass(frozen=True)
 class UpdateFreelancerProfileCommand:
     user_id: EntityId
     display_name: str | None = None

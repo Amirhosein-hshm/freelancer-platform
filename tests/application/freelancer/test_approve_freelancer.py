@@ -25,7 +25,7 @@ def build_use_case(
 
 
 class TestApproveFreelancerUseCase:
-    def test_approve_assigns_default_level_and_history(
+    async def test_approve_assigns_default_level_and_history(
         self,
         authorization_service,
         profile_repo,
@@ -38,7 +38,7 @@ class TestApproveFreelancerUseCase:
         make_level,
     ):
         authorization_service.grant("admin", "freelancer.approve")
-        make_profile(profile_id="profile-1")
+        await make_profile(profile_id="profile-1")
         make_level(level_id="level-1", level_key=DEFAULT_LEVEL_KEY)
         use_case = build_use_case(
             authorization_service,
@@ -50,22 +50,22 @@ class TestApproveFreelancerUseCase:
             uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             ApproveFreelancerCommand(actor_id="admin", profile_id="profile-1", note="OK")
         )
 
         assert result.approval_status == FreelancerApprovalStatus.APPROVED
         assert result.current_level_id == "level-1"
-        profile = profile_repo.get_by_id("profile-1")
+        profile = await profile_repo.get_by_id("profile-1")
         assert profile.approved_by_user_id == "admin"
-        assert profile.approved_at == clock.now()
-        history = level_history_repo.list_by_profile("profile-1")
+        assert profile.approved_at == await clock.now()
+        history = await level_history_repo.list_by_profile("profile-1")
         assert len(history) == 1
         assert history[0].old_level_id is None
         assert history[0].new_level_id == "level-1"
         assert uow.committed is True
 
-    def test_approve_without_default_level(
+    async def test_approve_without_default_level(
         self,
         authorization_service,
         profile_repo,
@@ -77,7 +77,7 @@ class TestApproveFreelancerUseCase:
         make_profile,
     ):
         authorization_service.grant("admin", "freelancer.approve")
-        make_profile(profile_id="profile-1")
+        await make_profile(profile_id="profile-1")
         use_case = build_use_case(
             authorization_service,
             profile_repo,
@@ -88,15 +88,15 @@ class TestApproveFreelancerUseCase:
             uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             ApproveFreelancerCommand(actor_id="admin", profile_id="profile-1")
         )
 
         assert result.approval_status == FreelancerApprovalStatus.APPROVED
         assert result.current_level_id is None
-        assert level_history_repo.list_by_profile("profile-1") == []
+        assert await level_history_repo.list_by_profile("profile-1") == []
 
-    def test_requires_permission(
+    async def test_requires_permission(
         self,
         authorization_service,
         profile_repo,
@@ -107,7 +107,7 @@ class TestApproveFreelancerUseCase:
         uow,
         make_profile,
     ):
-        make_profile(profile_id="profile-1")
+        await make_profile(profile_id="profile-1")
         use_case = build_use_case(
             authorization_service,
             profile_repo,
@@ -119,11 +119,11 @@ class TestApproveFreelancerUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(
+            await use_case.execute(
                 ApproveFreelancerCommand(actor_id="admin", profile_id="profile-1")
             )
 
-    def test_double_approve_raises(
+    async def test_double_approve_raises(
         self,
         authorization_service,
         profile_repo,
@@ -135,7 +135,7 @@ class TestApproveFreelancerUseCase:
         make_profile,
     ):
         authorization_service.grant("admin", "freelancer.approve")
-        make_profile(profile_id="profile-1", approval_status=FreelancerApprovalStatus.APPROVED)
+        await make_profile(profile_id="profile-1", approval_status=FreelancerApprovalStatus.APPROVED)
         use_case = build_use_case(
             authorization_service,
             profile_repo,
@@ -147,6 +147,6 @@ class TestApproveFreelancerUseCase:
         )
 
         with pytest.raises(FreelancerAlreadyApprovedError):
-            use_case.execute(
+            await use_case.execute(
                 ApproveFreelancerCommand(actor_id="admin", profile_id="profile-1")
             )

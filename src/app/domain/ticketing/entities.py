@@ -28,6 +28,7 @@ class Ticket(AggregateRoot):
     closed_at: datetime | None
     last_message_at: datetime | None
     deleted_at: datetime | None
+    submitted_by_user_id: EntityId | None = None
 
     def assign(self, user_id: EntityId) -> None:
         self.assigned_to_user_id = user_id

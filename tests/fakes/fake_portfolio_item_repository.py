@@ -5,7 +5,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakePortfolioItemRepository(IPortfolioItemRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: dict[str, PortfolioItem] = {}
 
     async def add(self, item: PortfolioItem) -> None:

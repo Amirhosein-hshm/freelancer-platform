@@ -30,12 +30,12 @@ def build_use_case(
 
 
 class TestRemoveRoleUseCase:
-    def test_remove_role_success(
+    async def test_remove_role_success(
         self, authorization_service, user_repo, role_repo, user_role_repo, clock, uow, make_user
     ):
         authorization_service.grant("admin", "user.remove_role")
-        make_user(user_id="u1")
-        user_role_repo.add(
+        await make_user(user_id="u1")
+        await user_role_repo.add(
             UserRole(
                 id="ur-1",
                 user_id="u1",
@@ -49,69 +49,69 @@ class TestRemoveRoleUseCase:
             authorization_service, user_repo, role_repo, user_role_repo, clock, uow
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             RemoveRoleCommand(actor_id="admin", target_user_id="u1", role_key="admin")
         )
 
         assert result.revoked_at == NOW
-        assert user_role_repo.find_active("u1", "role-admin") is None
+        assert (await user_role_repo.find_active("u1", "role-admin")) is None
 
-    def test_remove_role_requires_permission(
+    async def test_remove_role_requires_permission(
         self, authorization_service, user_repo, role_repo, user_role_repo, clock, uow, make_user
     ):
-        make_user(user_id="u1")
+        await make_user(user_id="u1")
         use_case = build_use_case(
             authorization_service, user_repo, role_repo, user_role_repo, clock, uow
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(
+            await use_case.execute(
                 RemoveRoleCommand(actor_id="admin", target_user_id="u1", role_key="admin")
             )
 
-    def test_remove_role_system_role_raises(
+    async def test_remove_role_system_role_raises(
         self, authorization_service, user_repo, role_repo, user_role_repo, clock, uow, make_user
     ):
         authorization_service.grant("admin", "user.remove_role")
-        make_user(user_id="u1")
+        await make_user(user_id="u1")
         use_case = build_use_case(
             authorization_service, user_repo, role_repo, user_role_repo, clock, uow
         )
 
         with pytest.raises(SystemRoleImmutableError):
-            use_case.execute(
+            await use_case.execute(
                 RemoveRoleCommand(actor_id="admin", target_user_id="u1", role_key="system")
             )
 
-    def test_remove_role_without_active_assignment_raises(
+    async def test_remove_role_without_active_assignment_raises(
         self, authorization_service, user_repo, role_repo, user_role_repo, clock, uow, make_user
     ):
         authorization_service.grant("admin", "user.remove_role")
-        make_user(user_id="u1")
+        await make_user(user_id="u1")
         use_case = build_use_case(
             authorization_service, user_repo, role_repo, user_role_repo, clock, uow
         )
 
         with pytest.raises(UserRoleNotFoundError):
-            use_case.execute(
+            await use_case.execute(
                 RemoveRoleCommand(actor_id="admin", target_user_id="u1", role_key="admin")
             )
 
-    def test_remove_role_unknown_role_raises(
+    async def test_remove_role_unknown_role_raises(
         self, authorization_service, user_repo, role_repo, user_role_repo, clock, uow, make_user
     ):
         authorization_service.grant("admin", "user.remove_role")
-        make_user(user_id="u1")
+        await make_user(user_id="u1")
         use_case = build_use_case(
             authorization_service, user_repo, role_repo, user_role_repo, clock, uow
         )
 
         with pytest.raises(RoleNotFoundError):
-            use_case.execute(
+            await use_case.execute(
                 RemoveRoleCommand(actor_id="admin", target_user_id="u1", role_key="nope")
             )
 
-    def test_remove_role_unknown_user_raises(
+    async def test_remove_role_unknown_user_raises(
         self, authorization_service, user_repo, role_repo, user_role_repo, clock, uow
     ):
         authorization_service.grant("admin", "user.remove_role")
@@ -120,6 +120,6 @@ class TestRemoveRoleUseCase:
         )
 
         with pytest.raises(UserNotFoundError):
-            use_case.execute(
+            await use_case.execute(
                 RemoveRoleCommand(actor_id="admin", target_user_id="ghost", role_key="admin")
             )

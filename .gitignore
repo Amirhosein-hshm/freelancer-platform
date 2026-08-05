@@ -13,3 +13,4 @@ htmlcov/
 .codegraph/
 .agents/
 skills-lock.json
+.env

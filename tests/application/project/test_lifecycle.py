@@ -13,7 +13,7 @@ from app.domain.project.enums import ProjectStatus
 
 
 class TestPublishProjectUseCase:
-    def test_publish_goes_straight_to_collecting(
+    async def test_publish_goes_straight_to_collecting(
         self,
         authorization_service,
         project_repo,
@@ -24,7 +24,7 @@ class TestPublishProjectUseCase:
         make_project,
     ):
         authorization_service.grant("customer-1", "project.manage_own")
-        make_project(project_id="project-1", customer_user_id="customer-1")
+        await make_project(project_id="project-1", customer_user_id="customer-1")
         use_case = PublishProjectUseCase(
             authorization_service=authorization_service,
             project_repo=project_repo,
@@ -34,17 +34,17 @@ class TestPublishProjectUseCase:
             uow=uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             PublishProjectCommand(actor_id="customer-1", project_id="project-1")
         )
 
         assert result.status == ProjectStatus.COLLECTING_APPLICATIONS
-        history = status_history_repo.list_by_project("project-1")
+        history = await status_history_repo.list_by_project("project-1")
         assert [h.from_status.value for h in history] == ["draft", "published"]
         assert [h.to_status.value for h in history] == ["published", "collecting_applications"]
         assert uow.committed is True
 
-    def test_non_owner_raises(
+    async def test_non_owner_raises(
         self,
         authorization_service,
         project_repo,
@@ -54,7 +54,7 @@ class TestPublishProjectUseCase:
         uow,
         make_project,
     ):
-        make_project(project_id="project-1", customer_user_id="customer-1")
+        await make_project(project_id="project-1", customer_user_id="customer-1")
         use_case = PublishProjectUseCase(
             authorization_service=authorization_service,
             project_repo=project_repo,
@@ -65,13 +65,13 @@ class TestPublishProjectUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(
+            await use_case.execute(
                 PublishProjectCommand(actor_id="intruder", project_id="project-1")
             )
 
 
 class TestCancelProjectUseCase:
-    def test_cancel_records_reason(
+    async def test_cancel_records_reason(
         self,
         authorization_service,
         project_repo,
@@ -82,7 +82,7 @@ class TestCancelProjectUseCase:
         make_project,
     ):
         authorization_service.grant("customer-1", "project.manage_own")
-        make_project(project_id="project-1", status=ProjectStatus.IN_PROGRESS)
+        await make_project(project_id="project-1", status=ProjectStatus.IN_PROGRESS)
         use_case = CancelProjectUseCase(
             authorization_service=authorization_service,
             project_repo=project_repo,
@@ -92,17 +92,17 @@ class TestCancelProjectUseCase:
             uow=uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             CancelProjectCommand(actor_id="customer-1", project_id="project-1", reason="Bailed")
         )
 
         assert result.status == ProjectStatus.CANCELLED
-        history = status_history_repo.list_by_project("project-1")[0]
+        history = (await status_history_repo.list_by_project("project-1"))[0]
         assert history.from_status == ProjectStatus.IN_PROGRESS
         assert history.to_status == ProjectStatus.CANCELLED
         assert history.reason == "Bailed"
 
-    def test_non_owner_raises(
+    async def test_non_owner_raises(
         self,
         authorization_service,
         project_repo,
@@ -112,7 +112,7 @@ class TestCancelProjectUseCase:
         uow,
         make_project,
     ):
-        make_project(project_id="project-1", customer_user_id="customer-1")
+        await make_project(project_id="project-1", customer_user_id="customer-1")
         use_case = CancelProjectUseCase(
             authorization_service=authorization_service,
             project_repo=project_repo,
@@ -123,13 +123,13 @@ class TestCancelProjectUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(
+            await use_case.execute(
                 CancelProjectCommand(actor_id="intruder", project_id="project-1", reason="x")
             )
 
 
 class TestStartProjectUseCase:
-    def test_start_sets_in_progress(
+    async def test_start_sets_in_progress(
         self,
         authorization_service,
         project_repo,
@@ -140,7 +140,7 @@ class TestStartProjectUseCase:
         make_project,
     ):
         authorization_service.grant("customer-1", "project.manage_own")
-        make_project(project_id="project-1", status=ProjectStatus.ASSIGNED, selected_application_id="app-1")
+        await make_project(project_id="project-1", status=ProjectStatus.ASSIGNED, selected_application_id="app-1")
         use_case = StartProjectUseCase(
             authorization_service=authorization_service,
             project_repo=project_repo,
@@ -150,14 +150,14 @@ class TestStartProjectUseCase:
             uow=uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             StartProjectCommand(actor_id="customer-1", project_id="project-1")
         )
 
         assert result.status == ProjectStatus.IN_PROGRESS
-        assert project_repo.get_by_id("project-1").start_at == clock.now()
+        assert (await project_repo.get_by_id("project-1")).start_at == await clock.now()
 
-    def test_non_owner_raises(
+    async def test_non_owner_raises(
         self,
         authorization_service,
         project_repo,
@@ -167,7 +167,7 @@ class TestStartProjectUseCase:
         uow,
         make_project,
     ):
-        make_project(project_id="project-1", status=ProjectStatus.ASSIGNED, customer_user_id="customer-1")
+        await make_project(project_id="project-1", status=ProjectStatus.ASSIGNED, customer_user_id="customer-1")
         use_case = StartProjectUseCase(
             authorization_service=authorization_service,
             project_repo=project_repo,
@@ -178,4 +178,4 @@ class TestStartProjectUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(StartProjectCommand(actor_id="intruder", project_id="project-1"))
+            await use_case.execute(StartProjectCommand(actor_id="intruder", project_id="project-1"))

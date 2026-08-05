@@ -23,7 +23,7 @@ def build_use_case(
 
 
 class TestAssignFreelancerLevelUseCase:
-    def test_assign_level_records_history(
+    async def test_assign_level_records_history(
         self,
         authorization_service,
         profile_repo,
@@ -36,7 +36,7 @@ class TestAssignFreelancerLevelUseCase:
         make_level,
     ):
         authorization_service.grant("admin", "freelancer.assign_level")
-        make_profile(profile_id="profile-1", current_level_id="level-1")
+        await make_profile(profile_id="profile-1", current_level_id="level-1")
         make_level(level_id="level-1", level_key="standard")
         make_level(level_id="level-2", level_key="premium", rank_order=2)
         use_case = build_use_case(
@@ -49,7 +49,7 @@ class TestAssignFreelancerLevelUseCase:
             uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             AssignFreelancerLevelCommand(
                 actor_id="admin", profile_id="profile-1", new_level_id="level-2", reason="Promotion"
             )
@@ -57,15 +57,15 @@ class TestAssignFreelancerLevelUseCase:
 
         assert result.old_level_id == "level-1"
         assert result.new_level_id == "level-2"
-        assert profile_repo.get_by_id("profile-1").current_level_id == "level-2"
-        history = level_history_repo.list_by_profile("profile-1")
+        assert (await profile_repo.get_by_id("profile-1")).current_level_id == "level-2"
+        history = await level_history_repo.list_by_profile("profile-1")
         assert len(history) == 1
         assert history[0].old_level_id == "level-1"
         assert history[0].new_level_id == "level-2"
         assert history[0].reason == "Promotion"
         assert uow.committed is True
 
-    def test_requires_permission(
+    async def test_requires_permission(
         self,
         authorization_service,
         profile_repo,
@@ -76,7 +76,7 @@ class TestAssignFreelancerLevelUseCase:
         uow,
         make_profile,
     ):
-        make_profile(profile_id="profile-1")
+        await make_profile(profile_id="profile-1")
         use_case = build_use_case(
             authorization_service,
             profile_repo,
@@ -88,13 +88,13 @@ class TestAssignFreelancerLevelUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(
+            await use_case.execute(
                 AssignFreelancerLevelCommand(
                     actor_id="admin", profile_id="profile-1", new_level_id="level-2"
                 )
             )
 
-    def test_unknown_level_raises(
+    async def test_unknown_level_raises(
         self,
         authorization_service,
         profile_repo,
@@ -106,7 +106,7 @@ class TestAssignFreelancerLevelUseCase:
         make_profile,
     ):
         authorization_service.grant("admin", "freelancer.assign_level")
-        make_profile(profile_id="profile-1")
+        await make_profile(profile_id="profile-1")
         use_case = build_use_case(
             authorization_service,
             profile_repo,
@@ -118,7 +118,7 @@ class TestAssignFreelancerLevelUseCase:
         )
 
         with pytest.raises(FreelancerLevelNotFoundError):
-            use_case.execute(
+            await use_case.execute(
                 AssignFreelancerLevelCommand(
                     actor_id="admin", profile_id="profile-1", new_level_id="ghost"
                 )

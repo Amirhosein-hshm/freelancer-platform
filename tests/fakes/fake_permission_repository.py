@@ -5,7 +5,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakePermissionRepository(IPermissionRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: dict[str, Permission] = {}
 
     async def add(self, permission: Permission) -> None:

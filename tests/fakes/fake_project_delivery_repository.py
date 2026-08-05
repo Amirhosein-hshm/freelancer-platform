@@ -5,7 +5,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeProjectDeliveryRepository(IProjectDeliveryRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: dict[str, ProjectDelivery] = {}
 
     async def add(self, delivery: ProjectDelivery) -> None:

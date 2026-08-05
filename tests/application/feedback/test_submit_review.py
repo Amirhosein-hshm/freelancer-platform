@@ -33,7 +33,7 @@ def build_review(
 
 
 class TestSubmitReviewUseCase:
-    def test_approve_completes_project(
+    async def test_approve_completes_project(
         self,
         authorization_service,
         project_repo,
@@ -47,8 +47,8 @@ class TestSubmitReviewUseCase:
         make_project,
         make_delivery,
     ):
-        make_project(status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
-        make_delivery()
+        await make_project(status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
+        await make_delivery()
         authorization_service.grant("customer-1", "feedback.manage_own")
         use_case = build_review(
             authorization_service,
@@ -62,7 +62,7 @@ class TestSubmitReviewUseCase:
             uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             SubmitReviewCommand(
                 actor_id="customer-1",
                 project_id="project-1",
@@ -73,17 +73,17 @@ class TestSubmitReviewUseCase:
 
         assert result.decision == ReviewStatus.APPROVED
         assert result.project_status == ProjectStatus.COMPLETED
-        project = project_repo.get_by_id("project-1")
-        assert project.completed_at == clock.now()
+        project = await project_repo.get_by_id("project-1")
+        assert project.completed_at == await clock.now()
         assert project.is_locked() is True
-        review = customer_review_repo.find_by_project("project-1")
+        review = await customer_review_repo.find_by_project("project-1")
         assert review is not None
         assert review.comment == "Excellent"
         assert uow.committed is True
-        history = status_history_repo.list_by_project("project-1")
+        history = await status_history_repo.list_by_project("project-1")
         assert history[-1].to_status == ProjectStatus.COMPLETED
 
-    def test_reject_requests_revision(
+    async def test_reject_requests_revision(
         self,
         authorization_service,
         project_repo,
@@ -97,8 +97,8 @@ class TestSubmitReviewUseCase:
         make_project,
         make_delivery,
     ):
-        make_project(status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
-        make_delivery()
+        await make_project(status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
+        await make_delivery()
         authorization_service.grant("customer-1", "feedback.manage_own")
         use_case = build_review(
             authorization_service,
@@ -112,7 +112,7 @@ class TestSubmitReviewUseCase:
             uow,
         )
 
-        result = use_case.execute(
+        result = await use_case.execute(
             SubmitReviewCommand(
                 actor_id="customer-1",
                 project_id="project-1",
@@ -122,13 +122,13 @@ class TestSubmitReviewUseCase:
         )
 
         assert result.project_status == ProjectStatus.REVISION_REQUESTED
-        assert delivery_repo.get_by_id("delivery-1").status == DeliveryStatus.REVISED
-        revision = revision_repo.list_by_project("project-1")
+        assert (await delivery_repo.get_by_id("delivery-1")).status == DeliveryStatus.REVISED
+        revision = await revision_repo.list_by_project("project-1")
         assert len(revision) == 1
         assert revision[0].status == RevisionRequestStatus.OPEN
         assert revision[0].reason == "Needs fixes"
 
-    def test_wrong_project_status_raises(
+    async def test_wrong_project_status_raises(
         self,
         authorization_service,
         project_repo,
@@ -142,8 +142,8 @@ class TestSubmitReviewUseCase:
         make_project,
         make_delivery,
     ):
-        make_project(status=ProjectStatus.IN_PROGRESS)
-        make_delivery()
+        await make_project(status=ProjectStatus.IN_PROGRESS)
+        await make_delivery()
         authorization_service.grant("customer-1", "feedback.manage_own")
         use_case = build_review(
             authorization_service,
@@ -158,7 +158,7 @@ class TestSubmitReviewUseCase:
         )
 
         with pytest.raises(ProjectNotCompletedError):
-            use_case.execute(
+            await use_case.execute(
                 SubmitReviewCommand(
                     actor_id="customer-1",
                     project_id="project-1",
@@ -166,7 +166,7 @@ class TestSubmitReviewUseCase:
                 )
             )
 
-    def test_non_owner_raises(
+    async def test_non_owner_raises(
         self,
         authorization_service,
         project_repo,
@@ -180,8 +180,8 @@ class TestSubmitReviewUseCase:
         make_project,
         make_delivery,
     ):
-        make_project(status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
-        make_delivery()
+        await make_project(status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
+        await make_delivery()
         use_case = build_review(
             authorization_service,
             project_repo,
@@ -195,7 +195,7 @@ class TestSubmitReviewUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            use_case.execute(
+            await use_case.execute(
                 SubmitReviewCommand(
                     actor_id="intruder",
                     project_id="project-1",
@@ -203,7 +203,7 @@ class TestSubmitReviewUseCase:
                 )
             )
 
-    def test_pending_decision_raises(
+    async def test_pending_decision_raises(
         self,
         authorization_service,
         project_repo,
@@ -217,8 +217,8 @@ class TestSubmitReviewUseCase:
         make_project,
         make_delivery,
     ):
-        make_project(status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
-        make_delivery()
+        await make_project(status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
+        await make_delivery()
         authorization_service.grant("customer-1", "feedback.manage_own")
         use_case = build_review(
             authorization_service,
@@ -233,7 +233,7 @@ class TestSubmitReviewUseCase:
         )
 
         with pytest.raises(ValidationError):
-            use_case.execute(
+            await use_case.execute(
                 SubmitReviewCommand(
                     actor_id="customer-1",
                     project_id="project-1",

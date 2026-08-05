@@ -7,7 +7,7 @@ from app.domain.shared.types import EntityId
 
 
 class FakeUserRepository(IUserRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: dict[str, User] = {}
         self._by_email: dict[str, User] = {}
 

@@ -9,7 +9,7 @@ _OPEN_STATUSES = (ProjectStatus.PUBLISHED, ProjectStatus.COLLECTING_APPLICATIONS
 
 
 class FakeProjectRepository(IProjectRepository):
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._store: dict[str, Project] = {}
 
     async def add(self, project: Project) -> None:

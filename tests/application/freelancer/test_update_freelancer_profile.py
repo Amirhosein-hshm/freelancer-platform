@@ -17,11 +17,11 @@ def build_use_case(profile_repo) -> UpdateFreelancerProfileUseCase:
 
 
 class TestUpdateFreelancerProfileUseCase:
-    def test_update_allowed_fields(self, profile_repo, make_profile):
-        make_profile(user_id="user-1")
+    async def test_update_allowed_fields(self, profile_repo, make_profile):
+        await make_profile(user_id="user-1")
         use_case = build_use_case(profile_repo)
 
-        result = use_case.execute(
+        result = await use_case.execute(
             UpdateFreelancerProfileCommand(
                 user_id="user-1",
                 display_name="Jane Smith",
@@ -38,11 +38,11 @@ class TestUpdateFreelancerProfileUseCase:
         assert result.hourly_rate_min == Decimal("20")
         assert result.hourly_rate_max == Decimal("40")
 
-    def test_update_text_fields_without_rates(self, profile_repo, make_profile):
-        make_profile(user_id="user-1")
+    async def test_update_text_fields_without_rates(self, profile_repo, make_profile):
+        await make_profile(user_id="user-1")
         use_case = build_use_case(profile_repo)
 
-        result = use_case.execute(
+        result = await use_case.execute(
             UpdateFreelancerProfileCommand(
                 user_id="user-1",
                 headline="Senior Python Engineer",
@@ -57,30 +57,30 @@ class TestUpdateFreelancerProfileUseCase:
         assert result.hourly_rate_min is None
         assert result.hourly_rate_max is None
 
-    def test_partial_rate_update_keeps_other_bound(self, profile_repo, make_profile):
-        make_profile(user_id="user-1", hourly_rate_min=Decimal("20"), hourly_rate_max=Decimal("40"))
+    async def test_partial_rate_update_keeps_other_bound(self, profile_repo, make_profile):
+        await make_profile(user_id="user-1", hourly_rate_min=Decimal("20"), hourly_rate_max=Decimal("40"))
         use_case = build_use_case(profile_repo)
 
-        result = use_case.execute(
+        result = await use_case.execute(
             UpdateFreelancerProfileCommand(user_id="user-1", hourly_rate_max=Decimal("60"))
         )
 
         assert result.hourly_rate_min == Decimal("20")
         assert result.hourly_rate_max == Decimal("60")
 
-    def test_invalid_rate_range_raises(self, profile_repo, make_profile):
-        make_profile(user_id="user-1")
+    async def test_invalid_rate_range_raises(self, profile_repo, make_profile):
+        await make_profile(user_id="user-1")
         use_case = build_use_case(profile_repo)
 
         with pytest.raises(InvalidRateRangeError):
-            use_case.execute(
+            await use_case.execute(
                 UpdateFreelancerProfileCommand(
                     user_id="user-1", hourly_rate_min=Decimal("50"), hourly_rate_max=Decimal("30")
                 )
             )
 
-    def test_unknown_user_raises(self, profile_repo):
+    async def test_unknown_user_raises(self, profile_repo):
         use_case = build_use_case(profile_repo)
 
         with pytest.raises(FreelancerProfileNotFoundError):
-            use_case.execute(UpdateFreelancerProfileCommand(user_id="ghost", bio="x"))
+            await use_case.execute(UpdateFreelancerProfileCommand(user_id="ghost", bio="x"))
