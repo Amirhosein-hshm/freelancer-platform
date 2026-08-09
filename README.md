@@ -162,7 +162,7 @@ Every variable except the JWT TTLs and CORS origins is required.
 | `JWT_REFRESH_TTL_DAYS`    | `30`                             | Refresh token lifetime.                        |
 | `ADMIN_EMAIL`             | —                                | Email of the seeded admin user.                |
 | `ADMIN_PASSWORD`          | —                                | Initial password of the seeded admin.          |
-| `CORS_ORIGINS`            | `["*"]`                          | Allowed CORS origins (JSON list).              |
+| `CORS_ALLOWED_ORIGINS`   | `http://localhost:3000` | Allowed CORS origins (comma-separated list).   |
 
 > In Docker, `DATABASE_URL` must reference the `db` service hostname (e.g.
 > `@db:5432/...`), not `localhost`.

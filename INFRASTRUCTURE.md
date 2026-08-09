@@ -237,7 +237,7 @@ class Settings(BaseSettings):
     jwt_refresh_ttl_days: int = 30
     admin_email: str
     admin_password: str
-    cors_origins: list[str] = ["*"]
+    cors_allowed_origins: str = "http://localhost:3000"
 
     model_config = SettingsConfigDict(env_file=".env")
 

@@ -87,8 +87,8 @@ from app.presentation.main import create_app
 
 
 def build_app() -> FastAPI:
-    app = create_app()
     settings = get_settings()
+    app = create_app(cors_origins=settings.cors_origins)
 
     password_hasher = Argon2PasswordHasher()
     id_generator = UuidIdGenerator()

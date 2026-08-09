@@ -130,7 +130,7 @@ JWT_ACCESS_TTL_MINUTES=15
 JWT_REFRESH_TTL_DAYS=30
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=change_me_strong_password
-CORS_ORIGINS=["http://localhost:3000"]
+CORS_ALLOWED_ORIGINS=http://localhost:3000
 
 ```
 

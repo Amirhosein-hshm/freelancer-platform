@@ -1,4 +1,7 @@
+from collections.abc import Sequence
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.presentation.api.v1.auth.router import router as auth_router
 from app.presentation.api.v1.category.router import router as category_router
@@ -17,12 +20,20 @@ from app.presentation.core.error_handlers import register_exception_handlers
 from app.presentation.websocket.router import router as websocket_router
 
 API_PREFIX = "/api/v1"
+DEFAULT_CORS_ORIGINS = ["http://localhost:3000"]
 
 
-def create_app() -> FastAPI:
+def create_app(cors_origins: Sequence[str] | None = None) -> FastAPI:
     app = FastAPI(
         title="Freelance Platform API",
         version="0.1.0",
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(cors_origins) if cors_origins else DEFAULT_CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     register_exception_handlers(app)
 
