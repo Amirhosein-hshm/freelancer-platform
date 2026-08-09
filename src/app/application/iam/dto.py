@@ -11,6 +11,7 @@ class RegisterUserCommand:
     password: str
     first_name: str
     last_name: str
+    role: str
 
     def validate(self) -> None:
         if not self.email.strip() or not self.password:
@@ -23,6 +24,7 @@ class RegisterUserCommand:
 class RegisterUserResult:
     user_id: EntityId
     email: str
+    role: str
     status: str
     created_at: datetime
 

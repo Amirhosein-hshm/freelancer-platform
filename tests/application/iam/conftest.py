@@ -35,6 +35,15 @@ async def role_repo() -> FakeRoleRepository:
         )
     )
     await repo.add(
+        Role(
+            id="role-freelancer",
+            role_key="freelancer",
+            name="Freelancer",
+            is_system=False,
+            created_at=NOW,
+        )
+    )
+    await repo.add(
         Role(id="role-admin", role_key="admin", name="Admin", is_system=False, created_at=NOW)
     )
     await repo.add(

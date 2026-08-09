@@ -60,6 +60,7 @@ async def register(
             password=payload.password,
             first_name=payload.first_name,
             last_name=payload.last_name,
+            role=payload.role,
         )
     )
     return SuccessEnvelope(
@@ -67,6 +68,7 @@ async def register(
         data=RegisterResponse(
             user_id=result.user_id,
             email=result.email,
+            role=result.role,
             status=result.status,
             created_at=result.created_at.isoformat(),
         ),

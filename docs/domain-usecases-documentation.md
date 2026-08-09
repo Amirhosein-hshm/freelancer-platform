@@ -282,7 +282,7 @@ Several methods are defined for future/admin use and unused today: `IUserReposit
 ## RegisterUser
 
 ### Purpose
-Registers a new user and assigns the default `customer` role.
+Registers a new user and assigns the requested role (`customer` or `freelancer`).
 
 ### Actor
 Anonymous visitor (self-service).
@@ -292,27 +292,32 @@ Anonymous visitor (self-service).
 - `password: str`
 - `first_name: str`
 - `last_name: str`
+- `role: str` — exactly one of `customer` / `freelancer`
 
 ### Output (`RegisterUserResult`)
-`user_id`, `email`, `status` (`"pending"`), `created_at`.
+`user_id`, `email`, `role`, `status` (`"active"`), `created_at`.
 
 ### Dependencies
 `IUserRepository`, `IUserRoleRepository`, `IRoleRepository`,
 `IPasswordHasher`, `IIdGenerator`, `IClock`, `INotificationService`, `IUnitOfWork`.
-Constant: `DEFAULT_REGISTER_ROLE_KEY = "customer"`.
+Constant: `ALLOWED_REGISTER_ROLES = {"customer", "freelancer"}`.
 
 ### Flow
 1. `request.validate()` — email/password/names must be non-blank.
-2. Build `Email` (raises `InvalidEmailError` on bad format).
-3. `exists_by_email` → `DuplicateEmailError` if taken.
-4. `role_repo.get_by_key("customer")` → `RoleNotFoundError` if the role is not seeded.
-5. Hash password; build `User(status=PENDING, phone=None)`.
-6. Build `UserRole(assigned_by_user_id=user.id, assigned_at=now)`.
-7. In UoW: `user_repo.add`, `user_role_repo.add`, `commit`.
-8. Generate `verification_token` and call `send_verification_email` (after commit).
+2. Reject `role` not in `ALLOWED_REGISTER_ROLES` (blocks `admin`, `supervisor`, unknown keys).
+3. Build `Email` (raises `InvalidEmailError` on bad format).
+4. `exists_by_email` → `DuplicateEmailError` if taken.
+5. `role_repo.get_by_key(request.role)` → `RoleNotFoundError` if the role is not seeded.
+6. Hash password; build `User(status=ACTIVE, phone=None)`.
+7. Build `UserRole(assigned_by_user_id=user.id, assigned_at=now)`.
+8. In UoW: `user_repo.add`, `user_role_repo.add`, `commit`.
+9. Generate `verification_token` and call `send_verification_email` (after commit).
 
 ### Business rules
-- Duplicate emails rejected; new users start `PENDING`; default role = `customer`.
+- Duplicate emails rejected; new users start `ACTIVE`; role must be `customer` or
+  `freelancer`. Choosing `role="freelancer"` only links the IAM `UserRole` — it does NOT
+  auto-create a `FreelancerProfile` (that is a separate, explicit step via
+  `CreateFreelancerProfileUseCase`).
 
 ### Errors
 `ValidationError`, `InvalidEmailError`, `DuplicateEmailError`, `RoleNotFoundError`.
@@ -321,8 +326,9 @@ Constant: `DEFAULT_REGISTER_ROLE_KEY = "customer"`.
 Creates `User` + `UserRole`; sends verification email.
 
 > **Gap:** the verification token is generated and emailed but **never persisted**, so no
-> flow can later consume it. There is no email-verification use case; a PENDING user is
-> activated only by an admin via `ActivateUser`.
+> flow can later consume it. There is no email-verification use case; new users are
+> `ACTIVE` at registration and would be managed by admin-only transitions (`BlockUser`,
+> `ActivateUser`).
 
 ---
 

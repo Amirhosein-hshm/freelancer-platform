@@ -6,6 +6,7 @@ class RegisterRequest(BaseModel):
     password: str = Field(..., min_length=8)
     first_name: str
     last_name: str
+    role: str = Field(..., example="customer")
 
 
 class LoginRequest(BaseModel):
@@ -33,6 +34,7 @@ class ForgotPasswordRequest(BaseModel):
 class RegisterResponse(BaseModel):
     user_id: str
     email: str
+    role: str
     status: str
     created_at: str
 

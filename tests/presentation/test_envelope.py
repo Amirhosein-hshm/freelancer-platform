@@ -75,6 +75,7 @@ def test_409_duplicate_email(client: TestClient, overrides) -> None:
         "password": "password1",
         "first_name": "Jane",
         "last_name": "Doe",
+        "role": "customer",
     }
     resp = client.post("/api/v1/auth/register", json=payload)
     assert resp.status_code == 409
