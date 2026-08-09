@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.iam.entities import User
@@ -84,3 +84,18 @@ class SqlAlchemyUserRepository(IUserRepository):
             .offset(offset)
         )
         return [to_domain_user(row) for row in result.scalars().all()]
+
+    async def list_all(self, limit: int, offset: int) -> list[User]:
+        result = await self._session.execute(
+            select(UserModel)
+            .order_by(UserModel.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return [to_domain_user(row) for row in result.scalars().all()]
+
+    async def count_all(self, status: UserStatus | None = None) -> int:
+        stmt = select(func.count()).select_from(UserModel)
+        if status is not None:
+            stmt = stmt.where(UserModel.status == status.value)
+        return int((await self._session.execute(stmt)).scalar_one())

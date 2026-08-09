@@ -251,7 +251,7 @@ Location: `src/app/domain/iam/`, `src/app/application/iam/`.
 ### 3.5 Repository interfaces
 
 - `IUserRepository`: `add`, `get_by_id` (raises `UserNotFoundError`), `find_by_id`,
-  `get_by_email`, `exists_by_email`, `update`, `list_by_status`.
+  `get_by_email`, `exists_by_email`, `update`, `list_by_status`, `list_all`, `count_all`.
 - `IRoleRepository`: `get_by_id`, `get_by_key` (raise `RoleNotFoundError`), `list_all`, `add`.
 - `IPermissionRepository`: `get_by_id`, `list_by_module`.
 - `IUserRoleRepository`: `add`, `find_active`, `list_active_roles_for_user`, `update`.
@@ -259,9 +259,12 @@ Location: `src/app/domain/iam/`, `src/app/application/iam/`.
 - `IRefreshTokenRepository`: `add`, `get_by_jti`, `find_by_token_hash`, `update`,
   `revoke_all_for_user`.
 
-Several methods are defined for future/admin use and unused today: `IUserRepository.list_by_status`,
-`IRoleRepository.add`, `IPermissionRepository.list_by_module`,
+Several methods are defined for future/admin use and unused today: `IRoleRepository.add`,
+`IPermissionRepository.list_by_module`,
 `IRolePermissionRepository.list_permissions_for_role`, `IRefreshTokenRepository.revoke_all_for_user`.
+`IUserRepository.list_by_status` and the newer `list_all` / `count_all` are now wired to
+`AdminListUsersUseCase` (status-filtered vs. unfiltered listing plus a real DB count for
+pagination metadata).
 
 ### 3.6 Domain exceptions
 
@@ -715,6 +718,75 @@ Hard delete of the `RolePermission` row.
 
 > **Updated:** `RevokePermissionUseCase` now verifies the role exists, guards system roles, and
 > verifies the permission exists (previously only the permission key was required).
+
+---
+
+## AdminGetUser
+
+### Purpose
+Returns the full profile of a single target user for an admin, including the user's active role keys.
+
+### Actor
+User with permission `user.read`.
+
+### Input (`AdminGetUserQuery`)
+- `actor_id`, `target_user_id`
+
+### Output (`AdminGetUserResult`)
+`user_id`, `email`, `first_name`, `last_name`, `phone`, `status`,
+`email_verified_at`, `phone_verified_at`, `last_login_at`, `roles: list[str]`.
+No `password_hash` or any secret field is exposed.
+
+### Dependencies
+`IAuthorizationService`, `IUserRepository`, `IUserRoleRepository`.
+
+### Flow
+1. `require_permission(actor_id, "user.read")`.
+2. `user_repo.get_by_id(target_user_id)` → `UserNotFoundError`.
+3. `user_role_repo.list_active_roles_for_user(user.id)` → active role keys (same call as `LoginUser`).
+4. Map to result.
+
+### Errors
+`PermissionDeniedError`, `UserNotFoundError`.
+
+### Side effects
+None (read-only).
+
+---
+
+## AdminListUsers
+
+### Purpose
+Paginated, optionally status-filtered listing of users for an admin.
+
+### Actor
+User with permission `user.read`.
+
+### Input (`AdminListUsersQuery`)
+- `actor_id`, optional `status: UserStatus | None`, `page: int = 1`, `page_size: int = 20`
+
+### Output (`AdminListUsersResult`)
+`users: list[AdminUserSummary]` (`user_id`, `email`, `first_name`, `last_name`,
+`status`, `created_at` — a lighter shape that deliberately avoids a per-user role
+lookup / N+1), plus `total_items`, `page`, `page_size`.
+
+### Dependencies
+`IAuthorizationService`, `IUserRepository`.
+
+### Flow
+1. `require_permission(actor_id, "user.read")`.
+2. `offset = (page - 1) * page_size`.
+3. If `status` given → `list_by_status(status, page_size, offset)`; else → `list_all(page_size, offset)`.
+4. `count_all(status)` for the real total (server-side count, not the page length).
+5. Map to summaries.
+
+### Errors
+`PermissionDeniedError`.
+
+### Side effects
+None (read-only). **This endpoint is the first admin-IAM route with real DB offset/limit
+pagination** — a partial fix of the client-side-only pagination gap tracked in
+`docs/presentation-analysis.md` §7 item 2, scoped to this endpoint only.
 
 ---
 
@@ -3233,6 +3305,7 @@ code-verified inventory:
 | `user.revoke_permission` | `iam.revoke_permission` (also guards `SystemRoleImmutableError`) |
 | `user.activate` | `iam.activate_user` |
 | `user.block` | `iam.block_user` |
+| `user.read` | `iam.admin_get_user`, `iam.admin_list_users` |
 | `freelancer.approve` | `freelancer.approve_freelancer`, `freelancer.reject_freelancer` |
 | `freelancer.assign_level` | `freelancer.assign_freelancer_level` |
 | `category.manage` | `category.create_category`, `category.update_category`, `category.delete_category` |
@@ -3349,6 +3422,8 @@ The remaining current deviations follow:
 | ForgotPassword | `/auth/forgot-password` | POST | `forgot_password` |
 | (no UC) `GET /auth/me` | `/auth/me` | GET | `get_me` |
 | AdminCreateUser | `/users` | POST | `admin_create_user` |
+| AdminListUsers | `/users` | GET | `admin_list_users` |
+| AdminGetUser | `/users/{user_id}` | GET | `admin_get_user` |
 | AdminUpdateUser | `/users/{user_id}` | PATCH | `admin_update_user` |
 | AdminDeleteUser | `/users/{user_id}` | DELETE | `admin_delete_user` |
 | ActivateUser | `/users/{user_id}/activate` | POST | `activate_user` |
@@ -3429,6 +3504,9 @@ The remaining current deviations follow:
    template by its own ID (see `presentation-analysis.md` §7.1).
 2. ⚠️ **Pagination is client-side only** — `PageQuery` never reaches any repository
    `Query`; `meta.total_items` equals the returned page length, not the DB total.
+   **Partial fix:** `GET /users` (`admin_list_users`) is the exception — it passes real
+   `limit`/`offset` to `IUserRepository.list_all`/`list_by_status` and reports a true
+   `count_all` total. The other paginated list endpoints (projects, reviews) remain affected.
 3. ⚠️ **401 responses bypass the envelope** — `get_current_user` raises raw
    `HTTPException(401)`.
 4. ⚠️ **WebSocket `/ws/notifications` is unguarded** — token decode failures abort the
@@ -3436,6 +3514,9 @@ The remaining current deviations follow:
 
 ### 13.3 Changelog
 
+- **2026-08-09 — `AdminGetUser` / `AdminListUsers` added.** New `user.read` permission; two read
+  use cases, `IUserRepository.list_all`/`count_all`, `GET /users` (real DB pagination) and
+  `GET /users/{user_id}`, seed, and docs updated.
 - **2026-08-08 — Presentation layer documented.** Added §13 (endpoint→use-case map,
   deviations, changelog), marked the stale "Phase 1 only" status header, updated §1.1
   architecture diagram and §1.3 error/HTTP contract to reflect the now-implemented

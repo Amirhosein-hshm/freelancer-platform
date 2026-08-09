@@ -40,3 +40,11 @@ class FakeUserRepository(IUserRepository):
     async def list_by_status(self, status: UserStatus, limit: int, offset: int) -> list[User]:
         matches = [u for u in self._store.values() if u.status == status]
         return matches[offset : offset + limit]
+
+    async def list_all(self, limit: int, offset: int) -> list[User]:
+        return list(self._store.values())[offset : offset + limit]
+
+    async def count_all(self, status: UserStatus | None = None) -> int:
+        if status is None:
+            return len(self._store)
+        return sum(1 for u in self._store.values() if u.status == status)

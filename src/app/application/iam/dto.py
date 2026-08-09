@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.application.shared.exceptions import ValidationError
+from app.domain.iam.enums import UserStatus
 from app.domain.shared.types import EntityId
 
 
@@ -235,3 +236,49 @@ class AdminDeleteUserCommand:
 class AdminDeleteUserResult:
     user_id: EntityId
     deleted_at: datetime
+
+
+@dataclass(frozen=True)
+class AdminGetUserQuery:
+    actor_id: EntityId
+    target_user_id: EntityId
+
+
+@dataclass(frozen=True)
+class AdminGetUserResult:
+    user_id: EntityId
+    email: str
+    first_name: str
+    last_name: str
+    phone: str | None
+    status: str
+    email_verified_at: datetime | None
+    phone_verified_at: datetime | None
+    last_login_at: datetime | None
+    roles: list[str]
+
+
+@dataclass(frozen=True)
+class AdminUserSummary:
+    user_id: EntityId
+    email: str
+    first_name: str
+    last_name: str
+    status: str
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class AdminListUsersQuery:
+    actor_id: EntityId
+    status: UserStatus | None = None
+    page: int = 1
+    page_size: int = 20
+
+
+@dataclass(frozen=True)
+class AdminListUsersResult:
+    users: list[AdminUserSummary]
+    total_items: int
+    page: int
+    page_size: int

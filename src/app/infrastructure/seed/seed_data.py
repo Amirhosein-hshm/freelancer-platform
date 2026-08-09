@@ -16,6 +16,7 @@ ROLES = [
 _PERMISSIONS = [
     # IAM
     ("user.create", "user", "create"),
+    ("user.read", "user", "read"),
     ("user.update_any", "user", "update_any"),
     ("user.delete", "user", "delete"),
     ("user.activate", "user", "activate"),

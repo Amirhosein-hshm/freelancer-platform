@@ -47,6 +47,8 @@ from app.application.freelancer.use_cases.upload_resume import UploadResumeUseCa
 from app.application.iam.use_cases.activate_user import ActivateUserUseCase
 from app.application.iam.use_cases.admin_create_user import AdminCreateUserUseCase
 from app.application.iam.use_cases.admin_delete_user import AdminDeleteUserUseCase
+from app.application.iam.use_cases.admin_get_user import AdminGetUserUseCase
+from app.application.iam.use_cases.admin_list_users import AdminListUsersUseCase
 from app.application.iam.use_cases.admin_update_user import AdminUpdateUserUseCase
 from app.application.iam.use_cases.assign_role import AssignRoleUseCase
 from app.application.iam.use_cases.block_user import BlockUserUseCase
@@ -386,6 +388,19 @@ def get_admin_delete_user_use_case(
         clock,
         uow,
     )
+
+def get_admin_get_user_use_case(
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    user_repo: IUserRepository = Depends(get_user_repository),
+    user_role_repo: IUserRoleRepository = Depends(get_user_role_repository),
+) -> AdminGetUserUseCase:
+    return AdminGetUserUseCase(authorization_service, user_repo, user_role_repo)
+
+def get_admin_list_users_use_case(
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    user_repo: IUserRepository = Depends(get_user_repository),
+) -> AdminListUsersUseCase:
+    return AdminListUsersUseCase(authorization_service, user_repo)
 
 def get_admin_update_user_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),

@@ -243,6 +243,14 @@ Requires `authorization_service.require_permission(actor_id, "user.block")` /
 - `AdminDeleteUserUseCase` — `require_permission("user.delete")`; calls
   `User.soft_delete(at)`; guards against self-deletion (`CannotDeleteSelfError`) and against
   deleting the last active admin (`LastAdminCannotBeDeletedError`).
+- `AdminGetUserUseCase` — `require_permission("user.read")`; loads one user via `get_by_id`
+  and includes active role keys via `IUserRoleRepository.list_active_roles_for_user`. The
+  `AdminGetUserResult` read DTO exposes only safe profile fields — never `password_hash`.
+- `AdminListUsersUseCase` — `require_permission("user.read")`; optional `status` filter
+  (`list_by_status`) vs. unfiltered (`list_all`), both with real `limit`/`offset` and a true
+  `count_all(status)` total. Uses a light `AdminUserSummary` (no per-user role lookup, so no
+  N+1). This is the first admin endpoint with real DB pagination (the other list endpoints
+  slice the client-side length).
 
 > **Verify before relying on this section**: confirm the actual current signatures of these
 > three use cases and their DTOs in the codebase before building `presentation` endpoints

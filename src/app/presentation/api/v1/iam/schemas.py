@@ -74,3 +74,29 @@ class GrantPermissionResponse(BaseModel):
 class RevokePermissionResponse(BaseModel):
     role_id: str
     permission_id: str
+
+
+class AdminGetUserResponse(BaseModel):
+    user_id: str
+    email: str
+    first_name: str
+    last_name: str
+    phone: str | None = None
+    status: str
+    email_verified_at: str | None = None
+    phone_verified_at: str | None = None
+    last_login_at: str | None = None
+    roles: list[str]
+
+
+class AdminUserSummaryResponse(BaseModel):
+    user_id: str
+    email: str
+    first_name: str
+    last_name: str
+    status: str
+    created_at: str
+
+
+class AdminListUsersResponse(BaseModel):
+    users: list[AdminUserSummaryResponse]

@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.application.iam.dto import (
     ActivateUserCommand,
     AdminCreateUserCommand,
     AdminDeleteUserCommand,
+    AdminGetUserQuery,
+    AdminListUsersQuery,
     AdminUpdateUserCommand,
     AssignRoleCommand,
     BlockUserCommand,
@@ -14,19 +16,25 @@ from app.application.iam.dto import (
 from app.application.iam.use_cases.activate_user import ActivateUserUseCase
 from app.application.iam.use_cases.admin_create_user import AdminCreateUserUseCase
 from app.application.iam.use_cases.admin_delete_user import AdminDeleteUserUseCase
+from app.application.iam.use_cases.admin_get_user import AdminGetUserUseCase
+from app.application.iam.use_cases.admin_list_users import AdminListUsersUseCase
 from app.application.iam.use_cases.admin_update_user import AdminUpdateUserUseCase
 from app.application.iam.use_cases.assign_role import AssignRoleUseCase
 from app.application.iam.use_cases.block_user import BlockUserUseCase
 from app.application.iam.use_cases.grant_permission import GrantPermissionUseCase
 from app.application.iam.use_cases.remove_role import RemoveRoleUseCase
 from app.application.iam.use_cases.revoke_permission import RevokePermissionUseCase
+from app.domain.iam.enums import UserStatus
 from app.presentation.api.v1.iam.schemas import (
     ActivateUserResponse,
     AdminCreateUserRequest,
     AdminCreateUserResponse,
     AdminDeleteUserResponse,
+    AdminGetUserResponse,
+    AdminListUsersResponse,
     AdminUpdateUserRequest,
     AdminUpdateUserResponse,
+    AdminUserSummaryResponse,
     AssignRoleRequest,
     AssignRoleResponse,
     BlockUserRequest,
@@ -36,11 +44,14 @@ from app.presentation.api.v1.iam.schemas import (
     RemoveRoleResponse,
     RevokePermissionResponse,
 )
-from app.presentation.core.envelope import SuccessEnvelope
+from app.presentation.core.envelope import PaginationMeta, SuccessEnvelope
+from app.presentation.core.pagination import PageQuery
 from app.presentation.core.providers import (
     get_activate_user_use_case,
     get_admin_create_user_use_case,
     get_admin_delete_user_use_case,
+    get_admin_get_user_use_case,
+    get_admin_list_users_use_case,
     get_admin_update_user_use_case,
     get_assign_role_use_case,
     get_block_user_use_case,
@@ -51,6 +62,83 @@ from app.presentation.core.providers import (
 from app.presentation.core.security import get_current_user
 
 router = APIRouter(prefix="/users", tags=["IAM-Admin"])
+
+
+@router.get(
+    "",
+    response_model=SuccessEnvelope[AdminListUsersResponse],
+    operation_id="admin_list_users",
+)
+async def admin_list_users(
+    current_user=Depends(get_current_user),
+    pagination: PageQuery = Depends(),
+    status: UserStatus | None = Query(default=None),
+    use_case: AdminListUsersUseCase = Depends(get_admin_list_users_use_case),
+) -> SuccessEnvelope[AdminListUsersResponse]:
+    result = await use_case.execute(
+        AdminListUsersQuery(
+            actor_id=current_user.user_id,
+            status=status,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
+    return SuccessEnvelope(
+        message="Users listed.",
+        data=AdminListUsersResponse(
+            users=[
+                AdminUserSummaryResponse(
+                    user_id=user.user_id,
+                    email=user.email,
+                    first_name=user.first_name,
+                    last_name=user.last_name,
+                    status=user.status,
+                    created_at=user.created_at.isoformat(),
+                )
+                for user in result.users
+            ]
+        ),
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=(result.total_items + result.page_size - 1) // result.page_size,
+        ),
+    )
+
+
+@router.get(
+    "/{user_id}",
+    response_model=SuccessEnvelope[AdminGetUserResponse],
+    operation_id="admin_get_user",
+)
+async def admin_get_user(
+    user_id: str,
+    current_user=Depends(get_current_user),
+    use_case: AdminGetUserUseCase = Depends(get_admin_get_user_use_case),
+) -> SuccessEnvelope[AdminGetUserResponse]:
+    result = await use_case.execute(
+        AdminGetUserQuery(actor_id=current_user.user_id, target_user_id=user_id)
+    )
+    return SuccessEnvelope(
+        message="User details.",
+        data=AdminGetUserResponse(
+            user_id=result.user_id,
+            email=result.email,
+            first_name=result.first_name,
+            last_name=result.last_name,
+            phone=result.phone,
+            status=result.status,
+            email_verified_at=(
+                result.email_verified_at.isoformat() if result.email_verified_at else None
+            ),
+            phone_verified_at=(
+                result.phone_verified_at.isoformat() if result.phone_verified_at else None
+            ),
+            last_login_at=result.last_login_at.isoformat() if result.last_login_at else None,
+            roles=result.roles,
+        ),
+    )
 
 
 @router.post(

@@ -50,6 +50,12 @@ green (tests passing), not just "code written".
 
 - [ ] `core/envelope.py`, `core/error_handlers.py`, `core/security.py`,
       `core/providers.py` (stubs only — zero infrastructure imports), `core/pagination.py`.
+- [ ] Admin IAM read endpoints (`GET /users`, `GET /users/{user_id}`) added with the
+      `user.read` permission (seeded) and **real DB offset/limit pagination** on
+      `GET /users` (`IUserRepository.list_all`/`list_by_status` + `count_all`) — the partial
+      fix for the fake-pagination gap in `docs/presentation-analysis.md` §7 item 2; the other
+      paginated list endpoints (projects, reviews) still slice client-side and should be
+      migrated to this pattern.
 - [ ] `websocket/connection_manager.py`, `websocket/router.py`.
 - [ ] `api/v1/<context>/router.py` + `schemas.py` for all 9 contexts + `api/v1/auth/`.
 - [ ] Every endpoint: explicit `response_model`, `operation_id`, `tags`, documented error
