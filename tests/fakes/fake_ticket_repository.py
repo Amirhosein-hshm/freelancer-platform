@@ -27,8 +27,7 @@ class FakeTicketRepository(ITicketRepository):
         return [
             ticket
             for ticket in self._store.values()
-            if (ticket.created_by_user_id == user_id
-                or ticket.assigned_to_user_id == user_id)
+            if (ticket.created_by_user_id == user_id or ticket.assigned_to_user_id == user_id)
             and ticket.deleted_at is None
         ]
 

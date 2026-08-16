@@ -18,9 +18,7 @@ class FakePermissionRepository(IPermissionRepository):
             raise PermissionNotFoundError(f"Permission {permission_id} not found.") from None
 
     async def list_all(self) -> list[Permission]:
-        return sorted(
-            self._store.values(), key=lambda p: (p.module, p.permission_key)
-        )
+        return sorted(self._store.values(), key=lambda p: (p.module, p.permission_key))
 
     async def list_by_module(self, module: str) -> list[Permission]:
         return [p for p in self._store.values() if p.module == module]

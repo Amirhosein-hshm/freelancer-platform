@@ -7,9 +7,7 @@ from app.application.shared.use_case import UseCase
 from app.domain.freelancer.repositories import IFreelancerProfileRepository
 
 
-class GetFreelancerProfileUseCase(
-    UseCase[GetFreelancerProfileQuery, FreelancerProfileResult]
-):
+class GetFreelancerProfileUseCase(UseCase[GetFreelancerProfileQuery, FreelancerProfileResult]):
     def __init__(self, profile_repo: IFreelancerProfileRepository) -> None:
         self._profile_repo = profile_repo
 

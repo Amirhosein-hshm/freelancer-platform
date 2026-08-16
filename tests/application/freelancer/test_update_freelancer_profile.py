@@ -61,9 +61,7 @@ class TestUpdateFreelancerProfileUseCase:
         await make_profile(user_id="user-1", hourly_rate_min=Decimal("20"), hourly_rate_max=Decimal("40"))
         use_case = build_use_case(profile_repo)
 
-        result = await use_case.execute(
-            UpdateFreelancerProfileCommand(user_id="user-1", hourly_rate_max=Decimal("60"))
-        )
+        result = await use_case.execute(UpdateFreelancerProfileCommand(user_id="user-1", hourly_rate_max=Decimal("60")))
 
         assert result.hourly_rate_min == Decimal("20")
         assert result.hourly_rate_max == Decimal("60")

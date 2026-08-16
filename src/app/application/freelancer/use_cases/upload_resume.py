@@ -31,9 +31,7 @@ class UploadResumeUseCase(UseCase[UploadResumeCommand, UploadResumeResult]):
         try:
             await self._file_storage.get_metadata(request.file_asset_id)
         except (KeyError, FileNotFoundError) as exc:
-            raise ValidationError(
-                f"File asset {request.file_asset_id} does not exist."
-            ) from exc
+            raise ValidationError(f"File asset {request.file_asset_id} does not exist.") from exc
         existing = await self._resume_repo.list_by_profile(profile.id)
         version_no = max((r.version_no for r in existing), default=0) + 1
         previous = await self._resume_repo.get_current(profile.id)

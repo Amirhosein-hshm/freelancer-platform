@@ -29,9 +29,7 @@ class TestForgotPasswordUseCase:
 
         assert result.email == "ghost@example.com"
         assert notification_service.reset_tokens == []
-        assert not any(
-            to == "ghost@example.com" for to, _subject, _body in notification_service.emails
-        )
+        assert not any(to == "ghost@example.com" for to, _subject, _body in notification_service.emails)
 
     async def test_invalid_email_raises(self, user_repo, id_generator, notification_service):
         use_case = build_use_case(user_repo, id_generator, notification_service)

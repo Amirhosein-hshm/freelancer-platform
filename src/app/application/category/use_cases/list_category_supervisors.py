@@ -10,9 +10,7 @@ from app.domain.category.repositories import (
 )
 
 
-class ListCategorySupervisorsUseCase(
-    UseCase[ListCategorySupervisorsQuery, ListCategorySupervisorsResult]
-):
+class ListCategorySupervisorsUseCase(UseCase[ListCategorySupervisorsQuery, ListCategorySupervisorsResult]):
     def __init__(
         self,
         category_repo: ICategoryRepository,
@@ -21,13 +19,9 @@ class ListCategorySupervisorsUseCase(
         self._category_repo = category_repo
         self._supervisor_repo = supervisor_repo
 
-    async def execute(
-        self, request: ListCategorySupervisorsQuery
-    ) -> ListCategorySupervisorsResult:
+    async def execute(self, request: ListCategorySupervisorsQuery) -> ListCategorySupervisorsResult:
         await self._category_repo.get_by_id(request.category_id)
-        supervisors = await self._supervisor_repo.list_active_supervisors(
-            request.category_id
-        )
+        supervisors = await self._supervisor_repo.list_active_supervisors(request.category_id)
         return ListCategorySupervisorsResult(
             supervisors=[
                 CategorySupervisorResult(

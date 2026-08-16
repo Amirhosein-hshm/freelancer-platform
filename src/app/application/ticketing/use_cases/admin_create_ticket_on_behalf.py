@@ -19,9 +19,7 @@ from app.domain.ticketing.repositories import (
 )
 
 
-class AdminCreateTicketOnBehalfUseCase(
-    UseCase[CreateTicketOnBehalfCommand, CreateTicketResult]
-):
+class AdminCreateTicketOnBehalfUseCase(UseCase[CreateTicketOnBehalfCommand, CreateTicketResult]):
     def __init__(
         self,
         authorization_service: IAuthorizationService,
@@ -43,9 +41,7 @@ class AdminCreateTicketOnBehalfUseCase(
         self._uow = uow
 
     async def execute(self, request: CreateTicketOnBehalfCommand) -> CreateTicketResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_TICKET_CREATE_ON_BEHALF
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_TICKET_CREATE_ON_BEHALF)
         await self._user_repo.get_by_id(request.target_user_id)
         return await _create_ticket(
             requester_user_id=request.target_user_id,

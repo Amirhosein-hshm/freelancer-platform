@@ -12,9 +12,7 @@ from app.domain.category.exceptions import SupervisorAssignmentNotFoundError
 NOW = datetime(2026, 8, 2, tzinfo=UTC)
 
 
-def build_remove(
-    authorization_service, category_supervisor_repo, clock, uow
-) -> RemoveSupervisorUseCase:
+def build_remove(authorization_service, category_supervisor_repo, clock, uow) -> RemoveSupervisorUseCase:
     return RemoveSupervisorUseCase(
         authorization_service=authorization_service,
         category_supervisor_repo=category_supervisor_repo,
@@ -59,9 +57,7 @@ class TestRemoveSupervisorUseCase:
                 RemoveSupervisorCommand(actor_id="admin", category_id="cat-1", supervisor_user_id="sup-1")
             )
 
-    async def test_remove_inactive_supervisor_raises(
-        self, authorization_service, category_supervisor_repo, clock, uow
-    ):
+    async def test_remove_inactive_supervisor_raises(self, authorization_service, category_supervisor_repo, clock, uow):
         authorization_service.grant("admin", "category.remove_supervisor")
         use_case = build_remove(authorization_service, category_supervisor_repo, clock, uow)
 

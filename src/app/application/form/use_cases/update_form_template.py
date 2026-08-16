@@ -8,9 +8,7 @@ from app.application.shared.use_case import UseCase
 from app.domain.form.repositories import IFormTemplateRepository
 
 
-class UpdateFormTemplateUseCase(
-    UseCase[UpdateFormTemplateCommand, UpdateFormTemplateResult]
-):
+class UpdateFormTemplateUseCase(UseCase[UpdateFormTemplateCommand, UpdateFormTemplateResult]):
     def __init__(
         self,
         authorization_service: IAuthorizationService,
@@ -20,9 +18,7 @@ class UpdateFormTemplateUseCase(
         self._template_repo = template_repo
 
     async def execute(self, request: UpdateFormTemplateCommand) -> UpdateFormTemplateResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_FORM_MANAGE
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_FORM_MANAGE)
         request.validate()
         template = await self._template_repo.get_by_id(request.template_id)
         template.require_draft("update its name")

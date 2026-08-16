@@ -149,7 +149,7 @@ All external/cross-cutting dependencies are ports implemented in Phase 2
 | `IIdGenerator` | `new_id() -> EntityId` | UUID4 in Phase 2 |
 | `IUnitOfWork` | context manager; `commit()`, `rollback()` | `__exit__` must roll back on exception |
 | `INotificationService` | `send_email`, `send_verification_email`, `send_password_reset_email` | email in Phase 2 |
-| `IFileStorageService` | `get_metadata(file_asset_id) -> FileAssetMetadata`, `register_uploaded_file(...)` | file asset storage |
+| `IFileStorageService` | `get_metadata(file_asset_id) -> FileAssetMetadata`, `register_uploaded_file(...)`, `get_content(...) -> AsyncIterator[bytes]` | file asset storage |
 | `IProjectCodeGenerator` | `next_code(year) -> str` (`PRJ-2026-001`) | per-year sequence |
 | `ITicketCodeGenerator` | `next_code(year) -> str` (`TCK-2026-001`) | added Phase 8, mirrors project codes |
 | `IEventPublisher` | re-export of domain port | unused in Phase 1 |
@@ -2797,6 +2797,191 @@ Approved freelancer.
 
 ---
 
+## GetProjectApplication
+
+### Purpose
+Reads a single project application by ID, scoped by project ownership.
+
+### Actor
+Project owner (customer, `project.manage_own`) or admin (`project.manage_any`).
+
+### Input (`GetProjectApplicationQuery`)
+- `actor_id`, `application_id`
+
+### Output (`GetProjectApplicationResult`)
+`application: ApplicationResult`.
+
+### Dependencies
+`IAuthorizationService`, `IProjectApplicationRepository`, `IProjectRepository`.
+
+### Flow
+`project_app_repo.get_by_id(application_id)`; load project via `project_id` from the application;
+`authorize_owned_action(project.manage_own, project.manage_any)` against `project.customer_user_id`;
+map.
+
+### Errors
+`ApplicationNotFoundError`, `ProjectNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## ListProjectDeliveries
+
+### Purpose
+Lists all deliveries for a project.
+
+### Actor
+Project owner (customer, `project.manage_own`) or admin (`project.manage_any`).
+
+### Input (`ListProjectDeliveriesQuery`)
+- `actor_id`, `project_id`
+
+### Output (`ListProjectDeliveriesResult`)
+`project_id`, `deliveries: list[DeliveryResult]`.
+
+### Dependencies
+`IAuthorizationService`, `IProjectRepository`, `IProjectDeliveryRepository`.
+
+### Flow
+`get_by_id(project)`; `authorize_owned_action(project.manage_own, project.manage_any)`;
+`list_by_project(project_id)`; map.
+
+### Errors
+`ProjectNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## GetProjectDelivery
+
+### Purpose
+Reads a single project delivery by ID.
+
+### Actor
+Project owner (customer, `project.manage_own`) or admin (`project.manage_any`).
+
+### Input (`GetProjectDeliveryQuery`)
+- `actor_id`, `delivery_id`
+
+### Output (`GetProjectDeliveryResult`)
+`delivery: DeliveryResult`.
+
+### Dependencies
+`IAuthorizationService`, `IProjectDeliveryRepository`, `IProjectRepository`.
+
+### Flow
+`get_by_id(delivery)`; load project; `authorize_owned_action(project.manage_own, project.manage_any)`;
+map.
+
+### Errors
+`DeliveryNotFoundError`, `ProjectNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## ListProjectRevisionRequests
+
+### Purpose
+Lists all revision requests for a project.
+
+### Actor
+Project owner (customer, `project.manage_own`) or admin (`project.manage_any`).
+
+### Input (`ListProjectRevisionRequestsQuery`)
+- `actor_id`, `project_id`
+
+### Output (`ListProjectRevisionRequestsResult`)
+`project_id`, `revisions: list[ProjectRevisionRequestResult]`.
+
+### Dependencies
+`IAuthorizationService`, `IProjectRepository`, `IProjectRevisionRequestRepository`.
+
+### Flow
+`get_by_id(project)`; `authorize_owned_action(project.manage_own, project.manage_any)`;
+`list_by_project(project_id)`; map.
+
+### Errors
+`ProjectNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## GetProjectRevisionRequest
+
+### Purpose
+Reads a single revision request by ID.
+
+### Actor
+Project owner (customer, `project.manage_own`) or admin (`project.manage_any`).
+
+### Input (`GetProjectRevisionRequestQuery`)
+- `actor_id`, `revision_id`
+
+### Output (`GetProjectRevisionRequestResult`)
+Revision fields.
+
+### Dependencies
+`IAuthorizationService`, `IProjectRevisionRequestRepository`, `IProjectRepository`.
+
+### Flow
+`get_by_id(revision)`; load project; `authorize_owned_action(project.manage_own, project.manage_any)`;
+map.
+
+### Errors
+`RevisionRequestNotFoundError`, `ProjectNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## CloseProjectRevisionRequest
+
+### Purpose
+Closes an open revision request (e.g., customer accepts the re-delivery).
+
+### Actor
+Project owner (customer, `project.manage_own`) or admin (`project.manage_any`).
+
+### Input (`CloseProjectRevisionRequestCommand`)
+- `actor_id`, `revision_id`
+
+### Output (`CloseProjectRevisionRequestResult`)
+`revision_id`, `status` (=CLOSED).
+
+### Dependencies
+`IAuthorizationService`, `IProjectRevisionRequestRepository`, `IProjectRepository`, `IClock`,
+`IUnitOfWork`.
+
+### Flow
+`get_by_id(revision)`; load project; `authorize_owned_action(project.manage_own, project.manage_any)`;
+`revision.close(now)`; `update`; commit.
+
+### Errors
+`RevisionRequestNotFoundError`, `ProjectNotFoundError`, `PermissionDeniedError`,
+`InvalidStateTransitionError`.
+
+---
+
+## ListProjectStatusHistory
+
+### Purpose
+Lists the status history entries of a project.
+
+### Actor
+Project owner (customer, `project.manage_own`) or admin (`project.manage_any`).
+
+### Input (`ListProjectStatusHistoryQuery`)
+- `actor_id`, `project_id`
+
+### Output (`ListProjectStatusHistoryResult`)
+`project_id`, `history: list[ProjectStatusHistoryResult]`.
+
+### Dependencies
+`IAuthorizationService`, `IProjectRepository`, `IProjectStatusHistoryRepository`.
+
+### Flow
+`get_by_id(project)`; `authorize_owned_action(project.manage_own, project.manage_any)`;
+`list_by_project(project_id)`; map.
+
+### Errors
+`ProjectNotFoundError`, `PermissionDeniedError`.
+
+---
+
 ## 8. Quality Assurance / Supervisor Review
 
 Location: `src/app/domain/review/`, `src/app/application/review/`.
@@ -3700,6 +3885,7 @@ The remaining current deviations follow:
 | GetFileAsset | `/files/{file_asset_id}` | GET | `get_file_asset` |
 | GetFreelancerProfile | `/freelancers/{profile_id}` | GET | `get_freelancer_profile` |
 | CreateFreelancerProfile | `/freelancers` | POST | `create_freelancer_profile` |
+| AdminCreateFreelancerProfileOnBehalf | `/admin/freelancers` | POST | `admin_create_freelancer_profile` |
 | UpdateFreelancerProfile | `/freelancers/{profile_id}` | PATCH | `update_freelancer_profile` |
 | SubmitFreelancerApproval | `/freelancers/{profile_id}/submit-approval` | POST | `submit_freelancer_approval` |
 | ApproveFreelancer | `/freelancers/{profile_id}/approve` | POST | `approve_freelancer` |
@@ -3710,14 +3896,33 @@ The remaining current deviations follow:
 | AddPortfolioItem | `/freelancers/{profile_id}/portfolio` | POST | `add_portfolio_item` |
 | UpdatePortfolioItem | `/freelancers/{profile_id}/portfolio/{item_id}` | PATCH | `update_portfolio_item` |
 | DeletePortfolioItem | `/freelancers/{profile_id}/portfolio/{item_id}` | DELETE | `delete_portfolio_item` |
-| CreateProject (self) / AdminCreateProjectOnBehalf | `/projects` | POST | `create_project` |
+| GetPortfolioItem | `/freelancers/{profile_id}/portfolio/{item_id}` | GET | `get_portfolio_item` |
+| ListPortfolioItems | `/freelancers/{profile_id}/portfolio` | GET | `list_portfolio_items` |
+| GetCurrentResume | `/freelancers/{profile_id}/resume` | GET | `get_current_resume` |
+| GetResume | `/freelancers/{profile_id}/resume/versions/{resume_id}` | GET | `get_resume` |
+| ListResumeVersions | `/freelancers/{profile_id}/resume/versions` | GET | `list_resume_versions` |
+| SetCurrentResume | `/freelancers/{profile_id}/resume/versions/{resume_id}/set-current` | POST | `set_current_resume` |
+| DeleteResume | `/freelancers/{profile_id}/resume/versions/{resume_id}` | DELETE | `delete_resume` |
+| ListFreelancerLevelHistory | `/freelancers/{profile_id}/level-history` | GET | `list_freelancer_level_history` |
+| AdminCreateFreelancerProfileOnBehalf | `/admin/freelancers` | POST | `admin_create_freelancer_profile` |
+| ListFreelancerProfilesByApprovalStatus | `/admin/freelancers` | GET | `list_freelancer_profiles_by_approval_status` |
+| SoftDeleteFreelancerProfile | `/admin/freelancers/{profile_id}` | DELETE | `soft_delete_freelancer_profile` |
+| ListFreelancerLevels | `/admin/freelancer-levels` | GET | `list_freelancer_levels` |
+| CreateFreelancerLevel | `/admin/freelancer-levels` | POST | `create_freelancer_level` |
+| UpdateFreelancerLevel | `/admin/freelancer-levels/{level_id}` | PATCH | `update_freelancer_level` |
+| DeleteFreelancerLevel | `/admin/freelancer-levels/{level_id}` | DELETE | `delete_freelancer_level` |
+| ActivateFreelancerLevel | `/admin/freelancer-levels/{level_id}/activate` | POST | `activate_freelancer_level` |
+| DeactivateFreelancerLevel | `/admin/freelancer-levels/{level_id}/deactivate` | POST | `deactivate_freelancer_level` |
+| CreateProject (self) | `/projects` | POST | `create_project` |
+| AdminCreateProjectOnBehalf | `/admin/projects` | POST | `admin_create_project` |
 | GetAvailableProjects | `/projects` | GET | `get_available_projects` |
 | GetMyProjects | `/projects/my` | GET | `get_my_projects` |
 | GetProjectDetails | `/projects/{project_id}` | GET | `get_project_details` |
 | PublishProject | `/projects/{project_id}/publish` | POST | `publish_project` |
 | CancelProject | `/projects/{project_id}/cancel` | POST | `cancel_project` |
 | CompleteProject | `/projects/{project_id}/complete` | POST | `complete_project` |
-| ApplyForProject (self) / AdminApplyForProjectOnBehalf | `/projects/{project_id}/applications` | POST | `apply_for_project` |
+| ApplyForProject (self) | `/projects/{project_id}/applications` | POST | `apply_for_project` |
+| AdminApplyForProjectOnBehalf | `/admin/projects/{project_id}/applications` | POST | `admin_apply_for_project` |
 | ViewApplications | `/projects/{project_id}/applications` | GET | `view_applications` |
 | AcceptFreelancer | `/projects/{project_id}/applications/{application_id}/accept` | POST | `accept_freelancer` |
 | RejectFreelancer | `/projects/{project_id}/applications/{application_id}/reject` | POST | `reject_freelancer_application` |
@@ -3725,6 +3930,13 @@ The remaining current deviations follow:
 | StartProject | `/projects/{project_id}/start` | POST | `start_project` |
 | SubmitDelivery | `/projects/{project_id}/deliveries` | POST | `submit_delivery` |
 | RequestRevision | `/projects/{project_id}/revisions` | POST | `request_revision` |
+| GetProjectApplication | `/projects/{project_id}/applications/{application_id}` | GET | `get_project_application` |
+| ListProjectDeliveries | `/projects/{project_id}/deliveries` | GET | `list_project_deliveries` |
+| GetProjectDelivery | `/deliveries/{delivery_id}` | GET | `get_project_delivery` |
+| ListProjectRevisionRequests | `/projects/{project_id}/revisions` | GET | `list_project_revision_requests` |
+| GetProjectRevisionRequest | `/revisions/{revision_id}` | GET | `get_project_revision_request` |
+| CloseProjectRevisionRequest | `/revisions/{revision_id}/close` | POST | `close_project_revision_request` |
+| ListProjectStatusHistory | `/projects/{project_id}/status-history` | GET | `list_project_status_history` |
 | GetPendingReviews | `/reviews/pending` | GET | `get_pending_reviews` |
 | GetSupervisorProjects | `/reviews/supervisor/projects` | GET | `get_supervisor_projects` |
 | ReviewDelivery | `/deliveries/{delivery_id}/review` | POST | `review_delivery` |
@@ -3735,6 +3947,7 @@ The remaining current deviations follow:
 | GetProjectRating | `/feedback/projects/{project_id}/rating` | GET | `get_project_rating` |
 | GetFreelancerRatings | `/feedback/freelancers/{freelancer_profile_id}/ratings` | GET | `get_freelancer_ratings` |
 | CreateTicket | `/tickets` | POST | `create_ticket` |
+| AdminCreateTicketOnBehalf | `/admin/tickets` | POST | `admin_create_ticket` |
 | GetUserTickets | `/tickets` | GET | `get_user_tickets` |
 | GetTicketMessages | `/tickets/{ticket_id}/messages` | GET | `get_ticket_messages` |
 | SendMessage | `/tickets/{ticket_id}/messages` | POST | `send_message` |
@@ -3770,7 +3983,34 @@ The remaining current deviations follow:
   `POST /files` with content-derived MIME validation (via `filetype`), server-generated asset IDs, and
   `GET /files/{file_asset_id}` with context-aware authorization (`IFileAccessPolicy`). Consumers now
   validate file existence before attachment: `AddPortfolioItemUseCase`, `UpdatePortfolioItemUseCase`,
-  `SubmitDeliveryUseCase`, and `SendMessageUseCase`. New `file.upload`/`file.read_any` permissions seeded.
+  `SubmitDeliveryUseCase`, and `SendMessageUseCase`. New `file.upload`/`file.read_any` permissions seeded;
+  `file.upload` granted to `customer` and `freelancer`. Replaced the in-memory storage backend with a
+  persistent `LocalDiskFileStorageService` (default) and an `S3FileStorageService` (configurable via
+  `FILE_STORAGE_BACKEND=s3`); uploads and downloads stream bytes, size limits are enforced during writes,
+  and files survive container restarts via a named Docker volume.
+- **2026-08-16 — Part 4a: dedicated admin on-behalf routes.** Removed the optional-body-field
+  branching from `POST /projects` and `POST /projects/{id}/applications`. Added distinct admin routes:
+  `POST /admin/projects`, `POST /admin/projects/{id}/applications`, `POST /admin/freelancers`, and
+  `POST /admin/tickets`. Each uses its on-behalf use case (`AdminCreateProjectOnBehalfUseCase`,
+  `AdminApplyForProjectOnBehalfUseCase`, `AdminCreateFreelancerProfileOnBehalfUseCase`,
+  `AdminCreateTicketOnBehalfUseCase`).
+- **2026-08-16 — Part 4b: freelancer admin/read gaps closed.** Added
+  `ListFreelancerProfilesByApprovalStatusUseCase` + `GET /admin/freelancers?status=...`,
+  `SoftDeleteFreelancerProfileUseCase` + `DELETE /admin/freelancers/{profile_id}`, full
+  `FreelancerLevel` CRUD (create/list/update/delete/activate/deactivate) under `/admin/freelancer-levels`,
+  `FreelancerLevel.activate()` domain method, `ListFreelancerLevelHistoryUseCase` +
+  `GET /freelancers/{profile_id}/level-history`, resume read/rollback/delete routes
+  (`GET /resume`, `/resume/versions`, `/resume/versions/{resume_id}/set-current`, `DELETE`), and
+  portfolio read routes (`GET /portfolio`, `/portfolio/{item_id}`). Decision: resume versions are
+  rollable via `set-current`; individual non-current versions can also be deleted, and deleting the
+  current version promotes the latest remaining version to current.
+- **2026-08-16 — Part 4c: project read/access gaps closed.** Added project-scoped read use cases
+  `GetProjectApplicationUseCase`, `ListProjectDeliveriesUseCase`, `ListProjectRevisionRequestsUseCase`,
+  `ListProjectStatusHistoryUseCase`, plus standalone lookups `GetProjectDeliveryUseCase`,
+  `GetProjectRevisionRequestUseCase`, and `CloseProjectRevisionRequestUseCase`. Exposed under
+  `/projects/{project_id}/applications/{application_id}`, `/projects/{project_id}/deliveries`,
+  `/projects/{project_id}/revisions`, `/projects/{project_id}/status-history`, `/deliveries/{delivery_id}`,
+  and `/revisions/{revision_id}` (`GET` + `POST /close`).
 - **2026-08-15 — Read-only IAM catalog endpoints added.** `ListRolesUseCase` / `ListPermissionsUseCase`
   exposed as `GET /roles` and `GET /permissions`, requiring `user.read`. Added `IPermissionRepository.list_all()`
   and documented the seed-only `Role`/`Permission` entity CRUD constraint in §12.5.

@@ -30,6 +30,4 @@ class GetUserTicketsUseCase(UseCase[GetUserTicketsQuery, GetUserTicketsResult]):
             PERMISSION_TICKET_READ_ANY,
         )
         tickets = await self._ticket_repo.list_for_user(request.user_id)
-        return GetUserTicketsResult(
-            tickets=[to_ticket_result(t) for t in tickets]
-        )
+        return GetUserTicketsResult(tickets=[to_ticket_result(t) for t in tickets])

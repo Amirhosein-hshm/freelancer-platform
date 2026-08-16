@@ -56,9 +56,7 @@ async def list_permissions(
     current_user=Depends(get_current_user),
     use_case: ListPermissionsUseCase = Depends(get_list_permissions_use_case),
 ) -> SuccessEnvelope[ListPermissionsResponse]:
-    result = await use_case.execute(
-        ListPermissionsQuery(actor_id=current_user.user_id, module=module)
-    )
+    result = await use_case.execute(ListPermissionsQuery(actor_id=current_user.user_id, module=module))
     return SuccessEnvelope(
         message="Permissions listed.",
         data=ListPermissionsResponse(

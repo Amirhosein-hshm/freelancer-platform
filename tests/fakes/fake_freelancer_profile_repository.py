@@ -40,8 +40,5 @@ class FakeFreelancerProfileRepository(IFreelancerProfileRepository):
         return [
             p
             for p in self._store.values()
-            if p.is_approved()
-            and p.is_available
-            and p.current_level_id == level_id
-            and p.deleted_at is None
+            if p.is_approved() and p.is_available and p.current_level_id == level_id and p.deleted_at is None
         ]

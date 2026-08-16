@@ -47,10 +47,7 @@ async def _seed_permissions(session, now: datetime) -> None:
 
 
 async def _seed_role_permissions(session, now: datetime) -> None:
-    roles = {
-        role.role_key: role.id
-        for role in (await session.execute(select(RoleModel))).scalars().all()
-    }
+    roles = {role.role_key: role.id for role in (await session.execute(select(RoleModel))).scalars().all()}
     permissions = {
         permission.permission_key: permission.id
         for permission in (await session.execute(select(PermissionModel))).scalars().all()
@@ -60,9 +57,7 @@ async def _seed_role_permissions(session, now: datetime) -> None:
         if role_id is None:
             continue
         resolved = (
-            list(ADMIN_PERMISSION_KEYS)
-            if role_key == ADMIN_ROLE_KEY and permission_keys == ["*"]
-            else permission_keys
+            list(ADMIN_PERMISSION_KEYS) if role_key == ADMIN_ROLE_KEY and permission_keys == ["*"] else permission_keys
         )
         for permission_key in resolved:
             permission_id = permissions.get(permission_key)
@@ -83,16 +78,12 @@ async def _seed_role_permissions(session, now: datetime) -> None:
 
 async def _seed_admin_user(session, now: datetime) -> None:
     settings = get_settings()
-    existing = await session.execute(
-        select(UserModel).where(UserModel.email == settings.admin_email)
-    )
+    existing = await session.execute(select(UserModel).where(UserModel.email == settings.admin_email))
     if existing.scalar_one_or_none() is not None:
         return
     admin_role_id = (
-        await session.execute(
-            select(RoleModel).where(RoleModel.role_key == ADMIN_ROLE_KEY)
-        )
-    ).scalar_one().id
+        (await session.execute(select(RoleModel).where(RoleModel.role_key == ADMIN_ROLE_KEY))).scalar_one().id
+    )
     hasher = Argon2PasswordHasher()
     admin_user = UserModel(
         id=str(uuid4()),

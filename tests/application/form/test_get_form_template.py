@@ -38,9 +38,7 @@ def seed_published(template, field_type=FormFieldType.SELECT) -> None:
 
 class TestGetFormTemplateUseCase:
     async def test_returns_published_template(self, template_repo, make_template):
-        template = await make_template(
-            template_id="template-1", status=FormTemplateStatus.PUBLISHED
-        )
+        template = await make_template(template_id="template-1", status=FormTemplateStatus.PUBLISHED)
         seed_published(template)
         use_case = GetFormTemplateUseCase(template_repo=template_repo)
 
@@ -53,11 +51,15 @@ class TestGetFormTemplateUseCase:
 
     async def test_returns_latest_published_version(self, template_repo, make_template):
         await make_template(
-            template_id="template-1", category_id="cat-1", version_no=1,
+            template_id="template-1",
+            category_id="cat-1",
+            version_no=1,
             status=FormTemplateStatus.PUBLISHED,
         )
         await make_template(
-            template_id="template-2", category_id="cat-1", version_no=2,
+            template_id="template-2",
+            category_id="cat-1",
+            version_no=2,
             status=FormTemplateStatus.PUBLISHED,
         )
         use_case = GetFormTemplateUseCase(template_repo=template_repo)

@@ -25,9 +25,7 @@ class TestSendMessageUseCase:
         self, ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow, make_ticket
     ):
         await make_ticket(ticket_id="ticket-1")
-        use_case = build_send(
-            ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow
-        )
+        use_case = build_send(ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow)
 
         result = await use_case.execute(
             SendMessageCommand(
@@ -63,11 +61,10 @@ class TestSendMessageUseCase:
                 uploaded_at=datetime.now(UTC),
                 owner_user_id="user-1",
                 context=FileAssetContext.TICKET_ATTACHMENT,
-            )
+            ),
+            content=b"png-bytes",
         )
-        use_case = build_send(
-            ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow
-        )
+        use_case = build_send(ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow)
 
         result = await use_case.execute(
             SendMessageCommand(
@@ -86,11 +83,10 @@ class TestSendMessageUseCase:
         self, ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow, make_ticket
     ):
         await make_ticket(ticket_id="ticket-1")
-        use_case = build_send(
-            ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow
-        )
+        use_case = build_send(ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow)
 
         from app.application.shared.exceptions import ValidationError
+
         with pytest.raises(ValidationError):
             await use_case.execute(
                 SendMessageCommand(
@@ -105,24 +101,16 @@ class TestSendMessageUseCase:
         self, ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow, make_ticket
     ):
         await make_ticket(ticket_id="ticket-1", status=TicketStatus.CLOSED)
-        use_case = build_send(
-            ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow
-        )
+        use_case = build_send(ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow)
 
         with pytest.raises(TicketClosedError):
-            await use_case.execute(
-                SendMessageCommand(actor_id="user-1", ticket_id="ticket-1", body="Hi")
-            )
+            await use_case.execute(SendMessageCommand(actor_id="user-1", ticket_id="ticket-1", body="Hi"))
 
     async def test_non_participant_raises(
         self, ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow, make_ticket
     ):
         await make_ticket(ticket_id="ticket-1")
-        use_case = build_send(
-            ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow
-        )
+        use_case = build_send(ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow)
 
         with pytest.raises(NotTicketParticipantError):
-            await use_case.execute(
-                SendMessageCommand(actor_id="intruder", ticket_id="ticket-1", body="Hi")
-            )
+            await use_case.execute(SendMessageCommand(actor_id="intruder", ticket_id="ticket-1", body="Hi"))

@@ -6,6 +6,7 @@ any change in ``domain``/``application`` (Dependency Inversion Principle).
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -141,10 +142,13 @@ class IFileStorageService(ABC):
     async def get_metadata(self, file_asset_id: EntityId) -> FileAssetMetadata: ...
 
     @abstractmethod
+    def get_content(self, file_asset_id: EntityId) -> AsyncIterator[bytes]: ...
+
+    @abstractmethod
     async def register_uploaded_file(
         self,
         file_name: str,
-        size_bytes: int,
+        content: AsyncIterator[bytes],
         mime_type: str,
         owner_user_id: EntityId,
         context: FileAssetContext,

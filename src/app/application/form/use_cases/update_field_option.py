@@ -9,9 +9,7 @@ from app.application.shared.use_case import UseCase
 from app.domain.form.repositories import IFormTemplateRepository
 
 
-class UpdateFieldOptionUseCase(
-    UseCase[UpdateFieldOptionCommand, UpdateFieldOptionResult]
-):
+class UpdateFieldOptionUseCase(UseCase[UpdateFieldOptionCommand, UpdateFieldOptionResult]):
     def __init__(
         self,
         authorization_service: IAuthorizationService,
@@ -22,12 +20,8 @@ class UpdateFieldOptionUseCase(
         self._template_repo = template_repo
         self._uow = uow
 
-    async def execute(
-        self, request: UpdateFieldOptionCommand
-    ) -> UpdateFieldOptionResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_FORM_MANAGE
-        )
+    async def execute(self, request: UpdateFieldOptionCommand) -> UpdateFieldOptionResult:
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_FORM_MANAGE)
         request.validate()
         template = await self._template_repo.get_by_id(request.template_id)
         template.require_draft("update field options")

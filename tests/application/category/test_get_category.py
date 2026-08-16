@@ -9,9 +9,7 @@ class TestGetCategoryUseCase:
     def build(self, category_repo):
         return GetCategoryUseCase(category_repo=category_repo)
 
-    async def test_get_category_returns_details(
-        self, category_repo, make_category
-    ):
+    async def test_get_category_returns_details(self, category_repo, make_category):
         await make_category(
             category_id="cat-1",
             name="Web Development",

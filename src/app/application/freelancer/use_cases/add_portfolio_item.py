@@ -35,9 +35,7 @@ class AddPortfolioItemUseCase(UseCase[AddPortfolioItemCommand, AddPortfolioItemR
             try:
                 await self._file_storage.get_metadata(request.file_asset_id)
             except (KeyError, FileNotFoundError) as exc:
-                raise ValidationError(
-                    f"File asset {request.file_asset_id} does not exist."
-                ) from exc
+                raise ValidationError(f"File asset {request.file_asset_id} does not exist.") from exc
         profile = await self._profile_repo.get_by_user_id(request.user_id)
         now = await self._clock.now()
         item = PortfolioItem(

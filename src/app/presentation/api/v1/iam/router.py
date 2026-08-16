@@ -117,9 +117,7 @@ async def admin_get_user(
     current_user=Depends(get_current_user),
     use_case: AdminGetUserUseCase = Depends(get_admin_get_user_use_case),
 ) -> SuccessEnvelope[AdminGetUserResponse]:
-    result = await use_case.execute(
-        AdminGetUserQuery(actor_id=current_user.user_id, target_user_id=user_id)
-    )
+    result = await use_case.execute(AdminGetUserQuery(actor_id=current_user.user_id, target_user_id=user_id))
     return SuccessEnvelope(
         message="User details.",
         data=AdminGetUserResponse(
@@ -129,12 +127,8 @@ async def admin_get_user(
             last_name=result.last_name,
             phone=result.phone,
             status=result.status,
-            email_verified_at=(
-                result.email_verified_at.isoformat() if result.email_verified_at else None
-            ),
-            phone_verified_at=(
-                result.phone_verified_at.isoformat() if result.phone_verified_at else None
-            ),
+            email_verified_at=(result.email_verified_at.isoformat() if result.email_verified_at else None),
+            phone_verified_at=(result.phone_verified_at.isoformat() if result.phone_verified_at else None),
             last_login_at=result.last_login_at.isoformat() if result.last_login_at else None,
             roles=result.roles,
         ),

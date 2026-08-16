@@ -9,9 +9,7 @@ from app.application.shared.use_case import UseCase
 from app.domain.form.repositories import IFormTemplateRepository
 
 
-class RemoveFieldOptionUseCase(
-    UseCase[RemoveFieldOptionCommand, RemoveFieldOptionResult]
-):
+class RemoveFieldOptionUseCase(UseCase[RemoveFieldOptionCommand, RemoveFieldOptionResult]):
     def __init__(
         self,
         authorization_service: IAuthorizationService,
@@ -22,12 +20,8 @@ class RemoveFieldOptionUseCase(
         self._template_repo = template_repo
         self._uow = uow
 
-    async def execute(
-        self, request: RemoveFieldOptionCommand
-    ) -> RemoveFieldOptionResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_FORM_MANAGE
-        )
+    async def execute(self, request: RemoveFieldOptionCommand) -> RemoveFieldOptionResult:
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_FORM_MANAGE)
         template = await self._template_repo.get_by_id(request.template_id)
         template.require_draft("remove field options")
         field = template.get_field(request.field_id)

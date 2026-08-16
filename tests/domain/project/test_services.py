@@ -93,22 +93,19 @@ class TestFreelancerEligibilityPolicy:
     def test_inactive_level_is_ineligible(self):
         level = make_level(is_active=False)
         assert (
-            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 0)
-            is False
+            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 0) is False
         )
 
     def test_public_project_requires_public_access(self):
         level = make_level(can_apply_public_projects=False)
         assert (
-            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 0)
-            is False
+            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 0) is False
         )
 
     def test_private_project_requires_private_access(self):
         level = make_level(can_apply_private_projects=False)
         assert (
-            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PRIVATE), 0)
-            is False
+            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PRIVATE), 0) is False
         )
 
     def test_invite_only_is_not_self_applyable(self):
@@ -121,24 +118,20 @@ class TestFreelancerEligibilityPolicy:
     def test_max_active_applications(self):
         level = make_level(max_active_applications=3)
         assert (
-            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 3)
-            is False
+            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 3) is False
         )
         assert (
-            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 2)
-            is True
+            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 2) is True
         )
 
     def test_unlimited_active_applications(self):
         level = make_level(max_active_applications=None)
         assert (
-            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 99)
-            is True
+            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 99) is True
         )
 
     def test_eligible(self):
         level = make_level()
         assert (
-            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 0)
-            is True
+            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 0) is True
         )

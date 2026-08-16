@@ -20,13 +20,9 @@ class TestGetUserTicketsUseCase:
         await make_ticket(ticket_id="ticket-2", created_by="user-2", assigned_to="user-1")
         await make_ticket(ticket_id="ticket-3", created_by="user-2")
         authorization_service.grant("user-1", PERMISSION_TICKET_READ_OWN)
-        use_case = GetUserTicketsUseCase(
-            authorization_service=authorization_service, ticket_repo=ticket_repo
-        )
+        use_case = GetUserTicketsUseCase(authorization_service=authorization_service, ticket_repo=ticket_repo)
 
-        result = await use_case.execute(
-            GetUserTicketsQuery(actor_id="user-1", user_id="user-1")
-        )
+        result = await use_case.execute(GetUserTicketsQuery(actor_id="user-1", user_id="user-1"))
 
         assert [t.ticket_id for t in result.tickets] == ["ticket-1", "ticket-2"]
         assert result.tickets[0].status.value == "open"
@@ -54,27 +50,19 @@ class TestGetTicketMessagesUseCase:
             clock=clock,
             uow=uow,
         )
-        await sender.execute(
-            SendMessageCommand(actor_id="user-1", ticket_id="ticket-1", body="First")
-        )
-        await sender.execute(
-            SendMessageCommand(actor_id="user-1", ticket_id="ticket-1", body="Second")
-        )
+        await sender.execute(SendMessageCommand(actor_id="user-1", ticket_id="ticket-1", body="First"))
+        await sender.execute(SendMessageCommand(actor_id="user-1", ticket_id="ticket-1", body="Second"))
         use_case = GetTicketMessagesUseCase(
             ticket_repo=ticket_repo,
             message_repo=message_repo,
             participant_repo=participant_repo,
         )
 
-        result = await use_case.execute(
-            GetTicketMessagesQuery(actor_id="user-1", ticket_id="ticket-1")
-        )
+        result = await use_case.execute(GetTicketMessagesQuery(actor_id="user-1", ticket_id="ticket-1"))
 
         assert [m.body for m in result.messages] == ["First", "Second"]
 
-    async def test_non_participant_raises(
-        self, ticket_repo, message_repo, participant_repo, make_ticket
-    ):
+    async def test_non_participant_raises(self, ticket_repo, message_repo, participant_repo, make_ticket):
         await make_ticket(ticket_id="ticket-1")
         use_case = GetTicketMessagesUseCase(
             ticket_repo=ticket_repo,
@@ -83,6 +71,4 @@ class TestGetTicketMessagesUseCase:
         )
 
         with pytest.raises(NotTicketParticipantError):
-            await use_case.execute(
-                GetTicketMessagesQuery(actor_id="intruder", ticket_id="ticket-1")
-            )
+            await use_case.execute(GetTicketMessagesQuery(actor_id="intruder", ticket_id="ticket-1"))

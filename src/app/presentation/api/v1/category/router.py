@@ -124,9 +124,7 @@ async def get_category(
 )
 async def list_category_supervisors(
     category_id: str,
-    use_case: ListCategorySupervisorsUseCase = Depends(
-        get_list_category_supervisors_use_case
-    ),
+    use_case: ListCategorySupervisorsUseCase = Depends(get_list_category_supervisors_use_case),
 ) -> SuccessEnvelope[ListCategorySupervisorsResponse]:
     result = await use_case.execute(ListCategorySupervisorsQuery(category_id=category_id))
     return SuccessEnvelope(

@@ -24,9 +24,7 @@ class DeleteCategoryUseCase(UseCase[DeleteCategoryCommand, DeleteCategoryResult]
         self._uow = uow
 
     async def execute(self, request: DeleteCategoryCommand) -> DeleteCategoryResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_CATEGORY_MANAGE
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_CATEGORY_MANAGE)
         category = await self._category_repo.get_by_id(request.category_id)
         children = await self._category_repo.list_by_parent_id(category.id)
         active_projects = await self._project_repo.count_active_by_category(category.id)

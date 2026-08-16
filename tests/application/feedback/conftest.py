@@ -107,9 +107,7 @@ def make_project(project_repo: FakeProjectRepository):
 
 @pytest.fixture
 def make_application(application_repo: FakeProjectApplicationRepository):
-    async def _make(
-        app_id: str = "app-1", profile_id: str = "profile-1", **overrides: object
-    ) -> ProjectApplication:
+    async def _make(app_id: str = "app-1", profile_id: str = "profile-1", **overrides: object) -> ProjectApplication:
         fields: dict[str, object] = {
             "id": app_id,
             "project_id": "project-1",

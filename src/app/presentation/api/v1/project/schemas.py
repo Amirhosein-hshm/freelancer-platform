@@ -31,7 +31,22 @@ class CreateProjectRequest(BaseModel):
     priority: ProjectPriority = ProjectPriority.NORMAL
     application_deadline: datetime | None = None
     form_values: list[FormValueInputRequest] = Field(default_factory=list)
-    customer_user_id: str | None = None
+
+
+class AdminCreateProjectRequest(BaseModel):
+    target_customer_user_id: str
+    category_id: str
+    title: str
+    description: str
+    visibility: ProjectVisibility
+    budget_type: BudgetType
+    currency_code: str
+    fixed_budget: Decimal | None = None
+    budget_min: Decimal | None = None
+    budget_max: Decimal | None = None
+    priority: ProjectPriority = ProjectPriority.NORMAL
+    application_deadline: datetime | None = None
+    form_values: list[FormValueInputRequest] = Field(default_factory=list)
 
 
 class CancelProjectRequest(BaseModel):
@@ -42,7 +57,13 @@ class ApplyForProjectRequest(BaseModel):
     cover_letter: str | None = None
     proposed_amount: Decimal | None = None
     proposed_days: int | None = None
-    target_freelancer_profile_id: str | None = None
+
+
+class AdminApplyForProjectRequest(BaseModel):
+    target_freelancer_profile_id: str
+    cover_letter: str | None = None
+    proposed_amount: Decimal | None = None
+    proposed_days: int | None = None
 
 
 class RejectFreelancerRequest(BaseModel):
@@ -173,3 +194,27 @@ class RequestRevisionResponse(BaseModel):
 class CompleteProjectResponse(BaseModel):
     project_id: str
     status: ProjectStatus
+
+
+class ProjectRevisionRequestResponse(BaseModel):
+    revision_id: str
+    project_id: str
+    project_delivery_id: str | None
+    requested_by_user_id: str
+    requested_to_user_id: str | None
+    round_no: int
+    status: str
+    reason: str
+    resolved_by_user_id: str | None
+    requested_at: datetime
+    resolved_at: datetime | None
+
+
+class ProjectStatusHistoryResponse(BaseModel):
+    history_id: str
+    project_id: str
+    from_status: str | None
+    to_status: str
+    changed_by_user_id: str
+    reason: str | None
+    changed_at: datetime

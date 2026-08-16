@@ -125,9 +125,7 @@ class TestUpdateFieldUseCase:
         template = await make_template(template_id="template-1")
         seed_field(template)
         authorization_service.grant("admin", "form.manage")
-        use_case = UpdateFieldUseCase(
-            template_repo=template_repo, authorization_service=authorization_service
-        )
+        use_case = UpdateFieldUseCase(template_repo=template_repo, authorization_service=authorization_service)
 
         result = await use_case.execute(
             UpdateFieldCommand(
@@ -144,9 +142,7 @@ class TestUpdateFieldUseCase:
         assert field.label == "Project Category"
         assert field.is_required is False
 
-    async def test_update_field_type_clears_options(
-        self, template_repo, make_template, authorization_service
-    ):
+    async def test_update_field_type_clears_options(self, template_repo, make_template, authorization_service):
         template = await make_template(template_id="template-1")
         seed_field(template)
         template.get_field("field-1").add_option(
@@ -161,9 +157,7 @@ class TestUpdateFieldUseCase:
             )
         )
         authorization_service.grant("admin", "form.manage")
-        use_case = UpdateFieldUseCase(
-            template_repo=template_repo, authorization_service=authorization_service
-        )
+        use_case = UpdateFieldUseCase(template_repo=template_repo, authorization_service=authorization_service)
 
         await use_case.execute(
             UpdateFieldCommand(
@@ -180,9 +174,7 @@ class TestUpdateFieldUseCase:
         template = await make_template(template_id="template-1")
         seed_field(template)
         authorization_service.grant("admin", "form.manage")
-        use_case = UpdateFieldUseCase(
-            template_repo=template_repo, authorization_service=authorization_service
-        )
+        use_case = UpdateFieldUseCase(template_repo=template_repo, authorization_service=authorization_service)
 
         await use_case.execute(
             UpdateFieldCommand(
@@ -211,28 +203,20 @@ class TestUpdateFieldUseCase:
     async def test_update_unknown_field_raises(self, template_repo, make_template, authorization_service):
         await make_template(template_id="template-1")
         authorization_service.grant("admin", "form.manage")
-        use_case = UpdateFieldUseCase(
-            template_repo=template_repo, authorization_service=authorization_service
-        )
+        use_case = UpdateFieldUseCase(template_repo=template_repo, authorization_service=authorization_service)
 
         with pytest.raises(FieldNotFoundError):
             await use_case.execute(
-                UpdateFieldCommand(
-                    actor_id="admin", template_id="template-1", field_id="ghost", label="X"
-                )
+                UpdateFieldCommand(actor_id="admin", template_id="template-1", field_id="ghost", label="X")
             )
 
 
 class TestRemoveFieldUseCase:
-    async def test_remove_field_succeeds(
-        self, template_repo, uow, make_template, authorization_service
-    ):
+    async def test_remove_field_succeeds(self, template_repo, uow, make_template, authorization_service):
         template = await make_template(template_id="template-1")
         seed_field(template, field_type=FormFieldType.TEXT)
         authorization_service.grant("admin", "form.manage")
-        use_case = RemoveFieldUseCase(
-            template_repo=template_repo, uow=uow, authorization_service=authorization_service
-        )
+        use_case = RemoveFieldUseCase(template_repo=template_repo, uow=uow, authorization_service=authorization_service)
 
         result = await use_case.execute(
             RemoveFieldCommand(actor_id="admin", template_id="template-1", field_id="field-1")

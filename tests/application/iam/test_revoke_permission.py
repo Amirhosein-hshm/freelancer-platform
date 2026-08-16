@@ -37,9 +37,7 @@ class TestRevokePermissionUseCase:
                 created_at=NOW,
             )
         )
-        use_case = build_use_case(
-            authorization_service, role_repo, permission_repo, role_permission_repo, uow
-        )
+        use_case = build_use_case(authorization_service, role_repo, permission_repo, role_permission_repo, uow)
 
         result = await use_case.execute(
             RevokePermissionCommand(actor_id="admin", role_id="role-customer", permission_id="perm-1")
@@ -61,9 +59,7 @@ class TestRevokePermissionUseCase:
                 created_at=NOW,
             )
         )
-        use_case = build_use_case(
-            authorization_service, role_repo, permission_repo, role_permission_repo, uow
-        )
+        use_case = build_use_case(authorization_service, role_repo, permission_repo, role_permission_repo, uow)
 
         with pytest.raises(PermissionDeniedError):
             await use_case.execute(
@@ -83,9 +79,7 @@ class TestRevokePermissionUseCase:
                 created_at=NOW,
             )
         )
-        use_case = build_use_case(
-            authorization_service, role_repo, permission_repo, role_permission_repo, uow
-        )
+        use_case = build_use_case(authorization_service, role_repo, permission_repo, role_permission_repo, uow)
 
         with pytest.raises(SystemRoleImmutableError):
             await use_case.execute(

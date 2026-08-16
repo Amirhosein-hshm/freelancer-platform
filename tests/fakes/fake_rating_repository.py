@@ -21,9 +21,7 @@ class FakeRatingRepository(IRatingRepository):
     async def list_by_freelancer(self, freelancer_profile_id: EntityId) -> list[Rating]:
         return [r for r in self._store if r.freelancer_profile_id == freelancer_profile_id]
 
-    async def average_score_for_freelancer(
-        self, freelancer_profile_id: EntityId
-    ) -> Decimal | None:
+    async def average_score_for_freelancer(self, freelancer_profile_id: EntityId) -> Decimal | None:
         scores = [r.score for r in await self.list_by_freelancer(freelancer_profile_id)]
         if not scores:
             return None

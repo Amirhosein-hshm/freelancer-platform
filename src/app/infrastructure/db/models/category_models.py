@@ -10,9 +10,7 @@ class CategoryModel(TimestampMixin, Base):
     __tablename__ = "categories"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    parent_category_id: Mapped[str | None] = mapped_column(
-        ForeignKey("categories.id"), index=True, nullable=True
-    )
+    parent_category_id: Mapped[str | None] = mapped_column(ForeignKey("categories.id"), index=True, nullable=True)
     category_key: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     slug: Mapped[str] = mapped_column(String(120), unique=True, index=True, nullable=False)

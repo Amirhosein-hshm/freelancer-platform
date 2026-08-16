@@ -4,9 +4,7 @@ from app.application.shared.use_case import UseCase
 from app.domain.review.repositories import ISupervisorReviewRepository
 
 
-class GetPendingReviewsUseCase(
-    UseCase[GetPendingReviewsQuery, GetPendingReviewsResult]
-):
+class GetPendingReviewsUseCase(UseCase[GetPendingReviewsQuery, GetPendingReviewsResult]):
     def __init__(self, review_repo: ISupervisorReviewRepository) -> None:
         self._review_repo = review_repo
 

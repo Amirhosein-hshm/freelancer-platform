@@ -50,9 +50,7 @@ class SqlAlchemyRefreshTokenRepository(IRefreshTokenRepository):
         )
 
     async def get_by_jti(self, jti: str) -> RefreshToken:
-        result = await self._session.execute(
-            select(RefreshTokenModel).where(RefreshTokenModel.jti == jti)
-        )
+        result = await self._session.execute(select(RefreshTokenModel).where(RefreshTokenModel.jti == jti))
         row = result.scalar_one_or_none()
         if row is None:
             raise RefreshTokenNotFoundError(f"Refresh token with jti {jti} not found.")

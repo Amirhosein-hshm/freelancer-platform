@@ -22,9 +22,7 @@ class UpdateCategoryUseCase(UseCase[UpdateCategoryCommand, CategoryResult]):
         self._uow = uow
 
     async def execute(self, request: UpdateCategoryCommand) -> CategoryResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_CATEGORY_MANAGE
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_CATEGORY_MANAGE)
         request.validate()
         category = await self._category_repo.get_by_id(request.category_id)
         if category.slug != request.slug:
@@ -34,9 +32,7 @@ class UpdateCategoryUseCase(UseCase[UpdateCategoryCommand, CategoryResult]):
                 pass
             else:
                 if existing.id != category.id:
-                    raise DuplicateCategorySlugError(
-                        f"Category slug '{request.slug}' already exists."
-                    )
+                    raise DuplicateCategorySlugError(f"Category slug '{request.slug}' already exists.")
         async with self._uow:
             category.rename(request.name, request.slug)
             category.description = request.description

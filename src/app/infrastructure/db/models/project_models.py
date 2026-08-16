@@ -15,9 +15,7 @@ class ProjectModel(TimestampMixin, Base):
     customer_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
     category_id: Mapped[str] = mapped_column(ForeignKey("categories.id"), index=True, nullable=False)
     form_template_id: Mapped[str] = mapped_column(String(36), nullable=False)
-    assigned_supervisor_user_id: Mapped[str | None] = mapped_column(
-        ForeignKey("users.id"), index=True, nullable=True
-    )
+    assigned_supervisor_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     selected_application_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
@@ -29,9 +27,7 @@ class ProjectModel(TimestampMixin, Base):
     max_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     currency_code: Mapped[str] = mapped_column(String(10), nullable=False)
     status: Mapped[str] = mapped_column(String(30), nullable=False)
-    application_deadline: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    application_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -46,9 +42,7 @@ class ProjectApplicationModel(TimestampMixin, Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), index=True, nullable=False)
-    freelancer_profile_id: Mapped[str] = mapped_column(
-        ForeignKey("freelancer_profiles.id"), index=True, nullable=False
-    )
+    freelancer_profile_id: Mapped[str] = mapped_column(ForeignKey("freelancer_profiles.id"), index=True, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     cover_letter: Mapped[str | None] = mapped_column(Text, nullable=True)
     proposed_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
@@ -73,9 +67,7 @@ class ProjectDeliveryModel(TimestampMixin, Base):
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     reviewer_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    superseded_by_delivery_id: Mapped[str | None] = mapped_column(
-        ForeignKey("project_deliveries.id"), nullable=True
-    )
+    superseded_by_delivery_id: Mapped[str | None] = mapped_column(ForeignKey("project_deliveries.id"), nullable=True)
     file_asset_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
 
 

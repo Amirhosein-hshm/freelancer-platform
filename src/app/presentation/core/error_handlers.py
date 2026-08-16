@@ -34,9 +34,7 @@ def _envelope(exc: Exception, status: int, details: dict | list | None = None) -
 def _envelope_serializer() -> JSONResponse:
     return JSONResponse(
         status_code=500,
-        content=ErrorEnvelope(
-            error=ErrorDetail(code="INTERNAL_ERROR", message="Internal server error.")
-        ).model_dump(),
+        content=ErrorEnvelope(error=ErrorDetail(code="INTERNAL_ERROR", message="Internal server error.")).model_dump(),
     )
 
 

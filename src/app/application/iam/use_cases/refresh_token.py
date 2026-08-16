@@ -46,9 +46,7 @@ class RefreshTokenUseCase(UseCase[RefreshTokenCommand, RefreshTokenResult]):
         user = await self._user_repo.get_by_id(token.user_id)
         if not user.is_active():
             raise UserNotActiveError(f"User {user.id} is not active.")
-        roles = [
-            role.role_key for role in await self._user_role_repo.list_active_roles_for_user(user.id)
-        ]
+        roles = [role.role_key for role in await self._user_role_repo.list_active_roles_for_user(user.id)]
         access_token = await self._token_service.generate_access_token(user.id, roles)
         now = await self._clock.now()
         new_raw, new_jti = await self._token_service.generate_refresh_token()

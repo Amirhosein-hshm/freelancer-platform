@@ -130,9 +130,7 @@ class TestUpdatePortfolioItemUseCase:
                 )
             )
 
-    async def test_update_unknown_item_raises(
-        self, profile_repo, portfolio_item_repo, file_storage, make_profile
-    ):
+    async def test_update_unknown_item_raises(self, profile_repo, portfolio_item_repo, file_storage, make_profile):
         await make_profile(user_id="user-1")
         use_case = UpdatePortfolioItemUseCase(
             profile_repo=profile_repo,
@@ -141,9 +139,7 @@ class TestUpdatePortfolioItemUseCase:
         )
 
         with pytest.raises(PortfolioItemNotFoundError):
-            await use_case.execute(
-                UpdatePortfolioItemCommand(user_id="user-1", item_id="ghost", title="X")
-            )
+            await use_case.execute(UpdatePortfolioItemCommand(user_id="user-1", item_id="ghost", title="X"))
 
     async def test_update_item_of_another_profile_raises(
         self, profile_repo, portfolio_item_repo, file_storage, make_profile, make_portfolio_item
@@ -158,20 +154,14 @@ class TestUpdatePortfolioItemUseCase:
         )
 
         with pytest.raises(PortfolioItemNotFoundError):
-            await use_case.execute(
-                UpdatePortfolioItemCommand(user_id="user-1", item_id="item-1", title="X")
-            )
+            await use_case.execute(UpdatePortfolioItemCommand(user_id="user-1", item_id="item-1", title="X"))
 
 
 class TestDeletePortfolioItemUseCase:
-    async def test_delete_item_succeeds(
-        self, profile_repo, portfolio_item_repo, make_profile, make_portfolio_item
-    ):
+    async def test_delete_item_succeeds(self, profile_repo, portfolio_item_repo, make_profile, make_portfolio_item):
         await make_profile(user_id="user-1")
         await make_portfolio_item()
-        use_case = DeletePortfolioItemUseCase(
-            profile_repo=profile_repo, portfolio_item_repo=portfolio_item_repo
-        )
+        use_case = DeletePortfolioItemUseCase(profile_repo=profile_repo, portfolio_item_repo=portfolio_item_repo)
 
         result = await use_case.execute(DeletePortfolioItemCommand(user_id="user-1", item_id="item-1"))
 
@@ -185,9 +175,7 @@ class TestDeletePortfolioItemUseCase:
         await make_profile(user_id="user-1", profile_id="profile-1")
         await make_profile(user_id="user-2", profile_id="profile-2")
         await make_portfolio_item(profile_id="profile-2")
-        use_case = DeletePortfolioItemUseCase(
-            profile_repo=profile_repo, portfolio_item_repo=portfolio_item_repo
-        )
+        use_case = DeletePortfolioItemUseCase(profile_repo=profile_repo, portfolio_item_repo=portfolio_item_repo)
 
         with pytest.raises(PortfolioItemNotFoundError):
             await use_case.execute(DeletePortfolioItemCommand(user_id="user-1", item_id="item-1"))

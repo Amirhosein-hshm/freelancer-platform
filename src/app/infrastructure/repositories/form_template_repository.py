@@ -26,9 +26,7 @@ class SqlAlchemyFormTemplateRepository(IFormTemplateRepository):
         row = await self._session.get(
             FormTemplateModel,
             template_id,
-            options=[
-                selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options)
-            ],
+            options=[selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options)],
         )
         if row is None:
             raise FormTemplateNotFoundError(f"Form template {template_id} not found.")
@@ -41,26 +39,20 @@ class SqlAlchemyFormTemplateRepository(IFormTemplateRepository):
                 FormTemplateModel.category_id == category_id,
                 FormTemplateModel.status == FormTemplateStatus.PUBLISHED.value,
             )
-            .options(
-                selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options)
-            )
+            .options(selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options))
             .order_by(FormTemplateModel.version_no.desc())
             .limit(1)
         )
         row = result.scalar_one_or_none()
         if row is None:
-            raise FormTemplateNotFoundError(
-                f"No published form template found for category {category_id}."
-            )
+            raise FormTemplateNotFoundError(f"No published form template found for category {category_id}.")
         return to_domain_form_template(row)
 
     async def update(self, template: FormTemplate) -> None:
         row = await self._session.get(
             FormTemplateModel,
             template.id,
-            options=[
-                selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options)
-            ],
+            options=[selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options)],
         )
         if row is None:
             raise FormTemplateNotFoundError(f"Form template {template.id} not found.")
@@ -80,18 +72,14 @@ class SqlAlchemyFormTemplateRepository(IFormTemplateRepository):
         if row is not None:
             await self._session.delete(row)
 
-    async def list_versions(
-        self, category_id: EntityId, template_key: str
-    ) -> list[FormTemplate]:
+    async def list_versions(self, category_id: EntityId, template_key: str) -> list[FormTemplate]:
         result = await self._session.execute(
             select(FormTemplateModel)
             .where(
                 FormTemplateModel.category_id == category_id,
                 FormTemplateModel.template_key == template_key,
             )
-            .options(
-                selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options)
-            )
+            .options(selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options))
             .order_by(FormTemplateModel.version_no.desc())
         )
         return [to_domain_form_template(row) for row in result.scalars().all()]

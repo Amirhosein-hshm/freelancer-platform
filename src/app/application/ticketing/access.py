@@ -9,6 +9,4 @@ async def ensure_participant(
     actor_id: EntityId,
 ) -> None:
     if not await participant_repo.is_participant(ticket_id, actor_id):
-        raise NotTicketParticipantError(
-            f"User {actor_id} is not a participant of ticket {ticket_id}."
-        )
+        raise NotTicketParticipantError(f"User {actor_id} is not a participant of ticket {ticket_id}.")

@@ -67,9 +67,7 @@ class TestUpdateFieldOptionUseCase:
         assert updated_option.label == "Updated Option"
         assert updated_option.sort_order == 5
 
-    async def test_update_option_requires_permission(
-        self, authorization_service, template_repo, uow, make_template
-    ):
+    async def test_update_option_requires_permission(self, authorization_service, template_repo, uow, make_template):
         await make_template(template_id="template-1")
         use_case = build_update_use_case(authorization_service, template_repo, uow)
 
@@ -83,9 +81,7 @@ class TestUpdateFieldOptionUseCase:
                 )
             )
 
-    async def test_update_option_unknown_field(
-        self, authorization_service, template_repo, uow, make_template
-    ):
+    async def test_update_option_unknown_field(self, authorization_service, template_repo, uow, make_template):
         authorization_service.grant("admin", "form.manage")
         await make_template(template_id="template-1")
         use_case = build_update_use_case(authorization_service, template_repo, uow)
@@ -143,9 +139,7 @@ class TestRemoveFieldOptionUseCase:
         updated = await template_repo.get_by_id("template-1")
         assert len(updated.get_field("field-1").options) == 0
 
-    async def test_remove_unknown_option(
-        self, authorization_service, template_repo, uow, make_template
-    ):
+    async def test_remove_unknown_option(self, authorization_service, template_repo, uow, make_template):
         authorization_service.grant("admin", "form.manage")
         field = FormField(
             id="field-1",

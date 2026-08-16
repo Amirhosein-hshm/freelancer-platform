@@ -7,9 +7,7 @@ from app.domain.iam.exceptions import InvalidCredentialsError, UserNotFoundError
 
 
 def build_use_case(user_repo, password_hasher, clock, uow) -> ChangePasswordUseCase:
-    return ChangePasswordUseCase(
-        user_repo=user_repo, password_hasher=password_hasher, clock=clock, uow=uow
-    )
+    return ChangePasswordUseCase(user_repo=user_repo, password_hasher=password_hasher, clock=clock, uow=uow)
 
 
 class TestChangePasswordUseCase:
@@ -26,24 +24,18 @@ class TestChangePasswordUseCase:
         updated = await user_repo.get_by_id("u1")
         assert await password_hasher.verify("new-pass", updated.password_hash.value)
 
-    async def test_change_password_wrong_old_password_raises(
-        self, user_repo, password_hasher, clock, uow, make_user
-    ):
+    async def test_change_password_wrong_old_password_raises(self, user_repo, password_hasher, clock, uow, make_user):
         await make_user(user_id="u1", password="real-pass")
         use_case = build_use_case(user_repo, password_hasher, clock, uow)
 
         with pytest.raises(InvalidCredentialsError):
-            await use_case.execute(
-                ChangePasswordCommand(user_id="u1", old_password="nope", new_password="new-pass")
-            )
+            await use_case.execute(ChangePasswordCommand(user_id="u1", old_password="nope", new_password="new-pass"))
 
     async def test_change_password_unknown_user_raises(self, user_repo, password_hasher, clock, uow):
         use_case = build_use_case(user_repo, password_hasher, clock, uow)
 
         with pytest.raises(UserNotFoundError):
-            await use_case.execute(
-                ChangePasswordCommand(user_id="ghost", old_password="x", new_password="y")
-            )
+            await use_case.execute(ChangePasswordCommand(user_id="ghost", old_password="x", new_password="y"))
 
     async def test_change_password_missing_fields_raises_validation(
         self, user_repo, password_hasher, clock, uow, make_user

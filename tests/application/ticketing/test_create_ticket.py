@@ -3,9 +3,7 @@ from app.application.ticketing.use_cases.create_ticket import CreateTicketUseCas
 from app.domain.ticketing.enums import TicketParticipantRole, TicketPriority, TicketStatus
 
 
-def build_create(
-    ticket_repo, participant_repo, ticket_code_generator, id_generator, clock, uow
-) -> CreateTicketUseCase:
+def build_create(ticket_repo, participant_repo, ticket_code_generator, id_generator, clock, uow) -> CreateTicketUseCase:
     return CreateTicketUseCase(
         ticket_repo=ticket_repo,
         participant_repo=participant_repo,
@@ -26,9 +24,7 @@ class TestCreateTicketUseCase:
         clock,
         uow,
     ):
-        use_case = build_create(
-            ticket_repo, participant_repo, ticket_code_generator, id_generator, clock, uow
-        )
+        use_case = build_create(ticket_repo, participant_repo, ticket_code_generator, id_generator, clock, uow)
 
         result = await use_case.execute(
             CreateTicketCommand(
@@ -59,12 +55,8 @@ class TestCreateTicketUseCase:
         clock,
         uow,
     ):
-        use_case = build_create(
-            ticket_repo, participant_repo, ticket_code_generator, id_generator, clock, uow
-        )
+        use_case = build_create(ticket_repo, participant_repo, ticket_code_generator, id_generator, clock, uow)
 
-        result = await use_case.execute(
-            CreateTicketCommand(actor_id="user-1", subject="Hello")
-        )
+        result = await use_case.execute(CreateTicketCommand(actor_id="user-1", subject="Hello"))
 
         assert (await ticket_repo.get_by_id(result.ticket_id)).priority == TicketPriority.NORMAL

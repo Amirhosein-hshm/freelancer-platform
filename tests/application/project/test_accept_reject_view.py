@@ -144,9 +144,7 @@ class TestRejectFreelancerUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                RejectFreelancerCommand(actor_id="intruder", application_id="app-1")
-            )
+            await use_case.execute(RejectFreelancerCommand(actor_id="intruder", application_id="app-1"))
 
 
 class TestViewApplicationsUseCase:

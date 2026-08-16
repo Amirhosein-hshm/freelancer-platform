@@ -39,13 +39,9 @@ class TestAssignRoleUseCase:
     ):
         authorization_service.grant("admin", "user.assign_role")
         await make_user(user_id="u1")
-        use_case = build_use_case(
-            authorization_service, user_repo, role_repo, user_role_repo, id_generator, clock, uow
-        )
+        use_case = build_use_case(authorization_service, user_repo, role_repo, user_role_repo, id_generator, clock, uow)
 
-        result = await use_case.execute(
-            AssignRoleCommand(actor_id="admin", target_user_id="u1", role_key="admin")
-        )
+        result = await use_case.execute(AssignRoleCommand(actor_id="admin", target_user_id="u1", role_key="admin"))
 
         assert result.role_id == "role-admin"
         assert (await user_role_repo.find_active("u1", "role-admin")) is not None
@@ -63,9 +59,7 @@ class TestAssignRoleUseCase:
         make_user,
     ):
         await make_user(user_id="u1")
-        use_case = build_use_case(
-            authorization_service, user_repo, role_repo, user_role_repo, id_generator, clock, uow
-        )
+        use_case = build_use_case(authorization_service, user_repo, role_repo, user_role_repo, id_generator, clock, uow)
 
         with pytest.raises(PermissionDeniedError):
             await use_case.execute(AssignRoleCommand(actor_id="admin", target_user_id="u1", role_key="admin"))
@@ -93,9 +87,7 @@ class TestAssignRoleUseCase:
                 created_at=NOW,
             )
         )
-        use_case = build_use_case(
-            authorization_service, user_repo, role_repo, user_role_repo, id_generator, clock, uow
-        )
+        use_case = build_use_case(authorization_service, user_repo, role_repo, user_role_repo, id_generator, clock, uow)
 
         with pytest.raises(RoleAlreadyAssignedError):
             await use_case.execute(AssignRoleCommand(actor_id="admin", target_user_id="u1", role_key="admin"))
@@ -113,9 +105,7 @@ class TestAssignRoleUseCase:
     ):
         authorization_service.grant("admin", "user.assign_role")
         await make_user(user_id="u1")
-        use_case = build_use_case(
-            authorization_service, user_repo, role_repo, user_role_repo, id_generator, clock, uow
-        )
+        use_case = build_use_case(authorization_service, user_repo, role_repo, user_role_repo, id_generator, clock, uow)
 
         with pytest.raises(RoleNotFoundError):
             await use_case.execute(AssignRoleCommand(actor_id="admin", target_user_id="u1", role_key="nope"))
@@ -131,9 +121,7 @@ class TestAssignRoleUseCase:
         uow,
     ):
         authorization_service.grant("admin", "user.assign_role")
-        use_case = build_use_case(
-            authorization_service, user_repo, role_repo, user_role_repo, id_generator, clock, uow
-        )
+        use_case = build_use_case(authorization_service, user_repo, role_repo, user_role_repo, id_generator, clock, uow)
 
         with pytest.raises(UserNotFoundError):
             await use_case.execute(AssignRoleCommand(actor_id="admin", target_user_id="ghost", role_key="admin"))

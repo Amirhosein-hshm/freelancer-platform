@@ -85,9 +85,7 @@ class SqlAlchemyReportingReadRepository(IReportingReadRepository):
     async def get_customer_statistics(self) -> CustomerStatistics:
         total_customers = await self._count_customers()
         active_projects = await self._count_active_projects()
-        completed_projects = await self._count_projects_with_status(
-            _COMPLETED_PROJECT_STATUS
-        )
+        completed_projects = await self._count_projects_with_status(_COMPLETED_PROJECT_STATUS)
         return CustomerStatistics(
             total_customers=total_customers,
             active_projects=active_projects,
@@ -95,9 +93,7 @@ class SqlAlchemyReportingReadRepository(IReportingReadRepository):
         )
 
     async def _count_users(self) -> int:
-        stmt = select(func.count()).select_from(UserModel).where(
-            UserModel.deleted_at.is_(None)
-        )
+        stmt = select(func.count()).select_from(UserModel).where(UserModel.deleted_at.is_(None))
         return int((await self._session.execute(stmt)).scalar_one())
 
     async def _count_verified_users(self) -> int:
@@ -134,11 +130,7 @@ class SqlAlchemyReportingReadRepository(IReportingReadRepository):
         return int((await self._session.execute(stmt)).scalar_one())
 
     async def _count_projects(self) -> int:
-        stmt = (
-            select(func.count())
-            .select_from(ProjectModel)
-            .where(ProjectModel.deleted_at.is_(None))
-        )
+        stmt = select(func.count()).select_from(ProjectModel).where(ProjectModel.deleted_at.is_(None))
         return int((await self._session.execute(stmt)).scalar_one())
 
     async def _count_projects_with_status(self, status: str) -> int:
@@ -181,9 +173,7 @@ class SqlAlchemyReportingReadRepository(IReportingReadRepository):
 
     async def _count_freelancers(self) -> int:
         stmt = (
-            select(func.count())
-            .select_from(FreelancerProfileModel)
-            .where(FreelancerProfileModel.deleted_at.is_(None))
+            select(func.count()).select_from(FreelancerProfileModel).where(FreelancerProfileModel.deleted_at.is_(None))
         )
         return int((await self._session.execute(stmt)).scalar_one())
 

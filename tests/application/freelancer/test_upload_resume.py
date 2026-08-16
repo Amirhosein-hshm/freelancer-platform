@@ -25,9 +25,7 @@ class TestUploadResumeUseCase:
         make_asset("asset-1")
         use_case = build_use_case(profile_repo, resume_repo, file_storage, id_generator, clock, uow)
 
-        result = await use_case.execute(
-            UploadResumeCommand(user_id="user-1", file_asset_id="asset-1", summary="v1")
-        )
+        result = await use_case.execute(UploadResumeCommand(user_id="user-1", file_asset_id="asset-1", summary="v1"))
 
         assert result.version_no == 1
         current = await resume_repo.get_current("profile-1")
@@ -52,12 +50,8 @@ class TestUploadResumeUseCase:
         make_asset("asset-2")
         use_case = build_use_case(profile_repo, resume_repo, file_storage, id_generator, clock, uow)
 
-        first = await use_case.execute(
-            UploadResumeCommand(user_id="user-1", file_asset_id="asset-1")
-        )
-        second = await use_case.execute(
-            UploadResumeCommand(user_id="user-1", file_asset_id="asset-2", summary="v2")
-        )
+        first = await use_case.execute(UploadResumeCommand(user_id="user-1", file_asset_id="asset-1"))
+        second = await use_case.execute(UploadResumeCommand(user_id="user-1", file_asset_id="asset-2", summary="v2"))
 
         assert first.version_no == 1
         assert second.version_no == 2

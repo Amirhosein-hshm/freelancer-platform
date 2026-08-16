@@ -91,7 +91,16 @@ class IFileStorageService(ABC):
     @abstractmethod
     async def get_metadata(self, file_asset_id: EntityId) -> "FileAssetMetadata": ...
     @abstractmethod
-    async def register_uploaded_file(self, ...) -> EntityId: ...
+    async def register_uploaded_file(
+        self,
+        file_name: str,
+        content: AsyncIterator[bytes],
+        mime_type: str,
+        owner_user_id: EntityId,
+        context: "FileAssetContext",
+    ) -> EntityId: ...
+    @abstractmethod
+    def get_content(self, file_asset_id: EntityId) -> AsyncIterator[bytes]: ...
 
 class IProjectCodeGenerator(ABC):
     @abstractmethod

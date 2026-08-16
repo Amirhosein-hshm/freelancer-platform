@@ -14,9 +14,4 @@ class FakeTicketParticipantRepository(ITicketParticipantRepository):
         return [p for p in self._store if p.ticket_id == ticket_id]
 
     async def is_participant(self, ticket_id: EntityId, user_id: EntityId) -> bool:
-        return any(
-            p.ticket_id == ticket_id
-            and p.user_id == user_id
-            and p.left_at is None
-            for p in self._store
-        )
+        return any(p.ticket_id == ticket_id and p.user_id == user_id and p.left_at is None for p in self._store)

@@ -20,9 +20,7 @@ def build_use_case(authorization_service, profile_repo, id_generator, clock, uow
 
 
 class TestCreateFreelancerProfileUseCase:
-    async def test_create_profile_succeeds(
-        self, authorization_service, profile_repo, id_generator, clock, uow
-    ):
+    async def test_create_profile_succeeds(self, authorization_service, profile_repo, id_generator, clock, uow):
         authorization_service.grant("user-1", "freelancer.create_own")
         use_case = build_use_case(authorization_service, profile_repo, id_generator, clock, uow)
 
@@ -39,15 +37,11 @@ class TestCreateFreelancerProfileUseCase:
         assert profile.created_by_user_id == "user-1"
         assert uow.committed is True
 
-    async def test_without_permission_raises(
-        self, authorization_service, profile_repo, id_generator, clock, uow
-    ):
+    async def test_without_permission_raises(self, authorization_service, profile_repo, id_generator, clock, uow):
         use_case = build_use_case(authorization_service, profile_repo, id_generator, clock, uow)
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                CreateFreelancerProfileCommand(user_id="user-1", display_name="Jane Dev")
-            )
+            await use_case.execute(CreateFreelancerProfileCommand(user_id="user-1", display_name="Jane Dev"))
 
     async def test_duplicate_profile_raises(
         self, authorization_service, profile_repo, id_generator, clock, uow, make_profile
@@ -57,9 +51,7 @@ class TestCreateFreelancerProfileUseCase:
         use_case = build_use_case(authorization_service, profile_repo, id_generator, clock, uow)
 
         with pytest.raises(DuplicateFreelancerProfileError):
-            await use_case.execute(
-                CreateFreelancerProfileCommand(user_id="user-1", display_name="Jane Dev")
-            )
+            await use_case.execute(CreateFreelancerProfileCommand(user_id="user-1", display_name="Jane Dev"))
 
     async def test_missing_display_name_raises_validation(
         self, authorization_service, profile_repo, id_generator, clock, uow
@@ -68,6 +60,4 @@ class TestCreateFreelancerProfileUseCase:
         use_case = build_use_case(authorization_service, profile_repo, id_generator, clock, uow)
 
         with pytest.raises(ValidationError):
-            await use_case.execute(
-                CreateFreelancerProfileCommand(user_id="user-1", display_name="  ")
-            )
+            await use_case.execute(CreateFreelancerProfileCommand(user_id="user-1", display_name="  "))

@@ -38,8 +38,6 @@ class SqlAlchemyPermissionRepository(IPermissionRepository):
 
     async def list_by_module(self, module: str) -> list[Permission]:
         result = await self._session.execute(
-            select(PermissionModel)
-            .where(PermissionModel.module == module)
-            .order_by(PermissionModel.permission_key)
+            select(PermissionModel).where(PermissionModel.module == module).order_by(PermissionModel.permission_key)
         )
         return [to_domain_permission(row) for row in result.scalars().all()]

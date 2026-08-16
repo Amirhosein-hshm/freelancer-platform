@@ -30,9 +30,7 @@ class SqlAlchemyRatingRepository(IRatingRepository):
         )
 
     async def find_by_project(self, project_id: EntityId) -> Rating | None:
-        result = await self._session.execute(
-            select(RatingModel).where(RatingModel.project_id == project_id)
-        )
+        result = await self._session.execute(select(RatingModel).where(RatingModel.project_id == project_id))
         row = result.scalar_one_or_none()
         return to_domain_rating(row) if row is not None else None
 
@@ -46,8 +44,6 @@ class SqlAlchemyRatingRepository(IRatingRepository):
 
     async def average_score_for_freelancer(self, freelancer_profile_id: EntityId) -> Decimal | None:
         result = await self._session.execute(
-            select(func.avg(RatingModel.score)).where(
-                RatingModel.freelancer_profile_id == freelancer_profile_id
-            )
+            select(func.avg(RatingModel.score)).where(RatingModel.freelancer_profile_id == freelancer_profile_id)
         )
         return result.scalar_one_or_none()

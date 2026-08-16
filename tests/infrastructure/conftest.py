@@ -35,6 +35,7 @@ TEST_DATABASE_URL = os.environ.get(
 
 def _build_schema() -> None:
     """Create all tables once per session, in a throwaway loop."""
+
     async def _create() -> None:
         engine = create_async_engine(TEST_DATABASE_URL)
         try:

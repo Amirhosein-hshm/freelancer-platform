@@ -19,18 +19,14 @@ class TestAdminGetUserUseCase:
             user_role_repo=user_role_repo,
         )
 
-    async def test_get_user_requires_permission(
-        self, authorization_service, user_repo, user_role_repo, make_user
-    ):
+    async def test_get_user_requires_permission(self, authorization_service, user_repo, user_role_repo, make_user):
         await make_user(user_id="u1")
         use_case = self.build(authorization_service, user_repo, user_role_repo)
 
         with pytest.raises(PermissionDeniedError):
             await use_case.execute(AdminGetUserQuery(actor_id="admin", target_user_id="u1"))
 
-    async def test_returns_user_with_active_roles(
-        self, authorization_service, user_repo, user_role_repo, make_user
-    ):
+    async def test_returns_user_with_active_roles(self, authorization_service, user_repo, user_role_repo, make_user):
         authorization_service.grant("admin", "user.read")
         await make_user(
             user_id="u1",
@@ -61,9 +57,7 @@ class TestAdminGetUserUseCase:
         assert result.last_login_at is None
         assert result.roles == ["customer"]
 
-    async def test_returns_user_with_no_roles(
-        self, authorization_service, user_repo, user_role_repo, make_user
-    ):
+    async def test_returns_user_with_no_roles(self, authorization_service, user_repo, user_role_repo, make_user):
         authorization_service.grant("admin", "user.read")
         await make_user(user_id="u1")
         use_case = self.build(authorization_service, user_repo, user_role_repo)
@@ -72,9 +66,7 @@ class TestAdminGetUserUseCase:
 
         assert result.roles == []
 
-    async def test_unknown_user_raises(
-        self, authorization_service, user_repo, user_role_repo
-    ):
+    async def test_unknown_user_raises(self, authorization_service, user_repo, user_role_repo):
         authorization_service.grant("admin", "user.read")
         use_case = self.build(authorization_service, user_repo, user_role_repo)
 

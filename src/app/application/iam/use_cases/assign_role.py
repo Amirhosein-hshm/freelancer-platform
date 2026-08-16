@@ -35,9 +35,7 @@ class AssignRoleUseCase(UseCase[AssignRoleCommand, AssignRoleResult]):
         user = await self._user_repo.get_by_id(request.target_user_id)
         role = await self._role_repo.get_by_key(request.role_key)
         if await self._user_role_repo.find_active(user.id, role.id) is not None:
-            raise RoleAlreadyAssignedError(
-                f"Role '{role.role_key}' is already assigned to user {user.id}."
-            )
+            raise RoleAlreadyAssignedError(f"Role '{role.role_key}' is already assigned to user {user.id}.")
         now = await self._clock.now()
         user_role = UserRole(
             id=await self._id_generator.new_id(),

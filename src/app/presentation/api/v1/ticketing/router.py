@@ -109,9 +109,7 @@ async def get_user_tickets(
     current_user=Depends(get_current_user),
     use_case: GetUserTicketsUseCase = Depends(get_get_user_tickets_use_case),
 ) -> SuccessEnvelope[list[TicketResponse]]:
-    result = await use_case.execute(
-        GetUserTicketsQuery(actor_id=current_user.user_id, user_id=current_user.user_id)
-    )
+    result = await use_case.execute(GetUserTicketsQuery(actor_id=current_user.user_id, user_id=current_user.user_id))
     return SuccessEnvelope(
         message="User tickets.",
         data=[_to_ticket_response(t) for t in result.tickets],
@@ -128,9 +126,7 @@ async def get_ticket_messages(
     current_user=Depends(get_current_user),
     use_case: GetTicketMessagesUseCase = Depends(get_get_ticket_messages_use_case),
 ) -> SuccessEnvelope[list[TicketMessageResponse]]:
-    result = await use_case.execute(
-        GetTicketMessagesQuery(actor_id=current_user.user_id, ticket_id=ticket_id)
-    )
+    result = await use_case.execute(GetTicketMessagesQuery(actor_id=current_user.user_id, ticket_id=ticket_id))
     return SuccessEnvelope(
         message="Ticket messages.",
         data=[_to_message_response(m) for m in result.messages],
@@ -204,9 +200,7 @@ async def close_ticket(
     current_user=Depends(get_current_user),
     use_case: CloseTicketUseCase = Depends(get_close_ticket_use_case),
 ) -> SuccessEnvelope[CloseTicketResponse]:
-    result = await use_case.execute(
-        CloseTicketCommand(actor_id=current_user.user_id, ticket_id=ticket_id)
-    )
+    result = await use_case.execute(CloseTicketCommand(actor_id=current_user.user_id, ticket_id=ticket_id))
     return SuccessEnvelope(
         message="Ticket closed.",
         data=CloseTicketResponse(ticket_id=result.ticket_id, status=result.status),

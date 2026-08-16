@@ -66,9 +66,7 @@ class TestSubmitRatingUseCase:
         )
 
         await use_case.execute(
-            SubmitRatingCommand(
-                actor_id="customer-1", project_id="project-1", score=5, is_public=True
-            )
+            SubmitRatingCommand(actor_id="customer-1", project_id="project-1", score=5, is_public=True)
         )
 
         rating = await rating_repo.find_by_project("project-1")
@@ -104,9 +102,7 @@ class TestSubmitRatingUseCase:
         )
 
         with pytest.raises(ProjectNotCompletedError):
-            await use_case.execute(
-                SubmitRatingCommand(actor_id="customer-1", project_id="project-1", score=4)
-            )
+            await use_case.execute(SubmitRatingCommand(actor_id="customer-1", project_id="project-1", score=4))
 
     async def test_duplicate_rating_raises(
         self,
@@ -140,9 +136,7 @@ class TestSubmitRatingUseCase:
         )
 
         with pytest.raises(RatingAlreadyExistsError):
-            await use_case.execute(
-                SubmitRatingCommand(actor_id="customer-1", project_id="project-1", score=3)
-            )
+            await use_case.execute(SubmitRatingCommand(actor_id="customer-1", project_id="project-1", score=3))
 
     async def test_invalid_score_raises(
         self,
@@ -174,9 +168,7 @@ class TestSubmitRatingUseCase:
         )
 
         with pytest.raises(InvalidRatingScoreError):
-            await use_case.execute(
-                SubmitRatingCommand(actor_id="customer-1", project_id="project-1", score=9)
-            )
+            await use_case.execute(SubmitRatingCommand(actor_id="customer-1", project_id="project-1", score=9))
 
     async def test_missing_customer_review_raises(
         self,
@@ -206,9 +198,7 @@ class TestSubmitRatingUseCase:
         )
 
         with pytest.raises(ValidationError):
-            await use_case.execute(
-                SubmitRatingCommand(actor_id="customer-1", project_id="project-1", score=4)
-            )
+            await use_case.execute(SubmitRatingCommand(actor_id="customer-1", project_id="project-1", score=4))
 
     async def test_non_owner_raises(
         self,
@@ -239,9 +229,7 @@ class TestSubmitRatingUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                SubmitRatingCommand(actor_id="intruder", project_id="project-1", score=4)
-            )
+            await use_case.execute(SubmitRatingCommand(actor_id="intruder", project_id="project-1", score=4))
 
     async def test_unapproved_customer_review_raises(
         self,
@@ -273,6 +261,4 @@ class TestSubmitRatingUseCase:
         )
 
         with pytest.raises(CustomerReviewNotApprovedError):
-            await use_case.execute(
-                SubmitRatingCommand(actor_id="customer-1", project_id="project-1", score=4)
-            )
+            await use_case.execute(SubmitRatingCommand(actor_id="customer-1", project_id="project-1", score=4))

@@ -21,9 +21,7 @@ class AdminUpdateUserUseCase(UseCase[AdminUpdateUserCommand, AdminUpdateUserResu
         self._uow = uow
 
     async def execute(self, request: AdminUpdateUserCommand) -> AdminUpdateUserResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, "user.update_any"
-        )
+        await self._authorization_service.require_permission(request.actor_id, "user.update_any")
         request.validate()
         user = await self._user_repo.get_by_id(request.target_user_id)
         if request.first_name is not None:

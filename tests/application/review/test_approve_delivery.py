@@ -65,9 +65,7 @@ class TestApproveDeliveryUseCase:
         )
 
         result = await use_case.execute(
-            ApproveDeliveryCommand(
-                actor_id="supervisor-1", project_delivery_id="delivery-1", notes="OK"
-            )
+            ApproveDeliveryCommand(actor_id="supervisor-1", project_delivery_id="delivery-1", notes="OK")
         )
 
         assert result.decision == ReviewStatus.APPROVED
@@ -109,11 +107,7 @@ class TestApproveDeliveryUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                ApproveDeliveryCommand(
-                    actor_id="intruder", project_delivery_id="delivery-1"
-                )
-            )
+            await use_case.execute(ApproveDeliveryCommand(actor_id="intruder", project_delivery_id="delivery-1"))
 
     async def test_already_reviewed_raises(
         self,
@@ -146,9 +140,7 @@ class TestApproveDeliveryUseCase:
         )
 
         with pytest.raises(DeliveryAlreadyReviewedError):
-            await use_case.execute(
-                ApproveDeliveryCommand(actor_id="supervisor-1", project_delivery_id="delivery-1")
-            )
+            await use_case.execute(ApproveDeliveryCommand(actor_id="supervisor-1", project_delivery_id="delivery-1"))
 
     async def test_missing_pending_review_creates_one(
         self,

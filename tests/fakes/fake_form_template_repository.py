@@ -22,14 +22,10 @@ class FakeFormTemplateRepository(IFormTemplateRepository):
         published = [
             t
             for t in self._store.values()
-            if t.category_id == category_id
-            and t.status == FormTemplateStatus.PUBLISHED
-            and t.deleted_at is None
+            if t.category_id == category_id and t.status == FormTemplateStatus.PUBLISHED and t.deleted_at is None
         ]
         if not published:
-            raise FormTemplateNotFoundError(
-                f"No published form template for category {category_id}."
-            )
+            raise FormTemplateNotFoundError(f"No published form template for category {category_id}.")
         return max(published, key=lambda t: t.version_no)
 
     async def update(self, template: FormTemplate) -> None:
@@ -38,11 +34,5 @@ class FakeFormTemplateRepository(IFormTemplateRepository):
     async def delete(self, template_id: EntityId) -> None:
         self._store.pop(template_id, None)
 
-    async def list_versions(
-        self, category_id: EntityId, template_key: str
-    ) -> list[FormTemplate]:
-        return [
-            t
-            for t in self._store.values()
-            if t.category_id == category_id and t.template_key == template_key
-        ]
+    async def list_versions(self, category_id: EntityId, template_key: str) -> list[FormTemplate]:
+        return [t for t in self._store.values() if t.category_id == category_id and t.template_key == template_key]

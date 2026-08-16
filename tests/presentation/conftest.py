@@ -63,6 +63,7 @@ NOW = datetime(2026, 8, 2, tzinfo=UTC)
 
 PASSWORD_HASHER = FakePasswordHasher()
 
+
 def auth_header(_token_service: FakeTokenService, user_id: str, roles: list[str]) -> dict[str, str]:
     """Build an Authorization header matching FakeTokenService's token format.
 
@@ -145,8 +146,6 @@ def client(overrides: dict[object, object]) -> TestClient:
             return instance
         return lambda fake=instance: fake  # type: ignore[return-value]
 
-    app.dependency_overrides.update(
-        {provider: _wrap(instance) for provider, instance in overrides.items()}
-    )
+    app.dependency_overrides.update({provider: _wrap(instance) for provider, instance in overrides.items()})
     with TestClient(app) as test_client:
         yield test_client

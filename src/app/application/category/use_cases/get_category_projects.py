@@ -19,9 +19,7 @@ class GetCategoryProjectsResult:
     projects: list[ProjectResult]
 
 
-class GetCategoryProjectsUseCase(
-    UseCase[GetCategoryProjectsQuery, GetCategoryProjectsResult]
-):
+class GetCategoryProjectsUseCase(UseCase[GetCategoryProjectsQuery, GetCategoryProjectsResult]):
     def __init__(
         self,
         category_repo: ICategoryRepository,

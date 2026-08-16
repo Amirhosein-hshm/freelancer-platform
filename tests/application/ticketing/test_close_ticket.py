@@ -26,9 +26,7 @@ class TestCloseTicketUseCase:
         authorization_service.grant("user-1", PERMISSION_TICKET_CLOSE_OWN)
         use_case = build_close(authorization_service, ticket_repo, participant_repo, clock, uow)
 
-        result = await use_case.execute(
-            CloseTicketCommand(actor_id="user-1", ticket_id="ticket-1")
-        )
+        result = await use_case.execute(CloseTicketCommand(actor_id="user-1", ticket_id="ticket-1"))
 
         assert result.status == TicketStatus.CLOSED
         ticket = await ticket_repo.get_by_id("ticket-1")
@@ -45,9 +43,7 @@ class TestCloseTicketUseCase:
         use_case = build_close(authorization_service, ticket_repo, participant_repo, clock, uow)
 
         with pytest.raises(InvalidStateTransitionError):
-            await use_case.execute(
-                CloseTicketCommand(actor_id="user-1", ticket_id="ticket-1")
-            )
+            await use_case.execute(CloseTicketCommand(actor_id="user-1", ticket_id="ticket-1"))
 
     async def test_non_participant_raises(
         self, authorization_service, ticket_repo, participant_repo, clock, uow, make_ticket
@@ -56,6 +52,4 @@ class TestCloseTicketUseCase:
         use_case = build_close(authorization_service, ticket_repo, participant_repo, clock, uow)
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                CloseTicketCommand(actor_id="intruder", ticket_id="ticket-1")
-            )
+            await use_case.execute(CloseTicketCommand(actor_id="intruder", ticket_id="ticket-1"))

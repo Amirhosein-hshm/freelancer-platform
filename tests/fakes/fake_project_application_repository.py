@@ -22,10 +22,7 @@ class FakeProjectApplicationRepository(IProjectApplicationRepository):
         self, project_id: EntityId, freelancer_profile_id: EntityId
     ) -> ProjectApplication | None:
         for application in self._store.values():
-            if (
-                application.project_id == project_id
-                and application.freelancer_profile_id == freelancer_profile_id
-            ):
+            if application.project_id == project_id and application.freelancer_profile_id == freelancer_profile_id:
                 return application
         return None
 
@@ -39,9 +36,7 @@ class FakeProjectApplicationRepository(IProjectApplicationRepository):
             ProjectApplicationStatus.ACCEPTED,
         )
         return sum(
-            1
-            for a in self._store.values()
-            if a.freelancer_profile_id == freelancer_profile_id and a.status in active
+            1 for a in self._store.values() if a.freelancer_profile_id == freelancer_profile_id and a.status in active
         )
 
     async def update(self, application: ProjectApplication) -> None:

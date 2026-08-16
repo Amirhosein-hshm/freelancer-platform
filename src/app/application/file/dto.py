@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from collections.abc import AsyncIterator
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from app.domain.file.enums import FileAssetContext
@@ -9,7 +10,7 @@ from app.domain.shared.types import EntityId
 class UploadFileCommand:
     actor_id: EntityId
     file_name: str
-    content_bytes: bytes
+    content: AsyncIterator[bytes]
     context: FileAssetContext
 
 
@@ -38,3 +39,4 @@ class GetFileAssetResult:
     uploaded_at: datetime
     owner_user_id: EntityId
     context: FileAssetContext
+    content: AsyncIterator[bytes] = field(compare=False)

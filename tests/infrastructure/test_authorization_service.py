@@ -51,9 +51,7 @@ async def _seed_graph(db_session) -> tuple[str, str]:
             created_at=now,
         )
     )
-    db_session.add(
-        RoleModel(id=role_id, role_key="customer", name="Customer", is_system=True, created_at=now)
-    )
+    db_session.add(RoleModel(id=role_id, role_key="customer", name="Customer", is_system=True, created_at=now))
     db_session.add(
         PermissionModel(
             id=permission_id,

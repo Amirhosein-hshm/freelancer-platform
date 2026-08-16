@@ -35,6 +35,9 @@ class IFreelancerProfileRepository(ABC):
 
 class IFreelancerLevelRepository(ABC):
     @abstractmethod
+    async def add(self, level: FreelancerLevel) -> None: ...
+
+    @abstractmethod
     async def get_by_id(self, level_id: EntityId) -> FreelancerLevel:
         """Raise ``FreelancerLevelNotFoundError`` if absent."""
 
@@ -43,7 +46,16 @@ class IFreelancerLevelRepository(ABC):
         """Raise ``FreelancerLevelNotFoundError`` if absent."""
 
     @abstractmethod
+    async def list_all(self) -> list[FreelancerLevel]: ...
+
+    @abstractmethod
     async def list_active(self) -> list[FreelancerLevel]: ...
+
+    @abstractmethod
+    async def update(self, level: FreelancerLevel) -> None: ...
+
+    @abstractmethod
+    async def delete(self, level_id: EntityId) -> None: ...
 
 
 class IFreelancerLevelHistoryRepository(ABC):
@@ -59,7 +71,14 @@ class IResumeRepository(ABC):
     async def add(self, resume: Resume) -> None: ...
 
     @abstractmethod
+    async def get_by_id(self, resume_id: EntityId) -> Resume:
+        """Raise ``ResumeNotFoundError`` if absent."""
+
+    @abstractmethod
     async def update(self, resume: Resume) -> None: ...
+
+    @abstractmethod
+    async def delete(self, resume_id: EntityId) -> None: ...
 
     @abstractmethod
     async def list_by_profile(self, profile_id: EntityId) -> list[Resume]: ...

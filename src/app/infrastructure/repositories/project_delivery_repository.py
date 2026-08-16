@@ -56,9 +56,7 @@ class SqlAlchemyProjectDeliveryRepository(IProjectDeliveryRepository):
 
     async def list_by_file_asset_id(self, file_asset_id: EntityId) -> list[ProjectDelivery]:
         result = await self._session.execute(
-            select(ProjectDeliveryModel).where(
-                ProjectDeliveryModel.file_asset_ids.contains([file_asset_id])
-            )
+            select(ProjectDeliveryModel).where(ProjectDeliveryModel.file_asset_ids.contains([file_asset_id]))
         )
         return [to_domain_project_delivery(row) for row in result.scalars().all()]
 

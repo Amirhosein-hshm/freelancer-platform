@@ -28,6 +28,9 @@ class FreelancerLevel(Entity):
     def deactivate(self) -> None:
         self.is_active = False
 
+    def activate(self) -> None:
+        self.is_active = True
+
 
 @dataclass(eq=False)
 class FreelancerProfile(AggregateRoot):
@@ -57,19 +60,14 @@ class FreelancerProfile(AggregateRoot):
             self.approval_status = FreelancerApprovalStatus.PENDING
             return
         raise InvalidStateTransitionError(
-            f"Freelancer profile {self.id} cannot be submitted for approval from "
-            f"status '{self.approval_status.value}'."
+            f"Freelancer profile {self.id} cannot be submitted for approval from status '{self.approval_status.value}'."
         )
 
     def approve(self, admin_id: EntityId, at: datetime, note: str | None) -> None:
         if self.approval_status == FreelancerApprovalStatus.APPROVED:
-            raise FreelancerAlreadyApprovedError(
-                f"Freelancer profile {self.id} is already approved."
-            )
+            raise FreelancerAlreadyApprovedError(f"Freelancer profile {self.id} is already approved.")
         if self.approval_status == FreelancerApprovalStatus.SUSPENDED:
-            raise InvalidStateTransitionError(
-                f"Cannot approve suspended freelancer profile {self.id}."
-            )
+            raise InvalidStateTransitionError(f"Cannot approve suspended freelancer profile {self.id}.")
         self.approval_status = FreelancerApprovalStatus.APPROVED
         self.approved_by_user_id = admin_id
         self.approved_at = at
@@ -77,9 +75,7 @@ class FreelancerProfile(AggregateRoot):
 
     def reject(self, admin_id: EntityId, at: datetime, note: str) -> None:
         if self.approval_status == FreelancerApprovalStatus.APPROVED:
-            raise InvalidStateTransitionError(
-                f"Cannot reject already approved freelancer profile {self.id}."
-            )
+            raise InvalidStateTransitionError(f"Cannot reject already approved freelancer profile {self.id}.")
         self.approval_status = FreelancerApprovalStatus.REJECTED
         self.approved_by_user_id = admin_id
         self.approved_at = at
@@ -105,11 +101,12 @@ class FreelancerProfile(AggregateRoot):
     def set_availability(self, available: bool) -> None:
         self.is_available = available
 
+    def soft_delete(self, at: datetime) -> None:
+        self.deleted_at = at
+
     def update_rate_range(self, min_rate: Decimal | None, max_rate: Decimal | None) -> None:
         if min_rate is not None and max_rate is not None and min_rate > max_rate:
-            raise InvalidRateRangeError(
-                f"Min hourly rate {min_rate} cannot exceed max hourly rate {max_rate}."
-            )
+            raise InvalidRateRangeError(f"Min hourly rate {min_rate} cannot exceed max hourly rate {max_rate}.")
         self.hourly_rate_min = min_rate
         self.hourly_rate_max = max_rate
 

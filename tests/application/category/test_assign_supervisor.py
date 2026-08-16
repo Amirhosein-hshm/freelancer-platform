@@ -111,9 +111,7 @@ class TestAssignSupervisorUseCase:
             clock,
             uow,
         )
-        await first.execute(
-            AssignSupervisorCommand(actor_id="admin", category_id="cat-1", supervisor_user_id="sup-1")
-        )
+        await first.execute(AssignSupervisorCommand(actor_id="admin", category_id="cat-1", supervisor_user_id="sup-1"))
         use_case = build_use_case(
             authorization_service,
             category_repo,

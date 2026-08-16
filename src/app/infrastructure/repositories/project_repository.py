@@ -103,9 +103,7 @@ class SqlAlchemyProjectRepository(IProjectRepository):
         row.deleted_at = project.deleted_at
         row.created_by_user_id = project.created_by_user_id
 
-    async def list_by_customer(
-        self, customer_user_id: EntityId, status: ProjectStatus | None = None
-    ) -> list[Project]:
+    async def list_by_customer(self, customer_user_id: EntityId, status: ProjectStatus | None = None) -> list[Project]:
         stmt = select(ProjectModel).where(ProjectModel.customer_user_id == customer_user_id)
         if status is not None:
             stmt = stmt.where(ProjectModel.status == status.value)

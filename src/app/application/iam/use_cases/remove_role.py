@@ -32,14 +32,10 @@ class RemoveRoleUseCase(UseCase[RemoveRoleCommand, RemoveRoleResult]):
         user = await self._user_repo.get_by_id(request.target_user_id)
         role = await self._role_repo.get_by_key(request.role_key)
         if role.is_system:
-            raise SystemRoleImmutableError(
-                f"System role '{role.role_key}' cannot be removed."
-            )
+            raise SystemRoleImmutableError(f"System role '{role.role_key}' cannot be removed.")
         user_role = await self._user_role_repo.find_active(user.id, role.id)
         if user_role is None:
-            raise UserRoleNotFoundError(
-                f"No active role '{role.role_key}' for user {user.id}."
-            )
+            raise UserRoleNotFoundError(f"No active role '{role.role_key}' for user {user.id}.")
         now = await self._clock.now()
         async with self._uow:
             user_role.revoke(now)

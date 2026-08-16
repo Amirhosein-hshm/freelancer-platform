@@ -23,9 +23,7 @@ class UserModel(Base):
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    user_roles: Mapped[list["UserRoleModel"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
-    )
+    user_roles: Mapped[list["UserRoleModel"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class RoleModel(Base):

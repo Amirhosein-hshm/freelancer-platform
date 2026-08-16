@@ -26,9 +26,7 @@ class User(AggregateRoot):
     def activate(self) -> None:
         """PENDING/BLOCKED -> ACTIVE; ARCHIVED users can never be re-activated."""
         if self.status == UserStatus.ARCHIVED:
-            raise InvalidStateTransitionError(
-                f"Cannot activate user {self.id}: user is ARCHIVED."
-            )
+            raise InvalidStateTransitionError(f"Cannot activate user {self.id}: user is ARCHIVED.")
         if self.status == UserStatus.ACTIVE:
             return
         self.status = UserStatus.ACTIVE
@@ -36,9 +34,7 @@ class User(AggregateRoot):
     def block(self, reason: str) -> None:
         """ACTIVE/PENDING -> BLOCKED; rejects ARCHIVED users."""
         if self.status == UserStatus.ARCHIVED:
-            raise InvalidStateTransitionError(
-                f"Cannot block user {self.id}: user is ARCHIVED."
-            )
+            raise InvalidStateTransitionError(f"Cannot block user {self.id}: user is ARCHIVED.")
         if self.status == UserStatus.BLOCKED:
             raise UserAlreadyBlockedError(f"User {self.id} is already blocked.")
         self.status = UserStatus.BLOCKED

@@ -98,6 +98,10 @@ class IProjectRevisionRequestRepository(ABC):
     async def add(self, revision: ProjectRevisionRequest) -> None: ...
 
     @abstractmethod
+    async def get_by_id(self, revision_id: EntityId) -> ProjectRevisionRequest:
+        """Raise ``RevisionRequestNotFoundError`` if absent."""
+
+    @abstractmethod
     async def list_by_project(self, project_id: EntityId) -> list[ProjectRevisionRequest]: ...
 
     @abstractmethod

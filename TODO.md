@@ -111,11 +111,27 @@ green (tests passing), not just "code written".
   - `GET /files/{file_asset_id}` with context-aware authorization (`IFileAccessPolicy`).
   - File-existence checks added to `AddPortfolioItemUseCase`, `UpdatePortfolioItemUseCase`,
     `SubmitDeliveryUseCase`, and `SendMessageUseCase`.
-  - New `file.upload`/`file.read_any` permissions seeded.
-  - End-to-end tests for all four consumers + file routes; `ruff`, `mypy` clean.
-- [ ] **Part 4** — On-behalf admin routes: implement missing on-behalf creation/mutation paths
-      from audit table.
-- [ ] **Part 4** — On-behalf admin routes: implement missing on-behalf creation/mutation paths
-      from audit table.
+  - New `file.upload`/`file.read_any` permissions seeded; `file.upload` granted to
+    `customer` and `freelancer` roles.
+  - Persistent storage backend implemented behind `IFileStorageService`:
+    - `LocalDiskFileStorageService` (default, interim production backend) with streaming
+      writes, size limits, and path-traversal-safe keys.
+    - `S3FileStorageService` (configurable via `FILE_STORAGE_BACKEND=s3`).
+  - `docker-compose.yml` includes a named volume for local storage; `Dockerfile` creates
+    `/app/storage/files` owned by `appuser`.
+  - Routes stream uploads and return actual file bytes via `StreamingResponse`.
+  - End-to-end restart-survival test passed: upload → download matches, container restart,
+    download again matches byte-for-byte.
+  - Tests green (`tests/application`, `tests/presentation`), `ruff`, `mypy` clean.
+- [x] **Part 4a** — Dedicated admin on-behalf routes: removed optional-body branching from
+      `POST /projects` and `POST /projects/{id}/applications`; added `POST /admin/projects`,
+      `POST /admin/projects/{id}/applications`, `POST /admin/freelancers`, `POST /admin/tickets`.
+- [x] **Part 4b** — Freelancer admin/read gaps: approval-status listing, soft-delete, full
+      `FreelancerLevel` CRUD, level history, resume read/rollback/delete, portfolio read.
+- [x] **Part 4c** — Project read/access gaps: `GET /projects/{id}/applications/{application_id}`,
+      `GET /projects/{id}/deliveries`, `GET /projects/{id}/revisions`,
+      `GET /projects/{id}/status-history`, `GET /deliveries/{delivery_id}`,
+      `GET /revisions/{revision_id}`, `POST /revisions/{revision_id}/close`.
+- [ ] **Part 4d** — Remaining review/feedback/ticketing/auth audit gaps from the audit table.
 - [ ] **Part 5** — OpenAPI/presentation hygiene: tags, `summary`, error response examples,
       pagination follow-through.

@@ -35,9 +35,7 @@ class TestRejectFreelancerUseCase:
         use_case = build_use_case(authorization_service, profile_repo, clock, uow)
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                RejectFreelancerCommand(actor_id="admin", profile_id="profile-1", note="x")
-            )
+            await use_case.execute(RejectFreelancerCommand(actor_id="admin", profile_id="profile-1", note="x"))
 
     async def test_reject_approved_raises(self, authorization_service, profile_repo, clock, uow, make_profile):
         authorization_service.grant("admin", "freelancer.approve")
@@ -45,6 +43,4 @@ class TestRejectFreelancerUseCase:
         use_case = build_use_case(authorization_service, profile_repo, clock, uow)
 
         with pytest.raises(InvalidStateTransitionError):
-            await use_case.execute(
-                RejectFreelancerCommand(actor_id="admin", profile_id="profile-1", note="x")
-            )
+            await use_case.execute(RejectFreelancerCommand(actor_id="admin", profile_id="profile-1", note="x"))

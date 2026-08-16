@@ -18,10 +18,7 @@ class AdminGetUserUseCase(UseCase[AdminGetUserQuery, AdminGetUserResult]):
     async def execute(self, request: AdminGetUserQuery) -> AdminGetUserResult:
         await self._authorization_service.require_permission(request.actor_id, "user.read")
         user = await self._user_repo.get_by_id(request.target_user_id)
-        roles = [
-            role.role_key
-            for role in await self._user_role_repo.list_active_roles_for_user(user.id)
-        ]
+        roles = [role.role_key for role in await self._user_role_repo.list_active_roles_for_user(user.id)]
         return AdminGetUserResult(
             user_id=user.id,
             email=user.email.value,

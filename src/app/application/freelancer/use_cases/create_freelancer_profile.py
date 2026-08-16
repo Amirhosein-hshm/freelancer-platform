@@ -35,9 +35,7 @@ async def _create_freelancer_profile(
     except FreelancerProfileNotFoundError:
         pass
     else:
-        raise DuplicateFreelancerProfileError(
-            f"A freelancer profile already exists for user {user_id}."
-        )
+        raise DuplicateFreelancerProfileError(f"A freelancer profile already exists for user {user_id}.")
     now = await clock.now()
     profile = FreelancerProfile(
         id=await id_generator.new_id(),
@@ -66,9 +64,7 @@ async def _create_freelancer_profile(
     return CreateFreelancerProfileResult(profile_id=profile.id)
 
 
-class CreateFreelancerProfileUseCase(
-    UseCase[CreateFreelancerProfileCommand, CreateFreelancerProfileResult]
-):
+class CreateFreelancerProfileUseCase(UseCase[CreateFreelancerProfileCommand, CreateFreelancerProfileResult]):
     def __init__(
         self,
         authorization_service: IAuthorizationService,
@@ -84,9 +80,7 @@ class CreateFreelancerProfileUseCase(
         self._uow = uow
 
     async def execute(self, request: CreateFreelancerProfileCommand) -> CreateFreelancerProfileResult:
-        await self._authorization_service.require_permission(
-            request.user_id, PERMISSION_FREELANCER_CREATE_OWN
-        )
+        await self._authorization_service.require_permission(request.user_id, PERMISSION_FREELANCER_CREATE_OWN)
         request.validate()
         return await _create_freelancer_profile(
             user_id=request.user_id,

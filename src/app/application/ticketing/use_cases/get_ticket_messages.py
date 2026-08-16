@@ -12,9 +12,7 @@ from app.domain.ticketing.repositories import (
 )
 
 
-class GetTicketMessagesUseCase(
-    UseCase[GetTicketMessagesQuery, GetTicketMessagesResult]
-):
+class GetTicketMessagesUseCase(UseCase[GetTicketMessagesQuery, GetTicketMessagesResult]):
     def __init__(
         self,
         ticket_repo: ITicketRepository,
@@ -29,6 +27,4 @@ class GetTicketMessagesUseCase(
         ticket = await self._ticket_repo.get_by_id(request.ticket_id)
         await ensure_participant(self._participant_repo, ticket.id, request.actor_id)
         messages = await self._message_repo.list_by_ticket(ticket.id)
-        return GetTicketMessagesResult(
-            messages=[to_message_result(m) for m in messages]
-        )
+        return GetTicketMessagesResult(messages=[to_message_result(m) for m in messages])

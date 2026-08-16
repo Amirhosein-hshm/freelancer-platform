@@ -98,9 +98,7 @@ class TestValidateFormValues:
             validate_form_values(build_template(FormFieldType.DATE), build_values(value))
 
     def test_datetime_valid(self):
-        validate_form_values(
-            build_template(FormFieldType.DATETIME), build_values("2026-08-02T10:30:00")
-        )
+        validate_form_values(build_template(FormFieldType.DATETIME), build_values("2026-08-02T10:30:00"))
 
     @pytest.mark.parametrize("value", ["2026-13-01", "not-a-date"])
     def test_datetime_invalid(self, value):
@@ -156,41 +154,29 @@ class TestValidateFormValues:
         ]
 
     def test_select_valid(self):
-        template = build_template(
-            FormFieldType.SELECT, options=self._make_options()
-        )
+        template = build_template(FormFieldType.SELECT, options=self._make_options())
         validate_form_values(template, build_values("small"))
 
     def test_select_invalid_option_raises(self):
-        template = build_template(
-            FormFieldType.SELECT, options=self._make_options()
-        )
+        template = build_template(FormFieldType.SELECT, options=self._make_options())
         with pytest.raises(FormValidationError, match="available options"):
             validate_form_values(template, build_values("medium"))
 
     def test_select_inactive_option_raises(self):
-        template = build_template(
-            FormFieldType.SELECT, options=self._make_options()
-        )
+        template = build_template(FormFieldType.SELECT, options=self._make_options())
         with pytest.raises(FormValidationError, match="available options"):
             validate_form_values(template, build_values("hidden"))
 
     def test_multi_select_valid(self):
-        template = build_template(
-            FormFieldType.MULTI_SELECT, options=self._make_options()
-        )
+        template = build_template(FormFieldType.MULTI_SELECT, options=self._make_options())
         validate_form_values(template, build_values("small, large"))
 
     def test_multi_select_invalid_item_raises(self):
-        template = build_template(
-            FormFieldType.MULTI_SELECT, options=self._make_options()
-        )
+        template = build_template(FormFieldType.MULTI_SELECT, options=self._make_options())
         with pytest.raises(FormValidationError, match="not available"):
             validate_form_values(template, build_values("small, medium"))
 
     def test_multi_select_empty_item_raises(self):
-        template = build_template(
-            FormFieldType.MULTI_SELECT, options=self._make_options()
-        )
+        template = build_template(FormFieldType.MULTI_SELECT, options=self._make_options())
         with pytest.raises(FormValidationError, match="empty option"):
             validate_form_values(template, build_values("small,,large"))

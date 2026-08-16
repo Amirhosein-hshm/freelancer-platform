@@ -39,7 +39,7 @@ class TestApproveFreelancerUseCase:
     ):
         authorization_service.grant("admin", "freelancer.approve")
         await make_profile(profile_id="profile-1")
-        make_level(level_id="level-1", level_key=DEFAULT_LEVEL_KEY)
+        await make_level(level_id="level-1", level_key=DEFAULT_LEVEL_KEY)
         use_case = build_use_case(
             authorization_service,
             profile_repo,
@@ -50,9 +50,7 @@ class TestApproveFreelancerUseCase:
             uow,
         )
 
-        result = await use_case.execute(
-            ApproveFreelancerCommand(actor_id="admin", profile_id="profile-1", note="OK")
-        )
+        result = await use_case.execute(ApproveFreelancerCommand(actor_id="admin", profile_id="profile-1", note="OK"))
 
         assert result.approval_status == FreelancerApprovalStatus.APPROVED
         assert result.current_level_id == "level-1"
@@ -88,9 +86,7 @@ class TestApproveFreelancerUseCase:
             uow,
         )
 
-        result = await use_case.execute(
-            ApproveFreelancerCommand(actor_id="admin", profile_id="profile-1")
-        )
+        result = await use_case.execute(ApproveFreelancerCommand(actor_id="admin", profile_id="profile-1"))
 
         assert result.approval_status == FreelancerApprovalStatus.APPROVED
         assert result.current_level_id is None
@@ -119,9 +115,7 @@ class TestApproveFreelancerUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                ApproveFreelancerCommand(actor_id="admin", profile_id="profile-1")
-            )
+            await use_case.execute(ApproveFreelancerCommand(actor_id="admin", profile_id="profile-1"))
 
     async def test_double_approve_raises(
         self,
@@ -147,6 +141,4 @@ class TestApproveFreelancerUseCase:
         )
 
         with pytest.raises(FreelancerAlreadyApprovedError):
-            await use_case.execute(
-                ApproveFreelancerCommand(actor_id="admin", profile_id="profile-1")
-            )
+            await use_case.execute(ApproveFreelancerCommand(actor_id="admin", profile_id="profile-1"))

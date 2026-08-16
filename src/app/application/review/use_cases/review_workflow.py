@@ -56,8 +56,7 @@ async def decide_delivery_review(
     existing = await review_repo.find_by_delivery(delivery.id)
     if existing is not None and existing.decision != ReviewStatus.PENDING:
         raise DeliveryAlreadyReviewedError(
-            f"Delivery {delivery.id} has already been reviewed "
-            f"({existing.decision.value})."
+            f"Delivery {delivery.id} has already been reviewed ({existing.decision.value})."
         )
     now = await clock.now()
     async with uow:
@@ -105,9 +104,7 @@ async def decide_delivery_review(
             target = ProjectStatus.REVISION_REQUESTED
             reason = f"Supervisor rejected delivery {delivery.id}."
         else:
-            raise ValidationError(
-                f"Decision '{decision.value}' is not a valid review decision."
-            )
+            raise ValidationError(f"Decision '{decision.value}' is not a valid review decision.")
         await record_status_history(
             status_history_repo,
             id_generator,

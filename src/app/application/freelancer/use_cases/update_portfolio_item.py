@@ -13,9 +13,7 @@ from app.domain.freelancer.repositories import (
 )
 
 
-class UpdatePortfolioItemUseCase(
-    UseCase[UpdatePortfolioItemCommand, UpdatePortfolioItemResult]
-):
+class UpdatePortfolioItemUseCase(UseCase[UpdatePortfolioItemCommand, UpdatePortfolioItemResult]):
     def __init__(
         self,
         profile_repo: IFreelancerProfileRepository,
@@ -29,9 +27,7 @@ class UpdatePortfolioItemUseCase(
     async def _owned_item(self, profile_id: str, item_id: str) -> PortfolioItem:
         item = await self._portfolio_item_repo.get_by_id(item_id)
         if item.freelancer_profile_id != profile_id:
-            raise PortfolioItemNotFoundError(
-                f"Portfolio item {item_id} not found for this profile."
-            )
+            raise PortfolioItemNotFoundError(f"Portfolio item {item_id} not found for this profile.")
         return item
 
     async def execute(self, request: UpdatePortfolioItemCommand) -> UpdatePortfolioItemResult:
@@ -40,9 +36,7 @@ class UpdatePortfolioItemUseCase(
             try:
                 await self._file_storage.get_metadata(request.file_asset_id)
             except (KeyError, FileNotFoundError) as exc:
-                raise ValidationError(
-                    f"File asset {request.file_asset_id} does not exist."
-                ) from exc
+                raise ValidationError(f"File asset {request.file_asset_id} does not exist.") from exc
         profile = await self._profile_repo.get_by_user_id(request.user_id)
         item = await self._owned_item(profile.id, request.item_id)
         item.title = request.title

@@ -40,9 +40,7 @@ class SqlAlchemyAuthorizationService(IAuthorizationService):
 
     async def require_permission(self, user_id: EntityId, permission_key: str) -> None:
         if not await self.has_permission(user_id, permission_key):
-            raise PermissionDeniedError(
-                f"User {user_id} does not have permission '{permission_key}'."
-            )
+            raise PermissionDeniedError(f"User {user_id} does not have permission '{permission_key}'.")
 
     async def has_role(self, user_id: EntityId, role_key: str) -> bool:
         result = await self._session.execute(

@@ -98,9 +98,7 @@ class TestPublish:
             template.publish("admin-1", NOW)
 
     def test_double_publish_raises(self):
-        template = make_template(
-            status=FormTemplateStatus.PUBLISHED, fields=[make_field()]
-        )
+        template = make_template(status=FormTemplateStatus.PUBLISHED, fields=[make_field()])
         with pytest.raises(FormTemplateAlreadyPublishedError):
             template.publish("admin-1", NOW)
 

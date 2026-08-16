@@ -51,18 +51,20 @@ def make_asset(file_storage: FakeFileStorageService):
         asset_id: str = "asset-1",
         owner_user_id: str = "user-1",
         context: FileAssetContext = FileAssetContext.GENERIC,
+        content: bytes = b"%PDF-1.4",
     ) -> str:
         file_storage.add(
             FileAssetMetadata(
                 file_asset_id=asset_id,
                 file_name="resume.pdf",
-                size_bytes=1024,
+                size_bytes=len(content),
                 mime_type="application/pdf",
                 url=None,
                 uploaded_at=NOW,
                 owner_user_id=owner_user_id,
                 context=context,
-            )
+            ),
+            content=content,
         )
         return asset_id
 
@@ -71,7 +73,7 @@ def make_asset(file_storage: FakeFileStorageService):
 
 @pytest.fixture
 def make_level(level_repo: FakeFreelancerLevelRepository):
-    def _make(
+    async def _make(
         level_id: str = "level-1",
         level_key: str = "standard",
         **overrides: object,
@@ -92,7 +94,7 @@ def make_level(level_repo: FakeFreelancerLevelRepository):
         }
         fields.update(overrides)
         level = FreelancerLevel(**fields)  # type: ignore[arg-type]
-        level_repo.add(level)
+        await level_repo.add(level)
         return level
 
     return _make

@@ -2,7 +2,7 @@ from tests.presentation.conftest import auth_header
 
 
 class TestFileRouter:
-    def test_upload_and_get_file_asset(self, client, token_service):
+    def test_upload_and_download_file(self, client, token_service):
         headers = auth_header(token_service, "user-1", ["freelancer"])
         content = b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n"
 
@@ -26,9 +26,9 @@ class TestFileRouter:
             headers=headers,
         )
 
-        print("GET response:", get_response.status_code, get_response.text)
         assert get_response.status_code == 200
-        assert get_response.json()["data"]["file_asset_id"] == file_asset_id
+        assert get_response.headers["content-type"] == "application/pdf"
+        assert get_response.content == content
 
     def test_get_foreign_file_denied(self, client, token_service):
         owner_headers = auth_header(token_service, "user-1", ["freelancer"])

@@ -29,9 +29,7 @@ class RevokePermissionUseCase(UseCase[RevokePermissionCommand, RevokePermissionR
         await self._authorization_service.require_permission(request.actor_id, "user.revoke_permission")
         role = await self._role_repo.get_by_id(request.role_id)
         if role.is_system:
-            raise SystemRoleImmutableError(
-                f"Permissions of system role '{role.role_key}' cannot be revoked."
-            )
+            raise SystemRoleImmutableError(f"Permissions of system role '{role.role_key}' cannot be revoked.")
         await self._permission_repo.get_by_id(request.permission_id)
         async with self._uow:
             await self._role_permission_repo.remove(request.role_id, request.permission_id)

@@ -41,9 +41,7 @@ class CategorySupervisor(Entity):
 
     def revoke(self, at: datetime) -> None:
         if not self.is_active:
-            raise InvalidStateTransitionError(
-                f"Supervisor link {self.id} is already revoked."
-            )
+            raise InvalidStateTransitionError(f"Supervisor link {self.id} is already revoked.")
         self.is_active = False
         self.revoked_at = at
 

@@ -53,18 +53,12 @@ class LoginUserUseCase(UseCase[LoginUserCommand, LoginUserResult]):
         try:
             user = await self._user_repo.get_by_email(email)
         except UserNotFoundError:
-            raise InvalidCredentialsError(
-                f"Invalid credentials for {email.value}."
-            ) from None
+            raise InvalidCredentialsError(f"Invalid credentials for {email.value}.") from None
         if not await self._password_hasher.verify(request.password, user.password_hash.value):
             raise InvalidCredentialsError(f"Invalid credentials for {email.value}.")
         if user.status != UserStatus.ACTIVE:
-            raise UserNotActiveError(
-                f"User {user.id} is not active (status={user.status.value})."
-            )
-        roles = [
-            role.role_key for role in await self._user_role_repo.list_active_roles_for_user(user.id)
-        ]
+            raise UserNotActiveError(f"User {user.id} is not active (status={user.status.value}).")
+        roles = [role.role_key for role in await self._user_role_repo.list_active_roles_for_user(user.id)]
         access_token = await self._token_service.generate_access_token(user.id, roles)
         raw_token, jti = await self._token_service.generate_refresh_token()
         now = await self._clock.now()

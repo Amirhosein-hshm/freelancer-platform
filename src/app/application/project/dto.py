@@ -313,3 +313,92 @@ class GetAvailableProjectsQuery:
 @dataclass(frozen=True)
 class GetAvailableProjectsResult:
     projects: list[ProjectResult]
+
+
+@dataclass(frozen=True)
+class GetProjectApplicationQuery:
+    actor_id: EntityId
+    application_id: EntityId
+
+
+@dataclass(frozen=True)
+class ListProjectDeliveriesQuery:
+    actor_id: EntityId
+    project_id: EntityId
+
+
+@dataclass(frozen=True)
+class ListProjectDeliveriesResult:
+    deliveries: list[DeliveryResult]
+
+
+@dataclass(frozen=True)
+class GetProjectDeliveryQuery:
+    actor_id: EntityId
+    delivery_id: EntityId
+
+
+@dataclass(frozen=True)
+class ProjectRevisionRequestResult:
+    revision_id: EntityId
+    project_id: EntityId
+    project_delivery_id: EntityId | None
+    requested_by_user_id: EntityId
+    requested_to_user_id: EntityId | None
+    round_no: int
+    status: str
+    reason: str
+    resolved_by_user_id: EntityId | None
+    requested_at: datetime
+    resolved_at: datetime | None
+
+
+@dataclass(frozen=True)
+class ListProjectRevisionRequestsQuery:
+    actor_id: EntityId
+    project_id: EntityId
+
+
+@dataclass(frozen=True)
+class ListProjectRevisionRequestsResult:
+    revisions: list[ProjectRevisionRequestResult]
+
+
+@dataclass(frozen=True)
+class GetProjectRevisionRequestQuery:
+    actor_id: EntityId
+    revision_id: EntityId
+
+
+@dataclass(frozen=True)
+class CloseProjectRevisionRequestCommand:
+    actor_id: EntityId
+    revision_id: EntityId
+
+
+@dataclass(frozen=True)
+class CloseProjectRevisionRequestResult:
+    revision_id: EntityId
+    status: str
+
+
+@dataclass(frozen=True)
+class ProjectStatusHistoryResult:
+    history_id: EntityId
+    project_id: EntityId
+    from_status: str | None
+    to_status: str
+    changed_by_user_id: EntityId
+    reason: str | None
+    changed_at: datetime
+
+
+@dataclass(frozen=True)
+class ListProjectStatusHistoryQuery:
+    actor_id: EntityId
+    project_id: EntityId
+
+
+@dataclass(frozen=True)
+class ListProjectStatusHistoryResult:
+    history: list[ProjectStatusHistoryResult]

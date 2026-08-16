@@ -32,12 +32,8 @@ class AdminCreateFreelancerProfileOnBehalfUseCase(
         self._clock = clock
         self._uow = uow
 
-    async def execute(
-        self, request: CreateFreelancerProfileOnBehalfCommand
-    ) -> CreateFreelancerProfileResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_FREELANCER_CREATE_ON_BEHALF
-        )
+    async def execute(self, request: CreateFreelancerProfileOnBehalfCommand) -> CreateFreelancerProfileResult:
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_FREELANCER_CREATE_ON_BEHALF)
         await self._user_repo.get_by_id(request.target_user_id)
         request.validate()
         return await _create_freelancer_profile(

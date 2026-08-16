@@ -28,16 +28,13 @@ class AssignSupervisorUseCase(UseCase[AssignSupervisorCommand, AssignSupervisorR
         self._uow = uow
 
     async def execute(self, request: AssignSupervisorCommand) -> AssignSupervisorResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, "category.assign_supervisor"
-        )
+        await self._authorization_service.require_permission(request.actor_id, "category.assign_supervisor")
         await self._category_repo.get_by_id(request.category_id)
         await self._user_repo.get_by_id(request.supervisor_user_id)
         active = await self._category_supervisor_repo.list_active_supervisors(request.category_id)
         if any(link.supervisor_user_id == request.supervisor_user_id for link in active):
             raise SupervisorAlreadyAssignedError(
-                f"User {request.supervisor_user_id} is already a supervisor of category "
-                f"{request.category_id}."
+                f"User {request.supervisor_user_id} is already a supervisor of category {request.category_id}."
             )
         now = await self._clock.now()
         link = CategorySupervisor(

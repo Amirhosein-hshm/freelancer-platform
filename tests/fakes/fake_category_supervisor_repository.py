@@ -11,24 +11,16 @@ class FakeCategorySupervisorRepository(ICategorySupervisorRepository):
         self._store.append(link)
 
     async def list_active_supervisors(self, category_id: EntityId) -> list[CategorySupervisor]:
-        return [
-            link
-            for link in self._store
-            if link.category_id == category_id and link.is_active
-        ]
+        return [link for link in self._store if link.category_id == category_id and link.is_active]
 
     async def list_categories_for_supervisor(self, supervisor_user_id: EntityId) -> list[EntityId]:
         return [
-            link.category_id
-            for link in self._store
-            if link.supervisor_user_id == supervisor_user_id and link.is_active
+            link.category_id for link in self._store if link.supervisor_user_id == supervisor_user_id and link.is_active
         ]
 
     async def is_supervisor_of(self, supervisor_user_id: EntityId, category_id: EntityId) -> bool:
         return any(
-            link.supervisor_user_id == supervisor_user_id
-            and link.category_id == category_id
-            and link.is_active
+            link.supervisor_user_id == supervisor_user_id and link.category_id == category_id and link.is_active
             for link in self._store
         )
 

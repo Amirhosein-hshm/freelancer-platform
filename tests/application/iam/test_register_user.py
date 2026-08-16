@@ -44,8 +44,14 @@ class TestRegisterUserUseCase:
         uow,
     ):
         use_case = build_use_case(
-            user_repo, user_role_repo, role_repo, password_hasher,
-            id_generator, clock, notification_service, uow,
+            user_repo,
+            user_role_repo,
+            role_repo,
+            password_hasher,
+            id_generator,
+            clock,
+            notification_service,
+            uow,
         )
 
         result = await use_case.execute(
@@ -79,8 +85,14 @@ class TestRegisterUserUseCase:
         uow,
     ):
         use_case = build_use_case(
-            user_repo, user_role_repo, role_repo, password_hasher,
-            id_generator, clock, notification_service, uow,
+            user_repo,
+            user_role_repo,
+            role_repo,
+            password_hasher,
+            id_generator,
+            clock,
+            notification_service,
+            uow,
         )
 
         result = await use_case.execute(
@@ -112,8 +124,14 @@ class TestRegisterUserUseCase:
     ):
         await make_user(email="dup@example.com")
         use_case = build_use_case(
-            user_repo, user_role_repo, role_repo, password_hasher,
-            id_generator, clock, notification_service, uow,
+            user_repo,
+            user_role_repo,
+            role_repo,
+            password_hasher,
+            id_generator,
+            clock,
+            notification_service,
+            uow,
         )
 
         with pytest.raises(DuplicateEmailError):
@@ -139,8 +157,14 @@ class TestRegisterUserUseCase:
         uow,
     ):
         use_case = build_use_case(
-            user_repo, user_role_repo, role_repo, password_hasher,
-            id_generator, clock, notification_service, uow,
+            user_repo,
+            user_role_repo,
+            role_repo,
+            password_hasher,
+            id_generator,
+            clock,
+            notification_service,
+            uow,
         )
 
         with pytest.raises(InvalidEmailError):
@@ -166,15 +190,19 @@ class TestRegisterUserUseCase:
         uow,
     ):
         use_case = build_use_case(
-            user_repo, user_role_repo, role_repo, password_hasher,
-            id_generator, clock, notification_service, uow,
+            user_repo,
+            user_role_repo,
+            role_repo,
+            password_hasher,
+            id_generator,
+            clock,
+            notification_service,
+            uow,
         )
 
         with pytest.raises(ValidationError):
             await use_case.execute(
-                RegisterUserCommand(
-                    email="", password="", first_name="", last_name="", role="customer"
-                )
+                RegisterUserCommand(email="", password="", first_name="", last_name="", role="customer")
             )
 
     @pytest.mark.parametrize(
@@ -194,8 +222,14 @@ class TestRegisterUserUseCase:
         role,
     ):
         use_case = build_use_case(
-            user_repo, user_role_repo, role_repo, password_hasher,
-            id_generator, clock, notification_service, uow,
+            user_repo,
+            user_role_repo,
+            role_repo,
+            password_hasher,
+            id_generator,
+            clock,
+            notification_service,
+            uow,
         )
 
         with pytest.raises(ValidationError):
@@ -222,8 +256,14 @@ class TestRegisterUserUseCase:
         uow,
     ):
         use_case = build_use_case(
-            user_repo, user_role_repo, FakeRoleRepository(), password_hasher,
-            id_generator, clock, notification_service, uow,
+            user_repo,
+            user_role_repo,
+            FakeRoleRepository(),
+            password_hasher,
+            id_generator,
+            clock,
+            notification_service,
+            uow,
         )
 
         with pytest.raises(RoleNotFoundError):

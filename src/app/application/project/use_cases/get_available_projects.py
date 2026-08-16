@@ -12,9 +12,7 @@ from app.domain.freelancer.repositories import (
 from app.domain.project.repositories import IProjectRepository
 
 
-class GetAvailableProjectsUseCase(
-    UseCase[GetAvailableProjectsQuery, GetAvailableProjectsResult]
-):
+class GetAvailableProjectsUseCase(UseCase[GetAvailableProjectsQuery, GetAvailableProjectsResult]):
     def __init__(
         self,
         project_repo: IProjectRepository,
@@ -28,13 +26,9 @@ class GetAvailableProjectsUseCase(
     async def execute(self, request: GetAvailableProjectsQuery) -> GetAvailableProjectsResult:
         profile = await self._profile_repo.get_by_user_id(request.actor_id)
         if not profile.is_approved():
-            raise FreelancerNotApprovedError(
-                f"Freelancer profile {profile.id} is not approved."
-            )
+            raise FreelancerNotApprovedError(f"Freelancer profile {profile.id} is not approved.")
         if profile.current_level_id is None:
             return GetAvailableProjectsResult(projects=[])
         level = await self._level_repo.get_by_id(profile.current_level_id)
         projects = await self._project_repo.list_available_for_freelancer(level.id)
-        return GetAvailableProjectsResult(
-            projects=[to_project_result(p) for p in projects]
-        )
+        return GetAvailableProjectsResult(projects=[to_project_result(p) for p in projects])

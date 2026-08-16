@@ -61,9 +61,7 @@ class SqlAlchemyUserRoleRepository(IUserRoleRepository):
 
     async def list_active_user_ids_for_role(self, role_id: EntityId) -> list[EntityId]:
         result = await self._session.execute(
-            select(UserRoleModel.user_id).where(
-                UserRoleModel.role_id == role_id, UserRoleModel.is_active.is_(True)
-            )
+            select(UserRoleModel.user_id).where(UserRoleModel.role_id == role_id, UserRoleModel.is_active.is_(True))
         )
         return list(result.scalars().all())
 

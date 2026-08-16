@@ -167,8 +167,8 @@ Read-only surfacing of the seeded role and permission catalogs. Both require `us
 
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|---|
-| 40 | POST | `/files` | `upload_file` | auth | `UploadFileCommand` → `UploadFileUseCase` (201); MIME derived from content, server-generated key |
-| 41 | GET | `/files/{file_asset_id}` | `get_file_asset` | auth | `GetFileAssetQuery` → `GetFileAssetUseCase`; context-aware authorization |
+| 40 | POST | `/files` | `upload_file` | auth | Streaming `multipart/form-data` → `UploadFileUseCase` (201); bytes persisted to local disk or S3; MIME derived from content; server-generated key |
+| 41 | GET | `/files/{file_asset_id}` | `get_file_asset` | auth | `GetFileAssetQuery` → `GetFileAssetUseCase`; context-aware authorization; returns actual file bytes as `StreamingResponse` |
 
 ### 3.5 Freelancer — `/api/v1/freelancers`
 
@@ -183,22 +183,49 @@ Read-only surfacing of the seeded role and permission catalogs. Both require `us
 | 48 | POST | `/freelancers/{profile_id}/level` | `assign_freelancer_level` | auth | `AssignFreelancerLevelCommand` → `AssignFreelancerLevelUseCase` |
 | 49 | POST | `/freelancers/{profile_id}/resume` | `upload_resume` | auth | `UploadResumeCommand` → `UploadResumeUseCase` (201) |
 | 50 | PATCH | `/freelancers/{profile_id}/resume` | `update_resume` | auth | `UpdateResumeCommand` → `UpdateResumeUseCase` |
+| 50a | GET | `/freelancers/{profile_id}/resume` | `get_current_resume` | auth | `GetCurrentResumeQuery` → `GetCurrentResumeUseCase` |
+| 50b | GET | `/freelancers/{profile_id}/resume/versions` | `list_resume_versions` | auth | `ListResumeVersionsQuery` → `ListResumeVersionsUseCase` |
+| 50c | GET | `/freelancers/{profile_id}/resume/versions/{resume_id}` | `get_resume` | auth | `GetResumeQuery` → `GetResumeUseCase` |
+| 50d | POST | `/freelancers/{profile_id}/resume/versions/{resume_id}/set-current` | `set_current_resume` | auth | `SetCurrentResumeCommand` → `SetCurrentResumeUseCase` (rollback) |
+| 50e | DELETE | `/freelancers/{profile_id}/resume/versions/{resume_id}` | `delete_resume` | auth | `DeleteResumeCommand` → `DeleteResumeUseCase` |
 | 51 | POST | `/freelancers/{profile_id}/portfolio` | `add_portfolio_item` | auth | `AddPortfolioItemCommand` → `AddPortfolioItemUseCase` (201) |
 | 52 | PATCH | `/freelancers/{profile_id}/portfolio/{item_id}` | `update_portfolio_item` | auth | `UpdatePortfolioItemCommand` → `UpdatePortfolioItemUseCase` |
+| 52a | GET | `/freelancers/{profile_id}/portfolio` | `list_portfolio_items` | auth | `ListPortfolioItemsQuery` → `ListPortfolioItemsUseCase` |
+| 52b | GET | `/freelancers/{profile_id}/portfolio/{item_id}` | `get_portfolio_item` | auth | `GetPortfolioItemQuery` → `GetPortfolioItemUseCase` |
 | 53 | DELETE | `/freelancers/{profile_id}/portfolio/{item_id}` | `delete_portfolio_item` | auth | `DeletePortfolioItemCommand` → `DeletePortfolioItemUseCase` |
+| 53a | GET | `/freelancers/{profile_id}/level-history` | `list_freelancer_level_history` | auth | `ListFreelancerLevelHistoryQuery` → `ListFreelancerLevelHistoryUseCase` |
+
+### 3.5a Admin Freelancer (on-behalf / management) — `/api/v1/admin/freelancers`
+
+| # | Method | Path | op_id | Auth | Request → Response |
+|---|---|---|---|---|---|
+| 53b | POST | `/admin/freelancers` | `admin_create_freelancer_profile` | auth (admin) | `CreateFreelancerProfileOnBehalfCommand` → `AdminCreateFreelancerProfileOnBehalfUseCase` (201) |
+| 53c | GET | `/admin/freelancers` | `list_freelancer_profiles_by_approval_status` | auth (admin) | `ListFreelancerProfilesByApprovalStatusQuery` → `ListFreelancerProfilesByApprovalStatusUseCase` |
+| 53d | DELETE | `/admin/freelancers/{profile_id}` | `soft_delete_freelancer_profile` | auth (admin) | `SoftDeleteFreelancerProfileCommand` → `SoftDeleteFreelancerProfileUseCase` |
+
+### 3.5b Admin Freelancer Levels — `/api/v1/admin/freelancer-levels`
+
+| # | Method | Path | op_id | Auth | Request → Response |
+|---|---|---|---|---|---|
+| 53e | GET | `/admin/freelancer-levels` | `list_freelancer_levels` | auth (admin) | `ListFreelancerLevelsQuery` → `ListFreelancerLevelsUseCase` |
+| 53f | POST | `/admin/freelancer-levels` | `create_freelancer_level` | auth (admin) | `CreateFreelancerLevelCommand` → `CreateFreelancerLevelUseCase` (201) |
+| 53g | PATCH | `/admin/freelancer-levels/{level_id}` | `update_freelancer_level` | auth (admin) | `UpdateFreelancerLevelCommand` → `UpdateFreelancerLevelUseCase` |
+| 53h | DELETE | `/admin/freelancer-levels/{level_id}` | `delete_freelancer_level` | auth (admin) | `DeleteFreelancerLevelCommand` → `DeleteFreelancerLevelUseCase` |
+| 53i | POST | `/admin/freelancer-levels/{level_id}/activate` | `activate_freelancer_level` | auth (admin) | `ActivateFreelancerLevelCommand` → `ActivateFreelancerLevelUseCase` |
+| 53j | POST | `/admin/freelancer-levels/{level_id}/deactivate` | `deactivate_freelancer_level` | auth (admin) | `DeactivateFreelancerLevelCommand` → `DeactivateFreelancerLevelUseCase` |
 
 ### 3.6 Project (core) — `/api/v1/projects`
 
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|
-| 54 | POST | `/projects` | `create_project` | auth | self OR on-behalf (`CreateProjectOnBehalfCommand` when `customer_user_id`) → `CreateProjectUseCase` / `AdminCreateProjectOnBehalfUseCase` (201) |
+| 54 | POST | `/projects` | `create_project` | auth | `CreateProjectCommand` → `CreateProjectUseCase` (201) |
 | 55 | GET | `/projects` | `get_available_projects` | auth (freelancer) | `GetAvailableProjectsQuery` → `GetAvailableProjectsUseCase` `total_pages` meta built from returned list length |
 | 56 | GET | `/projects/my` | `get_my_projects` | auth | `GetMyProjectsQuery` → `GetMyProjectsUseCase` |
 | 57 | GET | `/projects/{project_id}` | `get_project_details` | auth | `GetProjectDetailsQuery` → `GetProjectDetailsUseCase` |
 | 58 | POST | `/projects/{project_id}/publish` | `publish_project` | auth | `PublishProjectCommand` → `PublishProjectUseCase` |
 | 59 | POST | `/projects/{project_id}/cancel` | `cancel_project` | auth | `CancelProjectCommand` → `CancelProjectUseCase` |
 | 60 | POST | `/projects/{project_id}/complete` | `complete_project` | auth | `CompleteProjectCommand` → `CompleteProjectUseCase` |
-| 61 | POST | `/projects/{project_id}/applications` | `apply_for_project` | auth | self OR on-behalf (`AdminApplyForProjectOnBehalfCommand`) (201) |
+| 61 | POST | `/projects/{project_id}/applications` | `apply_for_project` | auth | `ApplyForProjectCommand` → `ApplyForProjectUseCase` (201) |
 | 62 | GET | `/projects/{project_id}/applications` | `view_applications` | auth | `ViewApplicationsQuery` → `ViewApplicationsUseCase` |
 | 63 | POST | `/projects/{project_id}/applications/{application_id}/accept` | `accept_freelancer` | auth | `AcceptFreelancerCommand` → `AcceptFreelancerUseCase` |
 | 64 | POST | `/projects/{project_id}/applications/{application_id}/reject` | `reject_freelancer_application` | auth | `RejectFreelancerCommand` → `RejectFreelancerUseCase` |
@@ -206,6 +233,17 @@ Read-only surfacing of the seeded role and permission catalogs. Both require `us
 | 66 | POST | `/projects/{project_id}/start` | `start_project` | auth | `StartProjectCommand` → `StartProjectUseCase` |
 | 67 | POST | `/projects/{project_id}/deliveries` | `submit_delivery` | auth | `SubmitDeliveryCommand` → `SubmitDeliveryUseCase` (201) |
 | 68 | POST | `/projects/{project_id}/revisions` | `request_revision` | auth | `RequestRevisionCommand` → `RequestRevisionUseCase` |
+| 68c | GET | `/projects/{project_id}/applications/{application_id}` | `get_project_application` | auth | `GetProjectApplicationQuery` → `GetProjectApplicationUseCase` |
+| 68d | GET | `/projects/{project_id}/deliveries` | `list_project_deliveries` | auth | `ListProjectDeliveriesQuery` → `ListProjectDeliveriesUseCase` |
+| 68e | GET | `/projects/{project_id}/revisions` | `list_project_revision_requests` | auth | `ListProjectRevisionRequestsQuery` → `ListProjectRevisionRequestsUseCase` |
+| 68f | GET | `/projects/{project_id}/status-history` | `list_project_status_history` | auth | `ListProjectStatusHistoryQuery` → `ListProjectStatusHistoryUseCase` |
+
+### 3.6a Admin Project (on-behalf) — `/api/v1/admin/projects`
+
+| # | Method | Path | op_id | Auth | Request → Response |
+|---|---|---|---|---|---|
+| 68a | POST | `/admin/projects` | `admin_create_project` | auth (admin) | `CreateProjectOnBehalfCommand` → `AdminCreateProjectOnBehalfUseCase` (201) |
+| 68b | POST | `/admin/projects/{project_id}/applications` | `admin_apply_for_project` | auth (admin) | `AdminApplyForProjectOnBehalfCommand` → `AdminApplyForProjectOnBehalfUseCase` (201) |
 
 ### 3.7 Review — `/api/v1/reviews` + `/api/v1/deliveries`
 
@@ -216,6 +254,14 @@ Read-only surfacing of the seeded role and permission catalogs. Both require `us
 | 72 | POST | `/deliveries/{delivery_id}/review` | `review_delivery` | auth | `ReviewDeliveryCommand` → `ReviewDeliveryUseCase` |
 | 73 | POST | `/deliveries/{delivery_id}/approve` | `approve_delivery` | auth | `ApproveDeliveryCommand` → `ApproveDeliveryUseCase` |
 | 74 | POST | `/deliveries/{delivery_id}/reject` | `reject_delivery` | auth | `RejectDeliveryCommand` → `RejectDeliveryUseCase` |
+| 74a | GET | `/deliveries/{delivery_id}` | `get_project_delivery` | auth | `GetProjectDeliveryQuery` → `GetProjectDeliveryUseCase` |
+
+### 3.7a Project Revision Requests — `/api/v1/revisions`
+
+| # | Method | Path | op_id | Auth | Request → Response |
+|---|---|---|---|---|---|---|
+| 74b | GET | `/revisions/{revision_id}` | `get_project_revision_request` | auth | `GetProjectRevisionRequestQuery` → `GetProjectRevisionRequestUseCase` |
+| 74c | POST | `/revisions/{revision_id}/close` | `close_project_revision_request` | auth | `CloseProjectRevisionRequestCommand` → `CloseProjectRevisionRequestUseCase` |
 
 ### 3.8 Feedback — `/api/v1/feedback`
 
@@ -236,6 +282,12 @@ Read-only surfacing of the seeded role and permission catalogs. Both require `us
 | 82 | POST | `/tickets/{ticket_id}/messages` | `send_message` | auth | `SendMessageCommand` → `SendMessageUseCase` (201) |
 | 83 | POST | `/tickets/{ticket_id}/assign` | `assign_ticket` | auth | `AssignTicketCommand` → `AssignTicketUseCase` |
 | 84 | POST | `/tickets/{ticket_id}/close` | `close_ticket` | auth | `CloseTicketCommand` → `CloseTicketUseCase` |
+
+### 3.9a Admin Ticketing (on-behalf) — `/api/v1/admin/tickets`
+
+| # | Method | Path | op_id | Auth | Request → Response |
+|---|---|---|---|---|---|
+| 84a | POST | `/admin/tickets` | `admin_create_ticket` | auth (admin) | `CreateTicketOnBehalfCommand` → `AdminCreateTicketOnBehalfUseCase` (201) |
 
 ### 3.10 Reporting — `/api/v1/reporting`
 
@@ -264,11 +316,22 @@ maps the `Result` → Pydantic response. Consistent pattern: **one handler = one
 
 | Presentation concern | Use Case(s) driven | Cross-boundary notes |
 |---|---|---|
-| `POST /projects` | `CreateProjectUseCase` (self) OR `AdminCreateProjectOnBehalfUseCase` | The handler **branches** on `payload.customer_user_id` — both `create_kwargs` with `actor_id` (from token) and the `customer_user_id` go to the OnBehalfCommand; the self command carries no owner field. Deviation from a strictly-hot single command path — **flag**. |
-| `POST /projects/{id}/applications` | `ApplyForProjectUseCase` OR `AdminApplyForProjectOnBehalfUseCase` | Branches on `target_freelancer_profile_id`. Same dual-path pattern. |
+| `POST /projects` | `CreateProjectUseCase` | Self-service only; `customer_user_id` removed from request body. |
+| `POST /admin/projects` | `AdminCreateProjectOnBehalfUseCase` | Dedicated admin on-behalf route; `target_customer_user_id` is required in body. |
+| `POST /projects/{id}/applications` | `ApplyForProjectUseCase` | Self-service only; `target_freelancer_profile_id` removed from request body. |
+| `POST /admin/projects/{id}/applications` | `AdminApplyForProjectOnBehalfUseCase` | Dedicated admin on-behalf route; `target_freelancer_profile_id` is required in body. |
+| `POST /admin/freelancers` | `AdminCreateFreelancerProfileOnBehalfUseCase` | Dedicated admin on-behalf route. |
+| `POST /admin/tickets` | `AdminCreateTicketOnBehalfUseCase` | Dedicated admin on-behalf route. |
 | `GET /auth/me` | none — direct repo + authz reads | Only endpoint calling `user_repo` + `list_permissions_for_user` directly. |
 | `GET /projects` | `GetAvailableProjectsUseCase` | Requires a freelancer profile; returns projects per level. Pagination meta computed from the in-memory list length — **no real DB pagination** (see §7). |
 | `GET /users` | `AdminListUsersUseCase` | Only list endpoint (currently) with **real DB offset/limit + `count_all` total** — the reference fix for §7 item 2. |
+| `GET /projects/{id}/applications/{application_id}` | `GetProjectApplicationUseCase` | Ownership check via project customer. |
+| `GET /projects/{id}/deliveries` | `ListProjectDeliveriesUseCase` | Ownership check via project customer. |
+| `GET /deliveries/{delivery_id}` | `GetProjectDeliveryUseCase` | Ownership check via project customer. |
+| `GET /projects/{id}/revisions` | `ListProjectRevisionRequestsUseCase` | Ownership check via project customer. |
+| `GET /revisions/{revision_id}` | `GetProjectRevisionRequestUseCase` | Ownership check via project customer. |
+| `POST /revisions/{revision_id}/close` | `CloseProjectRevisionRequestUseCase` | Ownership check via project customer; closes an OPEN revision request. |
+| `GET /projects/{id}/status-history` | `ListProjectStatusHistoryUseCase` | Ownership check via project customer. |
 | All reporting GETs | `GetXStatisticsUseCase` | `ReportingQuery(actor_id)` reused for all — coarse (no filters). |
 
 ---
@@ -365,10 +428,11 @@ documented design deviation (see §7).
    `_to_application_response` duplicated. Cross-file consistency issue.
 6. **`GET /auth/me` reads repos directly** instead of a Query UseCase — inconsistent with
    the "one handler = one UseCase" convention.
-7. **`create_project` dual-path** (self vs on-behalf) routes on a body field
-   `customer_user_id` — matches Code Domain split (`CreateProjectOnBehalfCommand`), but
-   the same endpoint silently picks a different use case based on a body field (DRY vs
-   clarity trade-off; intentional per AGENTS.md §Pattern B).
+7. ✅ **Resolved in Part 4a — on-behalf routes moved to dedicated admin paths.**
+   `POST /projects` and `POST /projects/{id}/applications` are now self-service only;
+   on-behalf creation has dedicated `POST /admin/projects`,
+   `POST /admin/projects/{id}/applications`, `POST /admin/freelancers`, and
+   `POST /admin/tickets` endpoints.
 8. **No health/readiness endpoint** for the container/doc stack, and **no OpenAPI
    `responses` / `400`, `401`, `403`, `404`, `409`, `422`, `500` documented** on individual
    routes (global handlers exist but the API docs remain generic).

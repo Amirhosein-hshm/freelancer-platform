@@ -20,9 +20,7 @@ class ListPermissionsUseCase(UseCase[ListPermissionsQuery, ListPermissionsResult
         self._permission_repo = permission_repo
 
     async def execute(self, request: ListPermissionsQuery) -> ListPermissionsResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_IAM_READ
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_IAM_READ)
         if request.module is not None:
             permissions = await self._permission_repo.list_by_module(request.module)
         else:

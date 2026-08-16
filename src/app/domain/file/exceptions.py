@@ -10,3 +10,7 @@ class FileAssetNotFoundError(EntityNotFoundError):
 
 class InvalidFileContentError(BusinessRuleViolationError):
     pass
+
+
+class FileTooLargeError(BusinessRuleViolationError):
+    pass

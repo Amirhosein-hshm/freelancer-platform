@@ -47,38 +47,24 @@ async def _apply_for_project(
     project = await project_repo.get_by_id(project_id)
     if not project.can_accept_applications():
         raise FreelancerNotEligibleError(
-            f"Project {project_id} is not accepting applications "
-            f"(status '{project.status.value}')."
+            f"Project {project_id} is not accepting applications (status '{project.status.value}')."
         )
     now = await clock.now()
     if project.is_application_deadline_passed(now):
-        raise ApplicationDeadlineExpiredError(
-            f"Project {project_id} application deadline has passed."
-        )
+        raise ApplicationDeadlineExpiredError(f"Project {project_id} application deadline has passed.")
     profile = await profile_repo.get_by_id(freelancer_profile_id)
     if not profile.is_approved():
-        raise FreelancerNotApprovedError(
-            f"Freelancer profile {profile.id} is not approved."
-        )
-    existing = await application_repo.find_by_project_and_freelancer(
-        project.id, profile.id
-    )
+        raise FreelancerNotApprovedError(f"Freelancer profile {profile.id} is not approved.")
+    existing = await application_repo.find_by_project_and_freelancer(project.id, profile.id)
     if existing is not None:
-        raise DuplicateApplicationError(
-            f"Freelancer {profile.id} already applied to project {project.id}."
-        )
+        raise DuplicateApplicationError(f"Freelancer {profile.id} already applied to project {project.id}.")
     if profile.current_level_id is None:
-        raise FreelancerNotEligibleError(
-            f"Freelancer {profile.id} has no assigned level and cannot apply."
-        )
+        raise FreelancerNotEligibleError(f"Freelancer {profile.id} has no assigned level and cannot apply.")
     level = await level_repo.get_by_id(profile.current_level_id)
     active_count = await application_repo.count_active_for_freelancer(profile.id)
-    if not FreelancerEligibilityPolicy.is_eligible_to_apply(
-        level, project, active_count
-    ):
+    if not FreelancerEligibilityPolicy.is_eligible_to_apply(level, project, active_count):
         raise FreelancerNotEligibleError(
-            f"Freelancer {profile.id} is not eligible to apply to project {project.id} "
-            "at level '{level.level_key}'."
+            f"Freelancer {profile.id} is not eligible to apply to project {project.id} at level '{{level.level_key}}'."
         )
     application = ProjectApplication(
         id=await id_generator.new_id(),
@@ -127,9 +113,7 @@ class ApplyForProjectUseCase(UseCase[ApplyForProjectCommand, ApplyForProjectResu
         self._uow = uow
 
     async def execute(self, request: ApplyForProjectCommand) -> ApplyForProjectResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_PROJECT_APPLY
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_PROJECT_APPLY)
         profile = await self._profile_repo.get_by_user_id(request.actor_id)
         return await _apply_for_project(
             freelancer_profile_id=profile.id,

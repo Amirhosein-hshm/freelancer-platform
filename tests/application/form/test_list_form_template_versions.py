@@ -9,9 +9,7 @@ class TestListFormTemplateVersionsUseCase:
     def build(self, template_repo):
         return ListFormTemplateVersionsUseCase(template_repo=template_repo)
 
-    async def test_list_versions_for_template_key(
-        self, template_repo, make_template
-    ):
+    async def test_list_versions_for_template_key(self, template_repo, make_template):
         await make_template(
             template_id="template-1",
             category_id="cat-1",
@@ -33,8 +31,6 @@ class TestListFormTemplateVersionsUseCase:
         )
         use_case = self.build(template_repo)
 
-        result = await use_case.execute(
-            ListFormTemplateVersionsQuery(template_id="template-1")
-        )
+        result = await use_case.execute(ListFormTemplateVersionsQuery(template_id="template-1"))
 
         assert {v.template_id for v in result.versions} == {"template-1", "template-2"}

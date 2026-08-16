@@ -75,7 +75,7 @@ class TestApplyForProjectUseCase:
     ):
         authorization_service.grant("freelancer-1", "project.apply")
         await make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
-        make_level(level_id="level-1", max_active_applications=3)
+        await make_level(level_id="level-1", max_active_applications=3)
         await make_profile(profile_id="profile-1", user_id="freelancer-1")
         use_case = build_apply(
             authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
@@ -112,7 +112,7 @@ class TestApplyForProjectUseCase:
     ):
         authorization_service.grant("freelancer-1", "project.apply")
         await make_project(project_id="project-1", status=ProjectStatus.ASSIGNED)
-        make_level(level_id="level-1")
+        await make_level(level_id="level-1")
         await make_profile(profile_id="profile-1", user_id="freelancer-1")
         use_case = build_apply(
             authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
@@ -137,7 +137,7 @@ class TestApplyForProjectUseCase:
     ):
         authorization_service.grant("freelancer-1", "project.apply")
         await make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
-        make_level(level_id="level-1")
+        await make_level(level_id="level-1")
         await make_profile(
             profile_id="profile-1",
             user_id="freelancer-1",
@@ -166,7 +166,7 @@ class TestApplyForProjectUseCase:
     ):
         authorization_service.grant("freelancer-1", "project.apply")
         await make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
-        make_level(level_id="level-1")
+        await make_level(level_id="level-1")
         await make_profile(profile_id="profile-1", user_id="freelancer-1")
         now = await clock.now()
         await application_repo.add(
@@ -209,7 +209,7 @@ class TestApplyForProjectUseCase:
     ):
         authorization_service.grant("freelancer-1", "project.apply")
         await make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
-        make_level(level_id="level-1", max_active_applications=1)
+        await make_level(level_id="level-1", max_active_applications=1)
         await make_profile(profile_id="profile-1", user_id="freelancer-1")
         now = await clock.now()
         await application_repo.add(
@@ -256,7 +256,7 @@ class TestApplyForProjectUseCase:
             status=ProjectStatus.COLLECTING_APPLICATIONS,
             application_deadline=datetime(2026, 7, 1, tzinfo=UTC),
         )
-        make_level(level_id="level-1")
+        await make_level(level_id="level-1")
         await make_profile(profile_id="profile-1", user_id="freelancer-1")
         use_case = build_apply(
             authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
@@ -281,15 +281,13 @@ class TestApplyForProjectUseCase:
     ):
         authorization_service.grant("admin-1", "project.apply")
         await make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
-        make_level(level_id="level-1")
+        await make_level(level_id="level-1")
         await make_profile(profile_id="profile-1", user_id="admin-1")
         use_case = build_apply(
             authorization_service, project_repo, application_repo, profile_repo, level_repo, id_generator, clock, uow
         )
 
-        result = await use_case.execute(
-            ApplyForProjectCommand(actor_id="admin-1", project_id="project-1")
-        )
+        result = await use_case.execute(ApplyForProjectCommand(actor_id="admin-1", project_id="project-1"))
 
         application = await application_repo.get_by_id(result.application_id)
         assert application.submitted_by_user_id == "admin-1"
@@ -323,9 +321,7 @@ class TestWithdrawApplicationUseCase:
             uow=uow,
         )
 
-        result = await use_case.execute(
-            WithdrawApplicationCommand(actor_id="freelancer-1", application_id="app-1")
-        )
+        result = await use_case.execute(WithdrawApplicationCommand(actor_id="freelancer-1", application_id="app-1"))
 
         assert result.status == ProjectApplicationStatus.WITHDRAWN
         assert (await application_repo.get_by_id("app-1")).withdrawn_at == await clock.now()
@@ -358,6 +354,4 @@ class TestWithdrawApplicationUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                WithdrawApplicationCommand(actor_id="freelancer-1", application_id="app-1")
-            )
+            await use_case.execute(WithdrawApplicationCommand(actor_id="freelancer-1", application_id="app-1"))

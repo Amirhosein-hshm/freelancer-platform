@@ -54,9 +54,7 @@ def test_get_me_returns_roles_and_permissions(client: TestClient, overrides) -> 
     assert set(data["permissions"]) == {"project.create_own", "project.apply"}
 
 
-def test_only_auth_me_endpoint_exposes_roles_and_permissions(
-    client: TestClient, overrides
-) -> None:
+def test_only_auth_me_endpoint_exposes_roles_and_permissions(client: TestClient, overrides) -> None:
     _seed_user(overrides[providers.get_user_repository])
     authz = overrides[providers.get_authorization_service]
     authz.grant("user-1", "project.create_own")
@@ -67,9 +65,7 @@ def test_only_auth_me_endpoint_exposes_roles_and_permissions(
     assert "roles" in me_resp.json()["data"]
     assert "permissions" in me_resp.json()["data"]
 
-    login_resp = client.post(
-        "/api/v1/auth/login", json={"email": "me@example.com", "password": "secret"}
-    )
+    login_resp = client.post("/api/v1/auth/login", json={"email": "me@example.com", "password": "secret"})
     assert login_resp.status_code == 200
     assert "roles" not in login_resp.json()["data"]
     assert "permissions" not in login_resp.json()["data"]

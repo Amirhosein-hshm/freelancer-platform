@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir --prefix=/install .
 FROM python:3.12-slim
 RUN useradd --create-home appuser
 WORKDIR /app
+RUN mkdir -p /app/storage/files && chown -R appuser:appuser /app/storage
 COPY --from=builder /install /usr/local
 COPY src/ ./src/
 COPY alembic.ini ./

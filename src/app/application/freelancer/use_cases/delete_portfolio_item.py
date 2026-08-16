@@ -10,9 +10,7 @@ from app.domain.freelancer.repositories import (
 )
 
 
-class DeletePortfolioItemUseCase(
-    UseCase[DeletePortfolioItemCommand, DeletePortfolioItemResult]
-):
+class DeletePortfolioItemUseCase(UseCase[DeletePortfolioItemCommand, DeletePortfolioItemResult]):
     def __init__(
         self,
         profile_repo: IFreelancerProfileRepository,
@@ -25,8 +23,6 @@ class DeletePortfolioItemUseCase(
         profile = await self._profile_repo.get_by_user_id(request.user_id)
         item = await self._portfolio_item_repo.get_by_id(request.item_id)
         if item.freelancer_profile_id != profile.id:
-            raise PortfolioItemNotFoundError(
-                f"Portfolio item {request.item_id} not found for this profile."
-            )
+            raise PortfolioItemNotFoundError(f"Portfolio item {request.item_id} not found for this profile.")
         await self._portfolio_item_repo.delete(request.item_id)
         return DeletePortfolioItemResult(item_id=request.item_id)

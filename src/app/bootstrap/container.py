@@ -82,7 +82,8 @@ from app.infrastructure.security.authorization_service import (
 )
 from app.infrastructure.security.password_hasher import Argon2PasswordHasher
 from app.infrastructure.security.token_service import JwtTokenService
-from app.infrastructure.storage.file_storage import InMemoryFileStorageService
+from app.infrastructure.storage.local_disk_file_storage import LocalDiskFileStorageService
+from app.infrastructure.storage.s3_file_storage import S3FileStorageService
 from app.presentation.core import providers
 from app.presentation.main import create_app
 
@@ -100,7 +101,21 @@ def build_app() -> FastAPI:
         refresh_ttl_days=settings.jwt_refresh_ttl_days,
     )
     notification_service = WebSocketNotificationService()
-    file_storage_service = InMemoryFileStorageService()
+
+    if settings.file_storage_backend.lower() == "s3":
+        file_storage_service = S3FileStorageService(
+            bucket=settings.s3_bucket,
+            endpoint_url=settings.s3_endpoint_url or None,
+            access_key=settings.s3_access_key,
+            secret_key=settings.s3_secret_key,
+            region=settings.s3_region,
+            max_size_bytes=settings.file_storage_max_size_bytes,
+        )
+    else:
+        file_storage_service = LocalDiskFileStorageService(
+            root_dir=settings.file_storage_root_path,
+            max_size_bytes=settings.file_storage_max_size_bytes,
+        )
 
     app.dependency_overrides[providers.get_password_hasher] = lambda: password_hasher
     app.dependency_overrides[providers.get_id_generator] = lambda: id_generator
@@ -109,8 +124,8 @@ def build_app() -> FastAPI:
     app.dependency_overrides[providers.get_notification_service] = lambda: notification_service
     app.dependency_overrides[providers.get_file_storage_service] = lambda: file_storage_service
 
-    app.dependency_overrides[providers.get_file_access_policy] = (
-        lambda session=Depends(get_db_session): DomainFileAccessPolicy(
+    app.dependency_overrides[providers.get_file_access_policy] = lambda session=Depends(get_db_session): (
+        DomainFileAccessPolicy(
             file_storage=file_storage_service,
             authorization_service=SqlAlchemyAuthorizationService(session),
             profile_repo=SqlAlchemyFreelancerProfileRepository(session),
@@ -125,69 +140,69 @@ def build_app() -> FastAPI:
         )
     )
 
-    app.dependency_overrides[providers.get_unit_of_work] = (
-        lambda session=Depends(get_db_session): SqlAlchemyUnitOfWork(session)
+    app.dependency_overrides[providers.get_unit_of_work] = lambda session=Depends(get_db_session): SqlAlchemyUnitOfWork(
+        session
     )
-    app.dependency_overrides[providers.get_authorization_service] = (
-        lambda session=Depends(get_db_session): SqlAlchemyAuthorizationService(session)
+    app.dependency_overrides[providers.get_authorization_service] = lambda session=Depends(get_db_session): (
+        SqlAlchemyAuthorizationService(session)
     )
-    app.dependency_overrides[providers.get_project_code_generator] = (
-        lambda session=Depends(get_db_session): SqlSequenceProjectCodeGenerator(session)
+    app.dependency_overrides[providers.get_project_code_generator] = lambda session=Depends(get_db_session): (
+        SqlSequenceProjectCodeGenerator(session)
     )
-    app.dependency_overrides[providers.get_ticket_code_generator] = (
-        lambda session=Depends(get_db_session): SqlSequenceTicketCodeGenerator(session)
+    app.dependency_overrides[providers.get_ticket_code_generator] = lambda session=Depends(get_db_session): (
+        SqlSequenceTicketCodeGenerator(session)
     )
 
-    app.dependency_overrides[providers.get_user_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyUserRepository(session)
+    app.dependency_overrides[providers.get_user_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyUserRepository(session)
     )
-    app.dependency_overrides[providers.get_role_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyRoleRepository(session)
+    app.dependency_overrides[providers.get_role_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyRoleRepository(session)
     )
-    app.dependency_overrides[providers.get_permission_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyPermissionRepository(session)
+    app.dependency_overrides[providers.get_permission_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyPermissionRepository(session)
     )
-    app.dependency_overrides[providers.get_user_role_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyUserRoleRepository(session)
+    app.dependency_overrides[providers.get_user_role_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyUserRoleRepository(session)
     )
-    app.dependency_overrides[providers.get_role_permission_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyRolePermissionRepository(session)
+    app.dependency_overrides[providers.get_role_permission_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyRolePermissionRepository(session)
     )
-    app.dependency_overrides[providers.get_refresh_token_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyRefreshTokenRepository(session)
+    app.dependency_overrides[providers.get_refresh_token_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyRefreshTokenRepository(session)
     )
-    app.dependency_overrides[providers.get_category_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyCategoryRepository(session)
+    app.dependency_overrides[providers.get_category_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyCategoryRepository(session)
     )
-    app.dependency_overrides[providers.get_category_supervisor_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyCategorySupervisorRepository(session)
+    app.dependency_overrides[providers.get_category_supervisor_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyCategorySupervisorRepository(session)
     )
-    app.dependency_overrides[providers.get_freelancer_profile_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyFreelancerProfileRepository(session)
+    app.dependency_overrides[providers.get_freelancer_profile_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyFreelancerProfileRepository(session)
     )
-    app.dependency_overrides[providers.get_freelancer_level_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyFreelancerLevelRepository(session)
+    app.dependency_overrides[providers.get_freelancer_level_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyFreelancerLevelRepository(session)
     )
     app.dependency_overrides[providers.get_freelancer_level_history_repository] = (
         lambda session=Depends(get_db_session): SqlAlchemyFreelancerLevelHistoryRepository(session)
     )
-    app.dependency_overrides[providers.get_resume_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyResumeRepository(session)
+    app.dependency_overrides[providers.get_resume_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyResumeRepository(session)
     )
-    app.dependency_overrides[providers.get_portfolio_item_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyPortfolioItemRepository(session)
+    app.dependency_overrides[providers.get_portfolio_item_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyPortfolioItemRepository(session)
     )
-    app.dependency_overrides[providers.get_form_template_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyFormTemplateRepository(session)
+    app.dependency_overrides[providers.get_form_template_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyFormTemplateRepository(session)
     )
-    app.dependency_overrides[providers.get_project_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyProjectRepository(session)
+    app.dependency_overrides[providers.get_project_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyProjectRepository(session)
     )
-    app.dependency_overrides[providers.get_project_application_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyProjectApplicationRepository(session)
+    app.dependency_overrides[providers.get_project_application_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyProjectApplicationRepository(session)
     )
-    app.dependency_overrides[providers.get_project_delivery_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyProjectDeliveryRepository(session)
+    app.dependency_overrides[providers.get_project_delivery_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyProjectDeliveryRepository(session)
     )
     app.dependency_overrides[providers.get_project_revision_request_repository] = (
         lambda session=Depends(get_db_session): SqlAlchemyProjectRevisionRequestRepository(session)
@@ -195,26 +210,26 @@ def build_app() -> FastAPI:
     app.dependency_overrides[providers.get_project_status_history_repository] = (
         lambda session=Depends(get_db_session): SqlAlchemyProjectStatusHistoryRepository(session)
     )
-    app.dependency_overrides[providers.get_customer_review_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyCustomerReviewRepository(session)
+    app.dependency_overrides[providers.get_customer_review_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyCustomerReviewRepository(session)
     )
-    app.dependency_overrides[providers.get_supervisor_review_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemySupervisorReviewRepository(session)
+    app.dependency_overrides[providers.get_supervisor_review_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemySupervisorReviewRepository(session)
     )
-    app.dependency_overrides[providers.get_rating_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyRatingRepository(session)
+    app.dependency_overrides[providers.get_rating_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyRatingRepository(session)
     )
-    app.dependency_overrides[providers.get_ticket_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyTicketRepository(session)
+    app.dependency_overrides[providers.get_ticket_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyTicketRepository(session)
     )
-    app.dependency_overrides[providers.get_ticket_message_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyTicketMessageRepository(session)
+    app.dependency_overrides[providers.get_ticket_message_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyTicketMessageRepository(session)
     )
-    app.dependency_overrides[providers.get_ticket_participant_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyTicketParticipantRepository(session)
+    app.dependency_overrides[providers.get_ticket_participant_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyTicketParticipantRepository(session)
     )
-    app.dependency_overrides[providers.get_reporting_read_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyReportingReadRepository(session)
+    app.dependency_overrides[providers.get_reporting_read_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyReportingReadRepository(session)
     )
 
     return app

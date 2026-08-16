@@ -30,17 +30,13 @@ class AssignTicketUseCase(UseCase[AssignTicketCommand, AssignTicketResult]):
         self._uow = uow
 
     async def execute(self, request: AssignTicketCommand) -> AssignTicketResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_TICKET_ASSIGN
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_TICKET_ASSIGN)
         ticket = await self._ticket_repo.get_by_id(request.ticket_id)
         await ensure_participant(self._participant_repo, ticket.id, request.actor_id)
         now = await self._clock.now()
         async with self._uow:
             ticket.assign(request.assignee_user_id)
-            if not await self._participant_repo.is_participant(
-                ticket.id, request.assignee_user_id
-            ):
+            if not await self._participant_repo.is_participant(ticket.id, request.assignee_user_id):
                 await self._participant_repo.add(
                     TicketParticipant(
                         id=await self._id_generator.new_id(),

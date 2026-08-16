@@ -102,7 +102,7 @@ class TestGetAvailableProjectsUseCase:
     async def test_returns_open_projects_for_approved_freelancer(
         self, project_repo, profile_repo, level_repo, make_project, make_profile, make_level
     ):
-        make_level(level_id="level-1")
+        await make_level(level_id="level-1")
         await make_profile(profile_id="profile-1", user_id="freelancer-1")
         await make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
         await make_project(

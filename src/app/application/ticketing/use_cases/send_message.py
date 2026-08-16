@@ -37,14 +37,10 @@ class SendMessageUseCase(UseCase[SendMessageCommand, SendMessageResult]):
             try:
                 await self._file_storage.get_metadata(file_asset_id)
             except (KeyError, FileNotFoundError) as exc:
-                raise ValidationError(
-                    f"File asset {file_asset_id} does not exist."
-                ) from exc
+                raise ValidationError(f"File asset {file_asset_id} does not exist.") from exc
         ticket = await self._ticket_repo.get_by_id(request.ticket_id)
         if ticket.is_closed():
-            raise TicketClosedError(
-                f"Ticket {ticket.id} is closed and accepts no new messages."
-            )
+            raise TicketClosedError(f"Ticket {ticket.id} is closed and accepts no new messages.")
         await ensure_participant(self._participant_repo, ticket.id, request.actor_id)
         now = await self._clock.now()
         message = TicketMessage(

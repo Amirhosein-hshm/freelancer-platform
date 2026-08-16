@@ -44,9 +44,7 @@ class SqlAlchemyTicketRepository(ITicketRepository):
         return to_domain_ticket(row)
 
     async def get_by_code(self, ticket_code: str) -> Ticket:
-        result = await self._session.execute(
-            select(TicketModel).where(TicketModel.ticket_code == ticket_code)
-        )
+        result = await self._session.execute(select(TicketModel).where(TicketModel.ticket_code == ticket_code))
         row = result.scalar_one_or_none()
         if row is None:
             raise TicketNotFoundError(f"Ticket with code '{ticket_code}' not found.")

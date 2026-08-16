@@ -211,3 +211,211 @@ class AssignFreelancerLevelResult:
 @dataclass(frozen=True)
 class GetFreelancerProfileQuery:
     profile_id: EntityId
+
+
+@dataclass(frozen=True)
+class ListFreelancerProfilesByApprovalStatusQuery:
+    actor_id: EntityId
+    status: FreelancerApprovalStatus
+
+
+@dataclass(frozen=True)
+class SoftDeleteFreelancerProfileCommand:
+    actor_id: EntityId
+    profile_id: EntityId
+
+
+@dataclass(frozen=True)
+class SoftDeleteFreelancerProfileResult:
+    profile_id: EntityId
+
+
+@dataclass(frozen=True)
+class FreelancerLevelResult:
+    level_id: EntityId
+    level_key: str
+    name: str
+    rank_order: int
+    access_type: str
+    min_completed_projects: int
+    min_rating: Decimal | None
+    max_active_applications: int | None
+    can_apply_public_projects: bool
+    can_apply_private_projects: bool
+    is_active: bool
+
+
+@dataclass(frozen=True)
+class CreateFreelancerLevelCommand:
+    actor_id: EntityId
+    level_key: str
+    name: str
+    rank_order: int
+    access_type: str
+    min_completed_projects: int
+    min_rating: Decimal | None
+    max_active_applications: int | None
+    can_apply_public_projects: bool
+    can_apply_private_projects: bool
+
+    def validate(self) -> None:
+        if not self.level_key.strip() or not self.name.strip():
+            raise ValidationError("level_key and name are required.")
+
+
+@dataclass(frozen=True)
+class CreateFreelancerLevelResult:
+    level_id: EntityId
+
+
+@dataclass(frozen=True)
+class ListFreelancerLevelsQuery:
+    actor_id: EntityId
+
+
+@dataclass(frozen=True)
+class UpdateFreelancerLevelCommand:
+    actor_id: EntityId
+    level_id: EntityId
+    name: str | None = None
+    rank_order: int | None = None
+    access_type: str | None = None
+    min_completed_projects: int | None = None
+    min_rating: Decimal | None = None
+    max_active_applications: int | None = None
+    can_apply_public_projects: bool | None = None
+    can_apply_private_projects: bool | None = None
+
+
+@dataclass(frozen=True)
+class UpdateFreelancerLevelResult:
+    level_id: EntityId
+
+
+@dataclass(frozen=True)
+class DeleteFreelancerLevelCommand:
+    actor_id: EntityId
+    level_id: EntityId
+
+
+@dataclass(frozen=True)
+class DeleteFreelancerLevelResult:
+    level_id: EntityId
+
+
+@dataclass(frozen=True)
+class ActivateFreelancerLevelCommand:
+    actor_id: EntityId
+    level_id: EntityId
+
+
+@dataclass(frozen=True)
+class ActivateFreelancerLevelResult:
+    level_id: EntityId
+    is_active: bool
+
+
+@dataclass(frozen=True)
+class DeactivateFreelancerLevelCommand:
+    actor_id: EntityId
+    level_id: EntityId
+
+
+@dataclass(frozen=True)
+class DeactivateFreelancerLevelResult:
+    level_id: EntityId
+    is_active: bool
+
+
+@dataclass(frozen=True)
+class ListFreelancerLevelHistoryQuery:
+    actor_id: EntityId
+    profile_id: EntityId
+
+
+@dataclass(frozen=True)
+class FreelancerLevelHistoryResult:
+    history_id: EntityId
+    freelancer_profile_id: EntityId
+    old_level_id: EntityId | None
+    new_level_id: EntityId
+    assigned_by_user_id: EntityId
+    reason: str | None
+    assigned_at: datetime
+
+
+@dataclass(frozen=True)
+class ResumeResult:
+    resume_id: EntityId
+    freelancer_profile_id: EntityId
+    file_asset_id: EntityId
+    version_no: int
+    summary: str | None
+    is_current: bool
+
+
+@dataclass(frozen=True)
+class GetResumeQuery:
+    actor_id: EntityId
+    resume_id: EntityId
+
+
+@dataclass(frozen=True)
+class GetCurrentResumeQuery:
+    actor_id: EntityId
+    profile_id: EntityId
+
+
+@dataclass(frozen=True)
+class ListResumeVersionsQuery:
+    actor_id: EntityId
+    profile_id: EntityId
+
+
+@dataclass(frozen=True)
+class SetCurrentResumeCommand:
+    actor_id: EntityId
+    profile_id: EntityId
+    resume_id: EntityId
+
+
+@dataclass(frozen=True)
+class SetCurrentResumeResult:
+    resume_id: EntityId
+
+
+@dataclass(frozen=True)
+class DeleteResumeCommand:
+    actor_id: EntityId
+    profile_id: EntityId
+    resume_id: EntityId
+
+
+@dataclass(frozen=True)
+class DeleteResumeResult:
+    resume_id: EntityId
+
+
+@dataclass(frozen=True)
+class PortfolioItemResult:
+    item_id: EntityId
+    freelancer_profile_id: EntityId
+    title: str
+    description: str | None
+    external_url: str | None
+    file_asset_id: EntityId | None
+    display_order: int
+    is_featured: bool
+    deleted_at: datetime | None
+
+
+@dataclass(frozen=True)
+class GetPortfolioItemQuery:
+    actor_id: EntityId
+    item_id: EntityId
+
+
+@dataclass(frozen=True)
+class ListPortfolioItemsQuery:
+    actor_id: EntityId
+    profile_id: EntityId

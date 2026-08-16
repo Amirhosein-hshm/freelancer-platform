@@ -39,20 +39,14 @@ class TestListCategorySupervisorsUseCase:
         await category_supervisor_repo.add(supervisor)
         use_case = self.build(category_repo, category_supervisor_repo)
 
-        result = await use_case.execute(
-            ListCategorySupervisorsQuery(category_id="cat-1")
-        )
+        result = await use_case.execute(ListCategorySupervisorsQuery(category_id="cat-1"))
 
         assert len(result.supervisors) == 1
         assert result.supervisors[0].supervisor_user_id == "sup-1"
         assert result.supervisors[0].is_primary is True
 
-    async def test_list_supervisors_unknown_category_raises(
-        self, category_repo, category_supervisor_repo
-    ):
+    async def test_list_supervisors_unknown_category_raises(self, category_repo, category_supervisor_repo):
         use_case = self.build(category_repo, category_supervisor_repo)
 
         with pytest.raises(CategoryNotFoundError):
-            await use_case.execute(
-                ListCategorySupervisorsQuery(category_id="ghost")
-            )
+            await use_case.execute(ListCategorySupervisorsQuery(category_id="ghost"))

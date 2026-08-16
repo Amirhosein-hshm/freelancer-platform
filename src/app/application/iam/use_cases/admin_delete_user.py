@@ -31,23 +31,14 @@ class AdminDeleteUserUseCase(UseCase[AdminDeleteUserCommand, AdminDeleteUserResu
     async def execute(self, request: AdminDeleteUserCommand) -> AdminDeleteUserResult:
         await self._authorization_service.require_permission(request.actor_id, "user.delete")
         if request.actor_id == request.target_user_id:
-            raise CannotDeleteSelfError(
-                f"Admin {request.actor_id} cannot delete their own account."
-            )
+            raise CannotDeleteSelfError(f"Admin {request.actor_id} cannot delete their own account.")
         user = await self._user_repo.get_by_id(request.target_user_id)
-        target_roles = [
-            role.role_key
-            for role in await self._user_role_repo.list_active_roles_for_user(user.id)
-        ]
+        target_roles = [role.role_key for role in await self._user_role_repo.list_active_roles_for_user(user.id)]
         if ADMIN_ROLE_KEY in target_roles:
             admin_role = await self._role_repo.get_by_key(ADMIN_ROLE_KEY)
-            active_admins = await self._user_role_repo.list_active_user_ids_for_role(
-                admin_role.id
-            )
+            active_admins = await self._user_role_repo.list_active_user_ids_for_role(admin_role.id)
             if len(active_admins) <= 1:
-                raise LastAdminCannotBeDeletedError(
-                    f"Cannot delete user {user.id}: it is the last active admin."
-                )
+                raise LastAdminCannotBeDeletedError(f"Cannot delete user {user.id}: it is the last active admin.")
         now = await self._clock.now()
         async with self._uow:
             user.soft_delete(now)

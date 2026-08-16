@@ -41,9 +41,7 @@ class RegisterUserUseCase(UseCase[RegisterUserCommand, RegisterUserResult]):
     async def execute(self, request: RegisterUserCommand) -> RegisterUserResult:
         request.validate()
         if request.role not in ALLOWED_REGISTER_ROLES:
-            raise ValidationError(
-                f"role must be one of {sorted(ALLOWED_REGISTER_ROLES)}."
-            )
+            raise ValidationError(f"role must be one of {sorted(ALLOWED_REGISTER_ROLES)}.")
         email = Email(request.email)
         if await self._user_repo.exists_by_email(email):
             raise DuplicateEmailError(f"Email {email.value} is already registered.")

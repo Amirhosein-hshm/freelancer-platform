@@ -23,13 +23,9 @@ class TestDeleteFormTemplateUseCase:
     ):
         authorization_service.grant("admin", "form.manage")
         await make_template(template_id="template-1")
-        use_case = build_use_case(
-            authorization_service, template_repo, project_repo, uow
-        )
+        use_case = build_use_case(authorization_service, template_repo, project_repo, uow)
 
-        result = await use_case.execute(
-            DeleteFormTemplateCommand(actor_id="admin", template_id="template-1")
-        )
+        result = await use_case.execute(DeleteFormTemplateCommand(actor_id="admin", template_id="template-1"))
 
         assert result.template_id == "template-1"
         with pytest.raises(FormTemplateNotFoundError):
@@ -39,30 +35,20 @@ class TestDeleteFormTemplateUseCase:
         self, authorization_service, template_repo, project_repo, uow, make_template
     ):
         await make_template(template_id="template-1")
-        use_case = build_use_case(
-            authorization_service, template_repo, project_repo, uow
-        )
+        use_case = build_use_case(authorization_service, template_repo, project_repo, uow)
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                DeleteFormTemplateCommand(actor_id="admin", template_id="template-1")
-            )
+            await use_case.execute(DeleteFormTemplateCommand(actor_id="admin", template_id="template-1"))
 
     async def test_delete_published_template_is_blocked(
         self, authorization_service, template_repo, project_repo, uow, make_template
     ):
         authorization_service.grant("admin", "form.manage")
-        await make_template(
-            template_id="template-1", status=FormTemplateStatus.PUBLISHED
-        )
-        use_case = build_use_case(
-            authorization_service, template_repo, project_repo, uow
-        )
+        await make_template(template_id="template-1", status=FormTemplateStatus.PUBLISHED)
+        use_case = build_use_case(authorization_service, template_repo, project_repo, uow)
 
         with pytest.raises(FormTemplateHasActiveReferencesError):
-            await use_case.execute(
-                DeleteFormTemplateCommand(actor_id="admin", template_id="template-1")
-            )
+            await use_case.execute(DeleteFormTemplateCommand(actor_id="admin", template_id="template-1"))
 
     async def test_delete_referenced_template_is_blocked(
         self,
@@ -80,14 +66,10 @@ class TestDeleteFormTemplateUseCase:
             form_template_id="template-1",
             status=ProjectStatus.PUBLISHED,
         )
-        use_case = build_use_case(
-            authorization_service, template_repo, project_repo, uow
-        )
+        use_case = build_use_case(authorization_service, template_repo, project_repo, uow)
 
         with pytest.raises(FormTemplateHasActiveReferencesError):
-            await use_case.execute(
-                DeleteFormTemplateCommand(actor_id="admin", template_id="template-1")
-            )
+            await use_case.execute(DeleteFormTemplateCommand(actor_id="admin", template_id="template-1"))
 
     async def test_delete_template_with_terminal_project_allowed(
         self,
@@ -105,12 +87,8 @@ class TestDeleteFormTemplateUseCase:
             form_template_id="template-1",
             status=ProjectStatus.COMPLETED,
         )
-        use_case = build_use_case(
-            authorization_service, template_repo, project_repo, uow
-        )
+        use_case = build_use_case(authorization_service, template_repo, project_repo, uow)
 
-        result = await use_case.execute(
-            DeleteFormTemplateCommand(actor_id="admin", template_id="template-1")
-        )
+        result = await use_case.execute(DeleteFormTemplateCommand(actor_id="admin", template_id="template-1"))
 
         assert result.template_id == "template-1"

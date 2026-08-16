@@ -49,9 +49,7 @@ class FormField(Entity):
                 "allowed for SELECT and MULTI_SELECT fields."
             )
         if any(o.option_key == option.option_key for o in self.options):
-            raise DuplicateOptionKeyError(
-                f"Option '{option.option_key}' already exists on field '{self.field_key}'."
-            )
+            raise DuplicateOptionKeyError(f"Option '{option.option_key}' already exists on field '{self.field_key}'.")
         self.options.append(option)
 
     def change_type(self, new_type: FormFieldType) -> None:
@@ -66,9 +64,7 @@ class FormField(Entity):
         for i, option in enumerate(self.options):
             if option.id == option_id:
                 return i
-        raise OptionNotFoundError(
-            f"Option {option_id} not found on field {self.field_key}."
-        )
+        raise OptionNotFoundError(f"Option {option_id} not found on field {self.field_key}.")
 
     def update_option(
         self,
@@ -110,9 +106,7 @@ class FormTemplate(AggregateRoot):
     def add_field(self, field: FormField) -> None:
         self.require_draft("add fields")
         if any(f.field_key == field.field_key for f in self.fields):
-            raise DuplicateFieldKeyError(
-                f"Field key '{field.field_key}' already exists in template {self.id}."
-            )
+            raise DuplicateFieldKeyError(f"Field key '{field.field_key}' already exists in template {self.id}.")
         self.fields.append(field)
 
     def remove_field(self, field_id: EntityId) -> None:
@@ -131,17 +125,11 @@ class FormTemplate(AggregateRoot):
 
     def publish(self, published_by: EntityId, at: datetime) -> None:
         if not self.fields:
-            raise FormTemplateHasNoFieldsError(
-                f"Template {self.id} has no fields and cannot be published."
-            )
+            raise FormTemplateHasNoFieldsError(f"Template {self.id} has no fields and cannot be published.")
         if self.status == FormTemplateStatus.PUBLISHED:
-            raise FormTemplateAlreadyPublishedError(
-                f"Template {self.id} is already published."
-            )
+            raise FormTemplateAlreadyPublishedError(f"Template {self.id} is already published.")
         if self.status == FormTemplateStatus.ARCHIVED:
-            raise InvalidStateTransitionError(
-                f"Cannot publish archived template {self.id}."
-            )
+            raise InvalidStateTransitionError(f"Cannot publish archived template {self.id}.")
         self.status = FormTemplateStatus.PUBLISHED
         self.published_by_user_id = published_by
         self.published_at = at
@@ -184,6 +172,4 @@ class FormTemplate(AggregateRoot):
 
     def require_draft(self, action: str) -> None:
         if self.status != FormTemplateStatus.DRAFT:
-            raise InvalidStateTransitionError(
-                f"Template {self.id} is '{self.status.value}' and cannot {action}."
-            )
+            raise InvalidStateTransitionError(f"Template {self.id} is '{self.status.value}' and cannot {action}.")

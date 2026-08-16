@@ -139,9 +139,7 @@ class CreateProjectUseCase(UseCase[CreateProjectCommand, CreateProjectResult]):
         self._uow = uow
 
     async def execute(self, request: CreateProjectCommand) -> CreateProjectResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_PROJECT_CREATE_OWN
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_PROJECT_CREATE_OWN)
         request.validate()
         return await _create_project(
             customer_user_id=request.actor_id,

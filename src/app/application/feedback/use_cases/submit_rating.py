@@ -57,24 +57,16 @@ class SubmitRatingUseCase(UseCase[SubmitRatingCommand, SubmitRatingResult]):
         )
         if project.status != ProjectStatus.COMPLETED:
             raise ProjectNotCompletedError(
-                f"Project {project.id} is '{project.status.value}'; it can only be "
-                "rated after completion."
+                f"Project {project.id} is '{project.status.value}'; it can only be rated after completion."
             )
         if await self._rating_repo.find_by_project(project.id) is not None:
-            raise RatingAlreadyExistsError(
-                f"Project {project.id} has already been rated."
-            )
+            raise RatingAlreadyExistsError(f"Project {project.id} has already been rated.")
         if project.selected_application_id is None:
-            raise ValidationError(
-                f"Project {project.id} has no selected freelancer to rate."
-            )
+            raise ValidationError(f"Project {project.id} has no selected freelancer to rate.")
         application = await self._application_repo.get_by_id(project.selected_application_id)
         customer_review = await self._customer_review_repo.find_by_project(project.id)
         if customer_review is None:
-            raise ValidationError(
-                f"Project {project.id} has no customer review yet; submit a review "
-                "before rating."
-            )
+            raise ValidationError(f"Project {project.id} has no customer review yet; submit a review before rating.")
         if customer_review.decision != ReviewStatus.APPROVED:
             raise CustomerReviewNotApprovedError(
                 f"Project {project.id} cannot be rated until its customer review is "

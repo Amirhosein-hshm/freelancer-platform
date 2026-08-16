@@ -50,20 +50,15 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
             try:
                 await self._file_storage.get_metadata(file_asset_id)
             except (KeyError, FileNotFoundError) as exc:
-                raise ValidationError(
-                    f"File asset {file_asset_id} does not exist."
-                ) from exc
+                raise ValidationError(f"File asset {file_asset_id} does not exist.") from exc
         project = await self._project_repo.get_by_id(request.project_id)
         if project.selected_application_id is None:
-            raise PermissionDeniedError(
-                f"Project {project.id} has no selected freelancer."
-            )
+            raise PermissionDeniedError(f"Project {project.id} has no selected freelancer.")
         selected = await self._application_repo.get_by_id(project.selected_application_id)
         profile = await self._profile_repo.get_by_id(selected.freelancer_profile_id)
         if profile.user_id != request.actor_id:
             raise PermissionDeniedError(
-                f"User {request.actor_id} is not the selected freelancer of project "
-                f"{project.id}."
+                f"User {request.actor_id} is not the selected freelancer of project {project.id}."
             )
         previous = await self._delivery_repo.get_latest_for_project(project.id)
         was_revision_requested = project.status == ProjectStatus.REVISION_REQUESTED
@@ -93,9 +88,7 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
                 self._status_history_repo,
                 self._id_generator,
                 project.id,
-                ProjectStatus.IN_PROGRESS
-                if not was_revision_requested
-                else ProjectStatus.REVISION_REQUESTED,
+                ProjectStatus.IN_PROGRESS if not was_revision_requested else ProjectStatus.REVISION_REQUESTED,
                 ProjectStatus.DELIVERY_SUBMITTED,
                 request.actor_id,
                 None,

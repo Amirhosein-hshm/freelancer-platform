@@ -41,9 +41,7 @@ class CreateCategoryUseCase(UseCase[CreateCategoryCommand, CategoryResult]):
         self._uow = uow
 
     async def execute(self, request: CreateCategoryCommand) -> CategoryResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_CATEGORY_MANAGE
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_CATEGORY_MANAGE)
         request.validate()
         try:
             await self._category_repo.get_by_slug(request.slug)

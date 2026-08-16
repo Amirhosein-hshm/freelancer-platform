@@ -6,9 +6,7 @@ from app.application.shared.exceptions import ValidationError
 from app.domain.category.exceptions import DuplicateCategorySlugError
 
 
-def build_use_case(
-    authorization_service, category_repo, id_generator, clock, uow
-) -> CreateCategoryUseCase:
+def build_use_case(authorization_service, category_repo, id_generator, clock, uow) -> CreateCategoryUseCase:
     return CreateCategoryUseCase(
         authorization_service=authorization_service,
         category_repo=category_repo,
@@ -19,16 +17,12 @@ def build_use_case(
 
 
 class TestCreateCategoryUseCase:
-    async def test_create_category_succeeds(
-        self, authorization_service, category_repo, id_generator, clock, uow
-    ):
+    async def test_create_category_succeeds(self, authorization_service, category_repo, id_generator, clock, uow):
         authorization_service.grant("admin", "category.manage")
         use_case = build_use_case(authorization_service, category_repo, id_generator, clock, uow)
 
         result = await use_case.execute(
-            CreateCategoryCommand(
-                actor_id="admin", name="Backend", slug="backend", category_key="backend"
-            )
+            CreateCategoryCommand(actor_id="admin", name="Backend", slug="backend", category_key="backend")
         )
 
         assert result.name == "Backend"
@@ -46,9 +40,7 @@ class TestCreateCategoryUseCase:
 
         with pytest.raises(DuplicateCategorySlugError):
             await use_case.execute(
-                CreateCategoryCommand(
-                    actor_id="admin", name="Other", slug="taken", category_key="other"
-                )
+                CreateCategoryCommand(actor_id="admin", name="Other", slug="taken", category_key="other")
             )
 
     async def test_create_missing_fields_raises_validation(
@@ -58,6 +50,4 @@ class TestCreateCategoryUseCase:
         use_case = build_use_case(authorization_service, category_repo, id_generator, clock, uow)
 
         with pytest.raises(ValidationError):
-            await use_case.execute(
-                CreateCategoryCommand(actor_id="admin", name="", slug="", category_key="")
-            )
+            await use_case.execute(CreateCategoryCommand(actor_id="admin", name="", slug="", category_key=""))

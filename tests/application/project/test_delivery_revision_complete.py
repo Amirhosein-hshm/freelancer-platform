@@ -174,9 +174,7 @@ class TestSubmitDeliveryUseCase:
             uow,
         )
 
-        result = await use_case.execute(
-            SubmitDeliveryCommand(actor_id="freelancer-1", project_id="project-1")
-        )
+        result = await use_case.execute(SubmitDeliveryCommand(actor_id="freelancer-1", project_id="project-1"))
 
         assert result.project_status == ProjectStatus.AWAITING_CUSTOMER_REVIEW
         assert (await delivery_repo.get_by_id(result.delivery_id)).status == DeliveryStatus.SUBMITTED
@@ -217,9 +215,7 @@ class TestSubmitDeliveryUseCase:
             uow,
         )
 
-        result = await use_case.execute(
-            SubmitDeliveryCommand(actor_id="freelancer-1", project_id="project-1")
-        )
+        result = await use_case.execute(SubmitDeliveryCommand(actor_id="freelancer-1", project_id="project-1"))
 
         assert result.version_no == 2
         assert result.project_status == ProjectStatus.UNDER_SUPERVISOR_REVIEW
@@ -259,9 +255,7 @@ class TestSubmitDeliveryUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                SubmitDeliveryCommand(actor_id="other-user", project_id="project-1")
-            )
+            await use_case.execute(SubmitDeliveryCommand(actor_id="other-user", project_id="project-1"))
 
     async def test_missing_attachment_file_raises(
         self,
@@ -295,6 +289,7 @@ class TestSubmitDeliveryUseCase:
         )
 
         from app.application.shared.exceptions import ValidationError
+
         with pytest.raises(ValidationError):
             await use_case.execute(
                 SubmitDeliveryCommand(
@@ -435,9 +430,7 @@ class TestCompleteProjectUseCase:
         await make_project(project_id="project-1", status=ProjectStatus.AWAITING_CUSTOMER_REVIEW)
         use_case = build_complete(authorization_service, project_repo, status_history_repo, id_generator, clock, uow)
 
-        result = await use_case.execute(
-            CompleteProjectCommand(actor_id="customer-1", project_id="project-1")
-        )
+        result = await use_case.execute(CompleteProjectCommand(actor_id="customer-1", project_id="project-1"))
 
         assert result.status == ProjectStatus.COMPLETED
         assert (await project_repo.get_by_id("project-1")).completed_at == await clock.now()
@@ -449,6 +442,4 @@ class TestCompleteProjectUseCase:
         use_case = build_complete(authorization_service, project_repo, status_history_repo, id_generator, clock, uow)
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                CompleteProjectCommand(actor_id="customer-1", project_id="project-1")
-            )
+            await use_case.execute(CompleteProjectCommand(actor_id="customer-1", project_id="project-1"))

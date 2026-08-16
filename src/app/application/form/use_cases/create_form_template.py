@@ -12,9 +12,7 @@ from app.domain.form.repositories import IFormTemplateRepository
 PERMISSION_FORM_MANAGE = "form.manage"
 
 
-class CreateFormTemplateUseCase(
-    UseCase[CreateFormTemplateCommand, CreateFormTemplateResult]
-):
+class CreateFormTemplateUseCase(UseCase[CreateFormTemplateCommand, CreateFormTemplateResult]):
     def __init__(
         self,
         authorization_service: IAuthorizationService,
@@ -30,9 +28,7 @@ class CreateFormTemplateUseCase(
         self._uow = uow
 
     async def execute(self, request: CreateFormTemplateCommand) -> CreateFormTemplateResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_FORM_MANAGE
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_FORM_MANAGE)
         request.validate()
         now = await self._clock.now()
         template = FormTemplate(

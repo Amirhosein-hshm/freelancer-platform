@@ -31,9 +31,7 @@ class SqlAlchemySupervisorReviewRepository(ISupervisorReviewRepository):
     async def get_by_delivery(self, project_delivery_id: EntityId) -> SupervisorReview:
         row = await self._find_row_by_delivery(project_delivery_id)
         if row is None:
-            raise SupervisorReviewNotFoundError(
-                f"Supervisor review for delivery {project_delivery_id} not found."
-            )
+            raise SupervisorReviewNotFoundError(f"Supervisor review for delivery {project_delivery_id} not found.")
         return to_domain_supervisor_review(row)
 
     async def find_by_delivery(self, project_delivery_id: EntityId) -> SupervisorReview | None:
@@ -65,8 +63,6 @@ class SqlAlchemySupervisorReviewRepository(ISupervisorReviewRepository):
 
     async def _find_row_by_delivery(self, project_delivery_id: EntityId) -> SupervisorReviewModel | None:
         result = await self._session.execute(
-            select(SupervisorReviewModel).where(
-                SupervisorReviewModel.project_delivery_id == project_delivery_id
-            )
+            select(SupervisorReviewModel).where(SupervisorReviewModel.project_delivery_id == project_delivery_id)
         )
         return result.scalar_one_or_none()

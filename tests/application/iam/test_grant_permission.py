@@ -57,8 +57,13 @@ class TestGrantPermissionUseCase:
             )
         )
         use_case = build_use_case(
-            authorization_service, role_repo, permission_repo, role_permission_repo,
-            id_generator, clock, uow,
+            authorization_service,
+            role_repo,
+            permission_repo,
+            role_permission_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         result = await use_case.execute(
@@ -80,8 +85,13 @@ class TestGrantPermissionUseCase:
         uow,
     ):
         use_case = build_use_case(
-            authorization_service, role_repo, permission_repo, role_permission_repo,
-            id_generator, clock, uow,
+            authorization_service,
+            role_repo,
+            permission_repo,
+            role_permission_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(PermissionDeniedError):
@@ -100,14 +110,15 @@ class TestGrantPermissionUseCase:
         uow,
     ):
         authorization_service.grant("admin", "user.grant_permission")
-        await permission_repo.add(
-            Permission(
-                id="perm-1", permission_key="x", module="m", action="a", created_at=NOW
-            )
-        )
+        await permission_repo.add(Permission(id="perm-1", permission_key="x", module="m", action="a", created_at=NOW))
         use_case = build_use_case(
-            authorization_service, role_repo, permission_repo, role_permission_repo,
-            id_generator, clock, uow,
+            authorization_service,
+            role_repo,
+            permission_repo,
+            role_permission_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         await use_case.execute(
@@ -130,14 +141,15 @@ class TestGrantPermissionUseCase:
         uow,
     ):
         authorization_service.grant("admin", "user.grant_permission")
-        await permission_repo.add(
-            Permission(
-                id="perm-1", permission_key="x", module="m", action="a", created_at=NOW
-            )
-        )
+        await permission_repo.add(Permission(id="perm-1", permission_key="x", module="m", action="a", created_at=NOW))
         use_case = build_use_case(
-            authorization_service, role_repo, permission_repo, role_permission_repo,
-            id_generator, clock, uow,
+            authorization_service,
+            role_repo,
+            permission_repo,
+            role_permission_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(RoleNotFoundError):
@@ -157,8 +169,13 @@ class TestGrantPermissionUseCase:
     ):
         authorization_service.grant("admin", "user.grant_permission")
         use_case = build_use_case(
-            authorization_service, role_repo, permission_repo, role_permission_repo,
-            id_generator, clock, uow,
+            authorization_service,
+            role_repo,
+            permission_repo,
+            role_permission_repo,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(PermissionNotFoundError):

@@ -67,8 +67,13 @@ class TestRefreshTokenUseCase:
         await make_user(user_id="user-1")
         raw, token = await make_token(token_service, refresh_token_repo)
         use_case = build_use_case(
-            refresh_token_repo, user_repo, user_role_repo, token_service,
-            id_generator, clock, uow,
+            refresh_token_repo,
+            user_repo,
+            user_role_repo,
+            token_service,
+            id_generator,
+            clock,
+            uow,
         )
 
         result = await use_case.execute(RefreshTokenCommand(raw_refresh_token=raw))
@@ -91,8 +96,13 @@ class TestRefreshTokenUseCase:
         uow,
     ):
         use_case = build_use_case(
-            refresh_token_repo, user_repo, user_role_repo, token_service,
-            id_generator, clock, uow,
+            refresh_token_repo,
+            user_repo,
+            user_role_repo,
+            token_service,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(InvalidRefreshTokenError):
@@ -112,8 +122,13 @@ class TestRefreshTokenUseCase:
         await make_user(user_id="user-1")
         raw, token = await make_token(token_service, refresh_token_repo, revoked_at=NOW)
         use_case = build_use_case(
-            refresh_token_repo, user_repo, user_role_repo, token_service,
-            id_generator, clock, uow,
+            refresh_token_repo,
+            user_repo,
+            user_role_repo,
+            token_service,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(InvalidRefreshTokenError):
@@ -131,12 +146,15 @@ class TestRefreshTokenUseCase:
         make_user,
     ):
         await make_user(user_id="user-1")
-        raw, _ = await make_token(
-            token_service, refresh_token_repo, expires_at=NOW - timedelta(minutes=1)
-        )
+        raw, _ = await make_token(token_service, refresh_token_repo, expires_at=NOW - timedelta(minutes=1))
         use_case = build_use_case(
-            refresh_token_repo, user_repo, user_role_repo, token_service,
-            id_generator, clock, uow,
+            refresh_token_repo,
+            user_repo,
+            user_role_repo,
+            token_service,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(InvalidRefreshTokenError):
@@ -156,8 +174,13 @@ class TestRefreshTokenUseCase:
         await make_user(user_id="user-1", status=UserStatus.PENDING)
         raw, _ = await make_token(token_service, refresh_token_repo)
         use_case = build_use_case(
-            refresh_token_repo, user_repo, user_role_repo, token_service,
-            id_generator, clock, uow,
+            refresh_token_repo,
+            user_repo,
+            user_role_repo,
+            token_service,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(UserNotActiveError):
@@ -175,8 +198,13 @@ class TestRefreshTokenUseCase:
     ):
         raw, _ = await make_token(token_service, refresh_token_repo, user_id="ghost-user")
         use_case = build_use_case(
-            refresh_token_repo, user_repo, user_role_repo, token_service,
-            id_generator, clock, uow,
+            refresh_token_repo,
+            user_repo,
+            user_role_repo,
+            token_service,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(UserNotFoundError):

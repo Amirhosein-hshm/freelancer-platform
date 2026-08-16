@@ -24,23 +24,17 @@ class TestBlockUserUseCase:
         with pytest.raises(PermissionDeniedError):
             await use_case.execute(BlockUserCommand(actor_id="admin", target_user_id="u1", reason="abuse"))
 
-    async def test_block_succeeds_with_permission(
-        self, authorization_service, user_repo, clock, uow, make_user
-    ):
+    async def test_block_succeeds_with_permission(self, authorization_service, user_repo, clock, uow, make_user):
         authorization_service.grant("admin", "user.block")
         await make_user(user_id="u1", status=UserStatus.ACTIVE)
         use_case = self.build(authorization_service, user_repo, clock, uow)
 
-        result = await use_case.execute(
-            BlockUserCommand(actor_id="admin", target_user_id="u1", reason="abuse")
-        )
+        result = await use_case.execute(BlockUserCommand(actor_id="admin", target_user_id="u1", reason="abuse"))
 
         assert result.status == UserStatus.BLOCKED.value
         assert (await user_repo.get_by_id("u1")).status == UserStatus.BLOCKED
 
-    async def test_block_unknown_user_raises(
-        self, authorization_service, user_repo, clock, uow
-    ):
+    async def test_block_unknown_user_raises(self, authorization_service, user_repo, clock, uow):
         authorization_service.grant("admin", "user.block")
         use_case = self.build(authorization_service, user_repo, clock, uow)
 
@@ -64,9 +58,7 @@ class TestActivateUserUseCase:
         with pytest.raises(PermissionDeniedError):
             await use_case.execute(ActivateUserCommand(actor_id="admin", target_user_id="u1"))
 
-    async def test_activate_succeeds_with_permission(
-        self, authorization_service, user_repo, clock, uow, make_user
-    ):
+    async def test_activate_succeeds_with_permission(self, authorization_service, user_repo, clock, uow, make_user):
         authorization_service.grant("admin", "user.activate")
         await make_user(user_id="u1", status=UserStatus.BLOCKED)
         use_case = self.build(authorization_service, user_repo, clock, uow)

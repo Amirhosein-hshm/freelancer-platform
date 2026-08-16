@@ -35,6 +35,4 @@ class ProjectCode:
 
     def __post_init__(self) -> None:
         if not _PROJECT_CODE_PATTERN.fullmatch(self.value):
-            raise InvalidProjectCodeError(
-                f"Invalid project code '{self.value}'; expected format PRJ-YYYY-NNN."
-            )
+            raise InvalidProjectCodeError(f"Invalid project code '{self.value}'; expected format PRJ-YYYY-NNN.")

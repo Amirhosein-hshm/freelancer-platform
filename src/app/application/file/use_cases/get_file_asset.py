@@ -18,14 +18,10 @@ class GetFileAssetUseCase(UseCase[GetFileAssetQuery, GetFileAssetResult]):
         try:
             metadata = await self._file_storage.get_metadata(request.file_asset_id)
         except (KeyError, FileNotFoundError) as exc:
-            raise FileAssetNotFoundError(
-                f"File asset {request.file_asset_id} not found."
-            ) from exc
+            raise FileAssetNotFoundError(f"File asset {request.file_asset_id} not found.") from exc
 
         if not await self._access_policy.can_access(request.actor_id, request.file_asset_id):
-            raise PermissionDeniedError(
-                f"Access denied to file asset {request.file_asset_id}."
-            )
+            raise PermissionDeniedError(f"Access denied to file asset {request.file_asset_id}.")
 
         return GetFileAssetResult(
             file_asset_id=metadata.file_asset_id,
@@ -35,4 +31,5 @@ class GetFileAssetUseCase(UseCase[GetFileAssetQuery, GetFileAssetResult]):
             uploaded_at=metadata.uploaded_at,
             owner_user_id=metadata.owner_user_id,
             context=metadata.context,
+            content=self._file_storage.get_content(request.file_asset_id),
         )

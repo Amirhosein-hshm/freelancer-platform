@@ -39,6 +39,5 @@ class FreelancerEligibilityPolicy:
         if project.visibility == ProjectVisibility.INVITE_ONLY:
             return False
         return not (
-            level.max_active_applications is not None
-            and active_application_count >= level.max_active_applications
+            level.max_active_applications is not None and active_application_count >= level.max_active_applications
         )

@@ -10,28 +10,20 @@ _BOOLEAN_TRUE = {"true", "1", "yes", "on"}
 _BOOLEAN_FALSE = {"false", "0", "no", "off"}
 
 
-def validate_form_values(
-    template: FormTemplate, form_values: list[FormValueInput]
-) -> None:
+def validate_form_values(template: FormTemplate, form_values: list[FormValueInput]) -> None:
     """Validate submitted form values against a published form template.
 
     Raises :class:`FormValidationError` (application-level) on any violation.
     """
     fields_by_id = {field.id: field for field in template.fields}
-    provided_by_id: dict[str, FormValueInput] = {
-        value.field_id: value for value in form_values
-    }
+    provided_by_id: dict[str, FormValueInput] = {value.field_id: value for value in form_values}
     for submitted in form_values:
         if submitted.field_id not in fields_by_id:
-            raise FormValidationError(
-                f"Unknown field_id '{submitted.field_id}' in submitted form values."
-            )
+            raise FormValidationError(f"Unknown field_id '{submitted.field_id}' in submitted form values.")
     for field in template.fields:
         value = provided_by_id.get(field.id)
         if field.is_required and (value is None or not value.value.strip()):
-            raise FormValidationError(
-                f"Field '{field.label}' is required but no value was provided."
-            )
+            raise FormValidationError(f"Field '{field.label}' is required but no value was provided.")
         if value is None or not value.value.strip():
             continue
         _validate_value(field, value.value)
@@ -51,23 +43,17 @@ def _validate_value(field: FormField, raw: str) -> None:
             raise FormValidationError(f"Field '{label}' must be a decimal number.") from None
     elif field_type == FormFieldType.BOOLEAN:
         if value.lower() not in _BOOLEAN_TRUE | _BOOLEAN_FALSE:
-            raise FormValidationError(
-                f"Field '{label}' must be true or false."
-            )
+            raise FormValidationError(f"Field '{label}' must be true or false.")
     elif field_type == FormFieldType.DATE:
         try:
             date.fromisoformat(value)
         except ValueError:
-            raise FormValidationError(
-                f"Field '{label}' must be a valid date (YYYY-MM-DD)."
-            ) from None
+            raise FormValidationError(f"Field '{label}' must be a valid date (YYYY-MM-DD).") from None
     elif field_type == FormFieldType.DATETIME:
         try:
             datetime.fromisoformat(value)
         except ValueError:
-            raise FormValidationError(
-                f"Field '{label}' must be a valid datetime (ISO 8601)."
-            ) from None
+            raise FormValidationError(f"Field '{label}' must be a valid datetime (ISO 8601).") from None
     elif field_type == FormFieldType.EMAIL:
         if "@" not in value or "." not in value.split("@")[-1]:
             raise FormValidationError(f"Field '{label}' must be a valid email address.")
@@ -75,18 +61,14 @@ def _validate_value(field: FormField, raw: str) -> None:
         raise FormValidationError(f"Field '{label}' must be a valid URL.")
     elif field_type == FormFieldType.SELECT:
         if value not in _active_option_values(field):
-            raise FormValidationError(
-                f"Field '{label}' must be one of the available options."
-            )
+            raise FormValidationError(f"Field '{label}' must be one of the available options.")
     elif field_type == FormFieldType.MULTI_SELECT:
         active_values = _active_option_values(field)
         for item in value.split(","):
             if not item.strip():
                 raise FormValidationError(f"Field '{label}' contains an empty option.")
             if item.strip() not in active_values:
-                raise FormValidationError(
-                    f"Field '{label}' contains an option that is not available: '{item}'."
-                )
+                raise FormValidationError(f"Field '{label}' contains an option that is not available: '{item}'.")
 
 
 def _active_option_values(field: FormField) -> set[str]:

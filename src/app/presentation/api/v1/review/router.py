@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 
-from app.application.project.dto import BudgetResult, ProjectResult
+from app.application.project.dto import BudgetResult, GetProjectDeliveryQuery, ProjectResult
+from app.application.project.use_cases.get_project_delivery import GetProjectDeliveryUseCase
 from app.application.review.dto import (
     ApproveDeliveryCommand,
     GetPendingReviewsQuery,
@@ -15,7 +16,8 @@ from app.application.review.use_cases.get_pending_reviews import GetPendingRevie
 from app.application.review.use_cases.get_supervisor_projects import GetSupervisorProjectsUseCase
 from app.application.review.use_cases.reject_delivery import RejectDeliveryUseCase
 from app.application.review.use_cases.review_delivery import ReviewDeliveryUseCase
-from app.presentation.api.v1.project.schemas import BudgetResponse, ProjectResponse
+from app.presentation.api.v1.project.mappers import to_delivery_response
+from app.presentation.api.v1.project.schemas import BudgetResponse, DeliveryResponse, ProjectResponse
 from app.presentation.api.v1.review.schemas import (
     ApproveDeliveryRequest,
     DeliveryReviewResponse,
@@ -28,6 +30,7 @@ from app.presentation.core.pagination import PageQuery
 from app.presentation.core.providers import (
     get_approve_delivery_use_case,
     get_get_pending_reviews_use_case,
+    get_get_project_delivery_use_case,
     get_get_supervisor_projects_use_case,
     get_reject_delivery_use_case,
     get_review_delivery_use_case,
@@ -109,9 +112,7 @@ async def get_pending_reviews(
     pagination: PageQuery = Depends(),
     use_case: GetPendingReviewsUseCase = Depends(get_get_pending_reviews_use_case),
 ) -> SuccessEnvelope[list[ReviewResponse]]:
-    result = await use_case.execute(
-        GetPendingReviewsQuery(supervisor_user_id=current_user.user_id)
-    )
+    result = await use_case.execute(GetPendingReviewsQuery(supervisor_user_id=current_user.user_id))
     reviews = [_to_review_response(review) for review in result.reviews]
     return SuccessEnvelope(
         message="Pending reviews.",
@@ -130,14 +131,29 @@ async def get_supervisor_projects(
     pagination: PageQuery = Depends(),
     use_case: GetSupervisorProjectsUseCase = Depends(get_get_supervisor_projects_use_case),
 ) -> SuccessEnvelope[list[ProjectResponse]]:
-    result = await use_case.execute(
-        GetSupervisorProjectsQuery(supervisor_user_id=current_user.user_id)
-    )
+    result = await use_case.execute(GetSupervisorProjectsQuery(supervisor_user_id=current_user.user_id))
     projects = [_to_project_response(project) for project in result.projects]
     return SuccessEnvelope(
         message="Supervisor projects.",
         data=projects,
         meta=_pagination_meta(pagination, len(projects)),
+    )
+
+
+@deliveries_router.get(
+    "/{delivery_id}",
+    response_model=SuccessEnvelope[DeliveryResponse],
+    operation_id="get_project_delivery",
+)
+async def get_project_delivery(
+    delivery_id: str,
+    current_user=Depends(get_current_user),
+    use_case: GetProjectDeliveryUseCase = Depends(get_get_project_delivery_use_case),
+) -> SuccessEnvelope[DeliveryResponse]:
+    result = await use_case.execute(GetProjectDeliveryQuery(actor_id=current_user.user_id, delivery_id=delivery_id))
+    return SuccessEnvelope(
+        message="Delivery details.",
+        data=to_delivery_response(result),
     )
 
 

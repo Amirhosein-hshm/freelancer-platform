@@ -94,8 +94,7 @@ class Project(AggregateRoot):
         self._transition(ProjectStatus.DELIVERY_SUBMITTED, ProjectStatus.UNDER_SUPERVISOR_REVIEW)
         if self.assigned_supervisor_user_id is None:
             raise InvalidProjectStatusTransitionError(
-                f"Project {self.id} has no assigned supervisor and cannot move to "
-                "supervisor review."
+                f"Project {self.id} has no assigned supervisor and cannot move to supervisor review."
             )
 
     def move_to_customer_review(self) -> None:
@@ -190,8 +189,7 @@ class ProjectApplication(AggregateRoot):
             ProjectApplicationStatus.SHORTLISTED,
         ):
             raise InvalidStateTransitionError(
-                f"Application {self.id} is '{self.status.value}' and cannot be withdrawn "
-                "once decided."
+                f"Application {self.id} is '{self.status.value}' and cannot be withdrawn once decided."
             )
         self.status = ProjectApplicationStatus.WITHDRAWN
         self.withdrawn_at = at
@@ -207,16 +205,12 @@ class ProjectApplication(AggregateRoot):
             ProjectApplicationStatus.ACCEPTED,
             ProjectApplicationStatus.REJECTED,
         ):
-            raise ApplicationAlreadyDecidedError(
-                f"Application {self.id} is already decided as '{self.status.value}'."
-            )
+            raise ApplicationAlreadyDecidedError(f"Application {self.id} is already decided as '{self.status.value}'.")
         if self.status not in (
             ProjectApplicationStatus.APPLIED,
             ProjectApplicationStatus.SHORTLISTED,
         ):
-            raise InvalidStateTransitionError(
-                f"Application {self.id} is '{self.status.value}' and cannot be decided."
-            )
+            raise InvalidStateTransitionError(f"Application {self.id} is '{self.status.value}' and cannot be decided.")
         self.status = target
         self.decided_by_user_id = decided_by
         self.decided_at = at
@@ -227,8 +221,7 @@ class ProjectApplication(AggregateRoot):
             self.status = target
             return
         raise InvalidStateTransitionError(
-            f"Application {self.id} is '{self.status.value}'; can only shortlist an APPLIED "
-            "application."
+            f"Application {self.id} is '{self.status.value}'; can only shortlist an APPLIED application."
         )
 
 
@@ -263,17 +256,14 @@ class ProjectDelivery(AggregateRoot):
 
     def supersede(self, new_delivery_id: EntityId) -> None:
         if self.status == DeliveryStatus.SUPERSEDED:
-            raise InvalidStateTransitionError(
-                f"Delivery {self.id} is already superseded."
-            )
+            raise InvalidStateTransitionError(f"Delivery {self.id} is already superseded.")
         self.status = DeliveryStatus.SUPERSEDED
         self.superseded_by_delivery_id = new_delivery_id
 
     def _from_reviewable(self, target: DeliveryStatus) -> None:
         if self.status not in (DeliveryStatus.SUBMITTED, DeliveryStatus.UNDER_REVIEW):
             raise InvalidStateTransitionError(
-                f"Delivery {self.id} is '{self.status.value}'; expected SUBMITTED or "
-                "UNDER_REVIEW."
+                f"Delivery {self.id} is '{self.status.value}'; expected SUBMITTED or UNDER_REVIEW."
             )
         self.status = target
 

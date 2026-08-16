@@ -21,9 +21,7 @@ class RemoveFieldUseCase(UseCase[RemoveFieldCommand, RemoveFieldResult]):
         self._uow = uow
 
     async def execute(self, request: RemoveFieldCommand) -> RemoveFieldResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_FORM_MANAGE
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_FORM_MANAGE)
         template = await self._template_repo.get_by_id(request.template_id)
         async with self._uow:
             template.remove_field(request.field_id)

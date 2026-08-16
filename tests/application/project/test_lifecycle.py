@@ -34,9 +34,7 @@ class TestPublishProjectUseCase:
             uow=uow,
         )
 
-        result = await use_case.execute(
-            PublishProjectCommand(actor_id="customer-1", project_id="project-1")
-        )
+        result = await use_case.execute(PublishProjectCommand(actor_id="customer-1", project_id="project-1"))
 
         assert result.status == ProjectStatus.COLLECTING_APPLICATIONS
         history = await status_history_repo.list_by_project("project-1")
@@ -65,9 +63,7 @@ class TestPublishProjectUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                PublishProjectCommand(actor_id="intruder", project_id="project-1")
-            )
+            await use_case.execute(PublishProjectCommand(actor_id="intruder", project_id="project-1"))
 
 
 class TestCancelProjectUseCase:
@@ -123,9 +119,7 @@ class TestCancelProjectUseCase:
         )
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                CancelProjectCommand(actor_id="intruder", project_id="project-1", reason="x")
-            )
+            await use_case.execute(CancelProjectCommand(actor_id="intruder", project_id="project-1", reason="x"))
 
 
 class TestStartProjectUseCase:
@@ -150,9 +144,7 @@ class TestStartProjectUseCase:
             uow=uow,
         )
 
-        result = await use_case.execute(
-            StartProjectCommand(actor_id="customer-1", project_id="project-1")
-        )
+        result = await use_case.execute(StartProjectCommand(actor_id="customer-1", project_id="project-1"))
 
         assert result.status == ProjectStatus.IN_PROGRESS
         assert (await project_repo.get_by_id("project-1")).start_at == await clock.now()

@@ -34,6 +34,10 @@ _PERMISSIONS = [
     ("freelancer.create_on_behalf", "freelancer", "create_on_behalf"),
     ("freelancer.approve", "freelancer", "approve"),
     ("freelancer.assign_level", "freelancer", "assign_level"),
+    ("freelancer.read_own", "freelancer", "read_own"),
+    ("freelancer.read_any", "freelancer", "read_any"),
+    ("freelancer.delete_any", "freelancer", "delete_any"),
+    ("freelancer.manage_levels", "freelancer", "manage_levels"),
     # Form
     ("form.manage", "form", "manage"),
     # Project
@@ -82,6 +86,7 @@ ROLE_PERMISSIONS = {
         "feedback.manage_own",
         "ticket.read_own",
         "ticket.close_own",
+        "file.upload",
     ],
     "freelancer": [
         "freelancer.create_own",
@@ -90,6 +95,7 @@ ROLE_PERMISSIONS = {
         "feedback.manage_own",
         "ticket.read_own",
         "ticket.close_own",
+        "file.upload",
     ],
     "supervisor": [
         "review.decide_own",

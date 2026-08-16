@@ -18,9 +18,7 @@ class UpdateFieldUseCase(UseCase[UpdateFieldCommand, UpdateFieldResult]):
         self._template_repo = template_repo
 
     async def execute(self, request: UpdateFieldCommand) -> UpdateFieldResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_FORM_MANAGE
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_FORM_MANAGE)
         request.validate()
         template = await self._template_repo.get_by_id(request.template_id)
         template.require_draft("update fields")

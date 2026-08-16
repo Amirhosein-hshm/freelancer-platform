@@ -12,6 +12,14 @@ class CreateTicketRequest(BaseModel):
     priority: TicketPriority = TicketPriority.NORMAL
 
 
+class AdminCreateTicketRequest(BaseModel):
+    target_user_id: str
+    subject: str = Field(..., min_length=1)
+    related_project_id: str | None = None
+    related_category_id: str | None = None
+    priority: TicketPriority = TicketPriority.NORMAL
+
+
 class CreateTicketResponse(BaseModel):
     ticket_id: str
     ticket_code: str

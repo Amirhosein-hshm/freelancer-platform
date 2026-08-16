@@ -94,20 +94,14 @@ class TestAdminUpdateUserUseCase:
             uow=uow,
         )
 
-    async def test_update_user_requires_permission(
-        self, authorization_service, user_repo, uow, make_user
-    ):
+    async def test_update_user_requires_permission(self, authorization_service, user_repo, uow, make_user):
         await make_user(user_id="u1")
         use_case = self.build(authorization_service, user_repo, uow)
 
         with pytest.raises(PermissionDeniedError):
-            await use_case.execute(
-                AdminUpdateUserCommand(actor_id="admin", target_user_id="u1", first_name="Jane")
-            )
+            await use_case.execute(AdminUpdateUserCommand(actor_id="admin", target_user_id="u1", first_name="Jane"))
 
-    async def test_update_identity_fields_succeeds(
-        self, authorization_service, user_repo, uow, make_user
-    ):
+    async def test_update_identity_fields_succeeds(self, authorization_service, user_repo, uow, make_user):
         authorization_service.grant("admin", "user.update_any")
         await make_user(user_id="u1")
         use_case = self.build(authorization_service, user_repo, uow)
@@ -129,16 +123,12 @@ class TestAdminUpdateUserUseCase:
         assert user.phone.value == "+1-555-0100"
         assert uow.committed is True
 
-    async def test_update_unknown_user_raises(
-        self, authorization_service, user_repo, uow
-    ):
+    async def test_update_unknown_user_raises(self, authorization_service, user_repo, uow):
         authorization_service.grant("admin", "user.update_any")
         use_case = self.build(authorization_service, user_repo, uow)
 
         with pytest.raises(UserNotFoundError):
-            await use_case.execute(
-                AdminUpdateUserCommand(actor_id="admin", target_user_id="ghost", first_name="Jane")
-            )
+            await use_case.execute(AdminUpdateUserCommand(actor_id="admin", target_user_id="ghost", first_name="Jane"))
 
 
 class TestAdminDeleteUserUseCase:

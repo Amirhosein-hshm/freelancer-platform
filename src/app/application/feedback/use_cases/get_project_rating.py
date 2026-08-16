@@ -10,6 +10,4 @@ class GetProjectRatingUseCase(UseCase[GetProjectRatingQuery, GetProjectRatingRes
 
     async def execute(self, request: GetProjectRatingQuery) -> GetProjectRatingResult:
         rating = await self._rating_repo.find_by_project(request.project_id)
-        return GetProjectRatingResult(
-            rating=to_rating_result(rating) if rating is not None else None
-        )
+        return GetProjectRatingResult(rating=to_rating_result(rating) if rating is not None else None)

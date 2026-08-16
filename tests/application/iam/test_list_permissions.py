@@ -17,9 +17,7 @@ class TestListPermissionsUseCase:
             permission_repo=permission_repo,
         )
 
-    async def test_list_permissions_requires_permission(
-        self, authorization_service, permission_repo
-    ):
+    async def test_list_permissions_requires_permission(self, authorization_service, permission_repo):
         use_case = self.build(authorization_service, permission_repo)
 
         with pytest.raises(PermissionDeniedError):
@@ -56,9 +54,7 @@ class TestListPermissionsUseCase:
         keys = {p.permission_key for p in result.permissions}
         assert keys == {"user.read", "category.manage"}
 
-    async def test_list_permissions_filtered_by_module(
-        self, authorization_service, permission_repo
-    ):
+    async def test_list_permissions_filtered_by_module(self, authorization_service, permission_repo):
         authorization_service.grant("admin", "user.read")
         await permission_repo.add(
             Permission(
@@ -80,8 +76,6 @@ class TestListPermissionsUseCase:
         )
         use_case = self.build(authorization_service, permission_repo)
 
-        result = await use_case.execute(
-            ListPermissionsQuery(actor_id="admin", module="user")
-        )
+        result = await use_case.execute(ListPermissionsQuery(actor_id="admin", module="user"))
 
         assert [p.permission_key for p in result.permissions] == ["user.read"]

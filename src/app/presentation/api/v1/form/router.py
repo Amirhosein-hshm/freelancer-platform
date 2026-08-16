@@ -218,16 +218,12 @@ async def publish_form_template(
 async def list_form_template_versions(
     template_id: str,
     current_user=Depends(get_current_user),
-    use_case: ListFormTemplateVersionsUseCase = Depends(
-        get_list_form_template_versions_use_case
-    ),
+    use_case: ListFormTemplateVersionsUseCase = Depends(get_list_form_template_versions_use_case),
 ) -> SuccessEnvelope[ListFormTemplateVersionsResponse]:
     result = await use_case.execute(ListFormTemplateVersionsQuery(template_id=template_id))
     return SuccessEnvelope(
         message="Form template versions.",
-        data=ListFormTemplateVersionsResponse(
-            versions=[_template_response(t) for t in result.versions]
-        ),
+        data=ListFormTemplateVersionsResponse(versions=[_template_response(t) for t in result.versions]),
     )
 
 
@@ -241,11 +237,7 @@ async def delete_form_template(
     current_user=Depends(get_current_user),
     use_case: DeleteFormTemplateUseCase = Depends(get_delete_form_template_use_case),
 ) -> SuccessEnvelope[DeleteFormTemplateResponse]:
-    result = await use_case.execute(
-        DeleteFormTemplateCommand(
-            actor_id=current_user.user_id, template_id=template_id
-        )
-    )
+    result = await use_case.execute(DeleteFormTemplateCommand(actor_id=current_user.user_id, template_id=template_id))
     return SuccessEnvelope(
         message="Form template deleted.",
         data=DeleteFormTemplateResponse(template_id=result.template_id),

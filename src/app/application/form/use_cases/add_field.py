@@ -23,9 +23,7 @@ class AddFieldUseCase(UseCase[AddFieldCommand, AddFieldResult]):
         self._uow = uow
 
     async def execute(self, request: AddFieldCommand) -> AddFieldResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_FORM_MANAGE
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_FORM_MANAGE)
         request.validate()
         template = await self._template_repo.get_by_id(request.template_id)
         now = await self._clock.now()

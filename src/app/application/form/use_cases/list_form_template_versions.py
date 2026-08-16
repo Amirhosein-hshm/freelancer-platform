@@ -17,19 +17,11 @@ class ListFormTemplateVersionsResult:
     versions: list[FormTemplateResult]
 
 
-class ListFormTemplateVersionsUseCase(
-    UseCase[ListFormTemplateVersionsQuery, ListFormTemplateVersionsResult]
-):
+class ListFormTemplateVersionsUseCase(UseCase[ListFormTemplateVersionsQuery, ListFormTemplateVersionsResult]):
     def __init__(self, template_repo: IFormTemplateRepository) -> None:
         self._template_repo = template_repo
 
-    async def execute(
-        self, request: ListFormTemplateVersionsQuery
-    ) -> ListFormTemplateVersionsResult:
+    async def execute(self, request: ListFormTemplateVersionsQuery) -> ListFormTemplateVersionsResult:
         template = await self._template_repo.get_by_id(request.template_id)
-        versions = await self._template_repo.list_versions(
-            template.category_id, template.template_key
-        )
-        return ListFormTemplateVersionsResult(
-            versions=[to_template_result(t) for t in versions]
-        )
+        versions = await self._template_repo.list_versions(template.category_id, template.template_key)
+        return ListFormTemplateVersionsResult(versions=[to_template_result(t) for t in versions])

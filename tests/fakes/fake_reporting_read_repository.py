@@ -26,9 +26,7 @@ class FakeReportingReadRepository(IReportingReadRepository):
             pending_freelancers=1,
             average_rating=Decimal("4.5"),
         )
-        self.customers = CustomerStatistics(
-            total_customers=6, active_projects=3, completed_projects=5
-        )
+        self.customers = CustomerStatistics(total_customers=6, active_projects=3, completed_projects=5)
 
     async def get_dashboard_statistics(self) -> DashboardStatistics:
         return self.dashboard

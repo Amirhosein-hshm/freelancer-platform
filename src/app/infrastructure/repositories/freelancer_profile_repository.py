@@ -41,9 +41,7 @@ class SqlAlchemyFreelancerProfileRepository(IFreelancerProfileRepository):
     async def get_by_id(self, profile_id: EntityId) -> FreelancerProfile:
         row = await self._session.get(FreelancerProfileModel, profile_id)
         if row is None:
-            raise FreelancerProfileNotFoundError(
-                f"Freelancer profile {profile_id} not found."
-            )
+            raise FreelancerProfileNotFoundError(f"Freelancer profile {profile_id} not found.")
         return to_domain_freelancer_profile(row)
 
     async def get_by_user_id(self, user_id: EntityId) -> FreelancerProfile:
@@ -52,17 +50,13 @@ class SqlAlchemyFreelancerProfileRepository(IFreelancerProfileRepository):
         )
         row = result.scalar_one_or_none()
         if row is None:
-            raise FreelancerProfileNotFoundError(
-                f"Freelancer profile for user {user_id} not found."
-            )
+            raise FreelancerProfileNotFoundError(f"Freelancer profile for user {user_id} not found.")
         return to_domain_freelancer_profile(row)
 
     async def update(self, profile: FreelancerProfile) -> None:
         row = await self._session.get(FreelancerProfileModel, profile.id)
         if row is None:
-            raise FreelancerProfileNotFoundError(
-                f"Freelancer profile {profile.id} not found."
-            )
+            raise FreelancerProfileNotFoundError(f"Freelancer profile {profile.id} not found.")
         row.current_level_id = profile.current_level_id
         row.approval_status = profile.approval_status.value
         row.approved_by_user_id = profile.approved_by_user_id
@@ -80,9 +74,7 @@ class SqlAlchemyFreelancerProfileRepository(IFreelancerProfileRepository):
         row.deleted_at = profile.deleted_at
         row.created_by_user_id = profile.created_by_user_id
 
-    async def list_by_approval_status(
-        self, status: FreelancerApprovalStatus
-    ) -> list[FreelancerProfile]:
+    async def list_by_approval_status(self, status: FreelancerApprovalStatus) -> list[FreelancerProfile]:
         result = await self._session.execute(
             select(FreelancerProfileModel)
             .where(FreelancerProfileModel.approval_status == status.value)

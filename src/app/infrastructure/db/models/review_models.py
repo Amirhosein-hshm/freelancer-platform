@@ -10,9 +10,7 @@ class SupervisorReviewModel(TimestampMixin, Base):
     __tablename__ = "supervisor_reviews"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    project_delivery_id: Mapped[str] = mapped_column(
-        ForeignKey("project_deliveries.id"), index=True, nullable=False
-    )
+    project_delivery_id: Mapped[str] = mapped_column(ForeignKey("project_deliveries.id"), index=True, nullable=False)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), index=True, nullable=False)
     supervisor_user_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
     decision: Mapped[str] = mapped_column(String(20), nullable=False)

@@ -64,7 +64,7 @@ async def test_full_project_lifecycle(
     authorization_service.grant("freelancer-1", "project.apply")
     authorization_service.grant("admin-1", "form.manage")
     await make_category(category_id="cat-1")
-    make_level(level_id="level-1", max_active_applications=3)
+    await make_level(level_id="level-1", max_active_applications=3)
     await make_profile(profile_id="profile-1", user_id="freelancer-1")
 
     create_template = CreateFormTemplateUseCase(
@@ -188,9 +188,7 @@ async def test_full_project_lifecycle(
         clock=clock,
         uow=uow,
     )
-    started = await start.execute(
-        StartProjectCommand(actor_id="customer-1", project_id=created.project_id)
-    )
+    started = await start.execute(StartProjectCommand(actor_id="customer-1", project_id=created.project_id))
     assert started.status == ProjectStatus.IN_PROGRESS
 
     submit = SubmitDeliveryUseCase(
@@ -240,9 +238,7 @@ async def test_full_project_lifecycle(
         clock=clock,
         uow=uow,
     )
-    completed = await complete.execute(
-        CompleteProjectCommand(actor_id="customer-1", project_id=created.project_id)
-    )
+    completed = await complete.execute(CompleteProjectCommand(actor_id="customer-1", project_id=created.project_id))
     assert completed.status == ProjectStatus.COMPLETED
 
     project = await project_repo.get_by_id(created.project_id)

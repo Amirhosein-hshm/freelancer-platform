@@ -21,6 +21,7 @@ PARAM_TO_STUB = {
     "portfolio_item_repo": "get_portfolio_item_repository",
     "category_repo": "get_category_repository",
     "category_supervisor_repo": "get_category_supervisor_repository",
+    "supervisor_repo": "get_category_supervisor_repository",
     "template_repo": "get_form_template_repository",
     "form_template_repo": "get_form_template_repository",
     "project_repo": "get_project_repository",
@@ -42,6 +43,7 @@ PARAM_TO_STUB = {
     "uow": "get_unit_of_work",
     "notification_service": "get_notification_service",
     "file_storage": "get_file_storage_service",
+    "access_policy": "get_file_access_policy",
     "project_code_generator": "get_project_code_generator",
     "ticket_code_generator": "get_ticket_code_generator",
 }
@@ -62,6 +64,7 @@ INTERFACE_TYPE = {
     "portfolio_item_repo": "app.domain.freelancer.repositories:IPortfolioItemRepository",
     "category_repo": "app.domain.category.repositories:ICategoryRepository",
     "category_supervisor_repo": "app.domain.category.repositories:ICategorySupervisorRepository",
+    "supervisor_repo": "app.domain.category.repositories:ICategorySupervisorRepository",
     "template_repo": "app.domain.form.repositories:IFormTemplateRepository",
     "form_template_repo": "app.domain.form.repositories:IFormTemplateRepository",
     "project_repo": "app.domain.project.repositories:IProjectRepository",
@@ -83,6 +86,7 @@ INTERFACE_TYPE = {
     "uow": "app.application.shared.ports:IUnitOfWork",
     "notification_service": "app.application.shared.ports:INotificationService",
     "file_storage": "app.application.shared.ports:IFileStorageService",
+    "access_policy": "app.application.shared.ports:IFileAccessPolicy",
     "project_code_generator": "app.application.shared.ports:IProjectCodeGenerator",
     "ticket_code_generator": "app.application.shared.ports:ITicketCodeGenerator",
 }

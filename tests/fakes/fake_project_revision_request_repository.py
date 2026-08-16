@@ -1,4 +1,5 @@
 from app.domain.project.entities import ProjectRevisionRequest
+from app.domain.project.exceptions import RevisionRequestNotFoundError
 from app.domain.project.repositories import IProjectRevisionRequestRepository
 from app.domain.shared.types import EntityId
 
@@ -9,6 +10,12 @@ class FakeProjectRevisionRequestRepository(IProjectRevisionRequestRepository):
 
     async def add(self, revision: ProjectRevisionRequest) -> None:
         self._store.append(revision)
+
+    async def get_by_id(self, revision_id: EntityId) -> ProjectRevisionRequest:
+        for r in self._store:
+            if r.id == revision_id:
+                return r
+        raise RevisionRequestNotFoundError(f"Revision request {revision_id} not found.")
 
     async def list_by_project(self, project_id: EntityId) -> list[ProjectRevisionRequest]:
         return [r for r in self._store if r.project_id == project_id]

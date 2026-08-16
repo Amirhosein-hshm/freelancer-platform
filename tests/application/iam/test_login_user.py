@@ -59,8 +59,14 @@ class TestLoginUserUseCase:
             )
         )
         use_case = build_use_case(
-            user_repo, user_role_repo, refresh_token_repo, password_hasher,
-            token_service, id_generator, clock, uow,
+            user_repo,
+            user_role_repo,
+            refresh_token_repo,
+            password_hasher,
+            token_service,
+            id_generator,
+            clock,
+            uow,
         )
 
         result = await use_case.execute(LoginUserCommand(email="a@b.com", password="secret"))
@@ -86,8 +92,14 @@ class TestLoginUserUseCase:
     ):
         await make_user(email="a@b.com")
         use_case = build_use_case(
-            user_repo, user_role_repo, refresh_token_repo, password_hasher,
-            token_service, id_generator, clock, uow,
+            user_repo,
+            user_role_repo,
+            refresh_token_repo,
+            password_hasher,
+            token_service,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(InvalidCredentialsError):
@@ -107,8 +119,14 @@ class TestLoginUserUseCase:
     ):
         await make_user(email="a@b.com", password="correct")
         use_case = build_use_case(
-            user_repo, user_role_repo, refresh_token_repo, password_hasher,
-            token_service, id_generator, clock, uow,
+            user_repo,
+            user_role_repo,
+            refresh_token_repo,
+            password_hasher,
+            token_service,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(InvalidCredentialsError):
@@ -128,8 +146,14 @@ class TestLoginUserUseCase:
     ):
         await make_user(email="a@b.com", status=UserStatus.PENDING)
         use_case = build_use_case(
-            user_repo, user_role_repo, refresh_token_repo, password_hasher,
-            token_service, id_generator, clock, uow,
+            user_repo,
+            user_role_repo,
+            refresh_token_repo,
+            password_hasher,
+            token_service,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(UserNotActiveError):
@@ -147,8 +171,14 @@ class TestLoginUserUseCase:
         uow,
     ):
         use_case = build_use_case(
-            user_repo, user_role_repo, refresh_token_repo, password_hasher,
-            token_service, id_generator, clock, uow,
+            user_repo,
+            user_role_repo,
+            refresh_token_repo,
+            password_hasher,
+            token_service,
+            id_generator,
+            clock,
+            uow,
         )
 
         with pytest.raises(ValidationError):

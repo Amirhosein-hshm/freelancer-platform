@@ -17,9 +17,7 @@ from app.domain.project.repositories import (
 )
 
 
-class AdminApplyForProjectOnBehalfUseCase(
-    UseCase[AdminApplyForProjectOnBehalfCommand, ApplyForProjectResult]
-):
+class AdminApplyForProjectOnBehalfUseCase(UseCase[AdminApplyForProjectOnBehalfCommand, ApplyForProjectResult]):
     """Pattern B: an admin submits an application for a specific freelancer profile.
 
     The permission key ``project.apply_on_behalf`` is admin-only; the real performer is
@@ -47,12 +45,8 @@ class AdminApplyForProjectOnBehalfUseCase(
         self._clock = clock
         self._uow = uow
 
-    async def execute(
-        self, request: AdminApplyForProjectOnBehalfCommand
-    ) -> ApplyForProjectResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_PROJECT_APPLY_ON_BEHALF
-        )
+    async def execute(self, request: AdminApplyForProjectOnBehalfCommand) -> ApplyForProjectResult:
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_PROJECT_APPLY_ON_BEHALF)
         await self._profile_repo.get_by_id(request.target_freelancer_profile_id)
         return await _apply_for_project(
             freelancer_profile_id=request.target_freelancer_profile_id,

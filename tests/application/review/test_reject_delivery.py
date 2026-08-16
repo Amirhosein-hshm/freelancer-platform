@@ -64,9 +64,7 @@ class TestRejectDeliveryUseCase:
         )
 
         result = await use_case.execute(
-            RejectDeliveryCommand(
-                actor_id="supervisor-1", project_delivery_id="delivery-1", reason="Buggy"
-            )
+            RejectDeliveryCommand(actor_id="supervisor-1", project_delivery_id="delivery-1", reason="Buggy")
         )
 
         assert result.decision == ReviewStatus.REJECTED
@@ -110,7 +108,5 @@ class TestRejectDeliveryUseCase:
 
         with pytest.raises(PermissionDeniedError):
             await use_case.execute(
-                RejectDeliveryCommand(
-                    actor_id="intruder", project_delivery_id="delivery-1", reason="Nope"
-                )
+                RejectDeliveryCommand(actor_id="intruder", project_delivery_id="delivery-1", reason="Nope")
             )

@@ -35,9 +35,7 @@ class SqlAlchemyCategoryRepository(ICategoryRepository):
         return to_domain_category(row)
 
     async def get_by_slug(self, slug: str) -> Category:
-        result = await self._session.execute(
-            select(CategoryModel).where(CategoryModel.slug == slug)
-        )
+        result = await self._session.execute(select(CategoryModel).where(CategoryModel.slug == slug))
         row = result.scalar_one_or_none()
         if row is None:
             raise CategoryNotFoundError(f"Category with slug '{slug}' not found.")

@@ -20,9 +20,7 @@ class RemoveSupervisorUseCase(UseCase[RemoveSupervisorCommand, RemoveSupervisorR
         self._uow = uow
 
     async def execute(self, request: RemoveSupervisorCommand) -> RemoveSupervisorResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, "category.remove_supervisor"
-        )
+        await self._authorization_service.require_permission(request.actor_id, "category.remove_supervisor")
         active = await self._category_supervisor_repo.list_active_supervisors(request.category_id)
         link = next(
             (item for item in active if item.supervisor_user_id == request.supervisor_user_id),
@@ -30,8 +28,7 @@ class RemoveSupervisorUseCase(UseCase[RemoveSupervisorCommand, RemoveSupervisorR
         )
         if link is None:
             raise SupervisorAssignmentNotFoundError(
-                f"User {request.supervisor_user_id} is not an active supervisor of "
-                f"category {request.category_id}."
+                f"User {request.supervisor_user_id} is not an active supervisor of category {request.category_id}."
             )
         now = await self._clock.now()
         async with self._uow:
@@ -39,9 +36,7 @@ class RemoveSupervisorUseCase(UseCase[RemoveSupervisorCommand, RemoveSupervisorR
             link.revoke(now)
             await self._category_supervisor_repo.update(link)
             if was_primary:
-                remaining = await self._category_supervisor_repo.list_active_supervisors(
-                    request.category_id
-                )
+                remaining = await self._category_supervisor_repo.list_active_supervisors(request.category_id)
                 if remaining:
                     remaining[0].promote()
                     await self._category_supervisor_repo.update(remaining[0])

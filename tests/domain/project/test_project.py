@@ -93,9 +93,7 @@ class TestAssignFreelancer:
         assert project.can_accept_applications() is False
 
     def test_assign_twice_raises(self):
-        project = make_project(
-            status=ProjectStatus.COLLECTING_APPLICATIONS, selected_application_id="app-1"
-        )
+        project = make_project(status=ProjectStatus.COLLECTING_APPLICATIONS, selected_application_id="app-1")
         with pytest.raises(ProjectAlreadyAssignedError):
             project.assign_freelancer("app-2", NOW)
 
@@ -135,16 +133,12 @@ class TestDeliveryFlow:
         assert project.status == ProjectStatus.UNDER_SUPERVISOR_REVIEW
 
     def test_move_to_supervisor_review_without_supervisor_raises(self):
-        project = make_project(
-            status=ProjectStatus.DELIVERY_SUBMITTED, assigned_supervisor_user_id=None
-        )
+        project = make_project(status=ProjectStatus.DELIVERY_SUBMITTED, assigned_supervisor_user_id=None)
         with pytest.raises(InvalidProjectStatusTransitionError):
             project.move_to_supervisor_review()
 
     def test_move_to_customer_review_directly(self):
-        project = make_project(
-            status=ProjectStatus.DELIVERY_SUBMITTED, assigned_supervisor_user_id=None
-        )
+        project = make_project(status=ProjectStatus.DELIVERY_SUBMITTED, assigned_supervisor_user_id=None)
         project.move_to_customer_review()
         assert project.status == ProjectStatus.AWAITING_CUSTOMER_REVIEW
 
@@ -226,8 +220,5 @@ class TestHelpers:
 
     def test_can_accept_applications_states(self):
         assert make_project(status=ProjectStatus.PUBLISHED).can_accept_applications() is True
-        assert (
-            make_project(status=ProjectStatus.COLLECTING_APPLICATIONS).can_accept_applications()
-            is True
-        )
+        assert make_project(status=ProjectStatus.COLLECTING_APPLICATIONS).can_accept_applications() is True
         assert make_project(status=ProjectStatus.ASSIGNED).can_accept_applications() is False

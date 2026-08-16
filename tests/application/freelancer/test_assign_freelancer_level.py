@@ -37,8 +37,8 @@ class TestAssignFreelancerLevelUseCase:
     ):
         authorization_service.grant("admin", "freelancer.assign_level")
         await make_profile(profile_id="profile-1", current_level_id="level-1")
-        make_level(level_id="level-1", level_key="standard")
-        make_level(level_id="level-2", level_key="premium", rank_order=2)
+        await make_level(level_id="level-1", level_key="standard")
+        await make_level(level_id="level-2", level_key="premium", rank_order=2)
         use_case = build_use_case(
             authorization_service,
             profile_repo,
@@ -89,9 +89,7 @@ class TestAssignFreelancerLevelUseCase:
 
         with pytest.raises(PermissionDeniedError):
             await use_case.execute(
-                AssignFreelancerLevelCommand(
-                    actor_id="admin", profile_id="profile-1", new_level_id="level-2"
-                )
+                AssignFreelancerLevelCommand(actor_id="admin", profile_id="profile-1", new_level_id="level-2")
             )
 
     async def test_unknown_level_raises(
@@ -119,7 +117,5 @@ class TestAssignFreelancerLevelUseCase:
 
         with pytest.raises(FreelancerLevelNotFoundError):
             await use_case.execute(
-                AssignFreelancerLevelCommand(
-                    actor_id="admin", profile_id="profile-1", new_level_id="ghost"
-                )
+                AssignFreelancerLevelCommand(actor_id="admin", profile_id="profile-1", new_level_id="ghost")
             )

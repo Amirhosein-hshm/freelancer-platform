@@ -16,9 +16,7 @@ class FakeSupervisorReviewRepository(ISupervisorReviewRepository):
         for review in self._store.values():
             if review.project_delivery_id == project_delivery_id:
                 return review
-        raise SupervisorReviewNotFoundError(
-            f"No review for delivery {project_delivery_id}."
-        )
+        raise SupervisorReviewNotFoundError(f"No review for delivery {project_delivery_id}.")
 
     async def find_by_delivery(self, project_delivery_id: EntityId) -> SupervisorReview | None:
         for review in self._store.values():
@@ -26,14 +24,11 @@ class FakeSupervisorReviewRepository(ISupervisorReviewRepository):
                 return review
         return None
 
-    async def list_pending_for_supervisor(
-        self, supervisor_user_id: EntityId
-    ) -> list[SupervisorReview]:
+    async def list_pending_for_supervisor(self, supervisor_user_id: EntityId) -> list[SupervisorReview]:
         return [
             review
             for review in self._store.values()
-            if review.supervisor_user_id == supervisor_user_id
-            and review.decision == ReviewStatus.PENDING
+            if review.supervisor_user_id == supervisor_user_id and review.decision == ReviewStatus.PENDING
         ]
 
     async def update(self, review: SupervisorReview) -> None:

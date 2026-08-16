@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+
 import pytest
 
 from app.application.file.dto import UploadFileCommand
@@ -5,6 +7,14 @@ from app.application.file.use_cases.upload_file import UploadFileUseCase
 from app.application.shared.exceptions import ValidationError
 from app.application.shared.ports import FileAssetContext
 from app.domain.file.exceptions import InvalidFileContentError
+
+
+def _aiter(data: bytes, chunk_size: int = 16) -> AsyncIterator[bytes]:
+    async def _gen():
+        for i in range(0, len(data), chunk_size):
+            yield data[i : i + chunk_size]
+
+    return _gen()
 
 
 class TestUploadFileUseCase:
@@ -16,7 +26,7 @@ class TestUploadFileUseCase:
             UploadFileCommand(
                 actor_id="user-1",
                 file_name="report.pdf",
-                content_bytes=content,
+                content=_aiter(content),
                 context=FileAssetContext.GENERIC,
             )
         )
@@ -28,9 +38,13 @@ class TestUploadFileUseCase:
         metadata = await file_storage.get_metadata(result.file_asset_id)
         assert metadata.owner_user_id == "user-1"
 
+        downloaded = b""
+        async for chunk in file_storage.get_content(result.file_asset_id):
+            downloaded += chunk
+        assert downloaded == content
+
     async def test_upload_png(self, file_storage, clock):
         use_case = UploadFileUseCase(file_storage, clock)
-        # Minimal PNG signature + IHDR-ish bytes are enough for filetype.
         content = (
             b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
             b"\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x00IEND\xaeB`\x82"
@@ -40,7 +54,7 @@ class TestUploadFileUseCase:
             UploadFileCommand(
                 actor_id="user-1",
                 file_name="image.png",
-                content_bytes=content,
+                content=_aiter(content),
                 context=FileAssetContext.PORTFOLIO,
             )
         )
@@ -56,7 +70,7 @@ class TestUploadFileUseCase:
                 UploadFileCommand(
                     actor_id="user-1",
                     file_name="empty.txt",
-                    content_bytes=b"",
+                    content=_aiter(b""),
                     context=FileAssetContext.GENERIC,
                 )
             )
@@ -69,7 +83,7 @@ class TestUploadFileUseCase:
                 UploadFileCommand(
                     actor_id="user-1",
                     file_name="random.bin",
-                    content_bytes=b"not a known file type content",
+                    content=_aiter(b"not a known file type content"),
                     context=FileAssetContext.GENERIC,
                 )
             )
@@ -82,7 +96,23 @@ class TestUploadFileUseCase:
                 UploadFileCommand(
                     actor_id="user-1",
                     file_name="",
-                    content_bytes=b"%PDF-1.4",
+                    content=_aiter(b"%PDF-1.4"),
+                    context=FileAssetContext.GENERIC,
+                )
+            )
+
+    async def test_size_limit_enforced(self, file_storage, clock):
+        file_storage._max_size_bytes = 10
+        use_case = UploadFileUseCase(file_storage, clock)
+
+        from app.domain.file.exceptions import FileTooLargeError
+
+        with pytest.raises(FileTooLargeError):
+            await use_case.execute(
+                UploadFileCommand(
+                    actor_id="user-1",
+                    file_name="big.pdf",
+                    content=_aiter(b"%PDF-1.4" + b"x" * 100),
                     context=FileAssetContext.GENERIC,
                 )
             )

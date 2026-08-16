@@ -12,9 +12,7 @@ from app.domain.form.repositories import IFormTemplateRepository
 from app.domain.project.repositories import IProjectRepository
 
 
-class DeleteFormTemplateUseCase(
-    UseCase[DeleteFormTemplateCommand, DeleteFormTemplateResult]
-):
+class DeleteFormTemplateUseCase(UseCase[DeleteFormTemplateCommand, DeleteFormTemplateResult]):
     def __init__(
         self,
         authorization_service: IAuthorizationService,
@@ -28,17 +26,13 @@ class DeleteFormTemplateUseCase(
         self._uow = uow
 
     async def execute(self, request: DeleteFormTemplateCommand) -> DeleteFormTemplateResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_FORM_MANAGE
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_FORM_MANAGE)
         template = await self._template_repo.get_by_id(request.template_id)
         if template.status != FormTemplateStatus.DRAFT:
             raise FormTemplateHasActiveReferencesError(
                 f"Form template {template.id} cannot be deleted because it is not a DRAFT."
             )
-        active_projects = await self._project_repo.count_active_by_form_template(
-            template.id
-        )
+        active_projects = await self._project_repo.count_active_by_form_template(template.id)
         if active_projects:
             raise FormTemplateHasActiveReferencesError(
                 f"Form template {template.id} cannot be deleted because it is referenced "

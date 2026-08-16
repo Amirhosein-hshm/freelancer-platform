@@ -78,9 +78,7 @@ class DomainFileAccessPolicy(IFileAccessPolicy):
 
         return await self._is_ticket_participant(actor_id, file_asset_id)
 
-    async def _is_resume_or_portfolio_owner(
-        self, actor_id: EntityId, file_asset_id: EntityId
-    ) -> bool:
+    async def _is_resume_or_portfolio_owner(self, actor_id: EntityId, file_asset_id: EntityId) -> bool:
         try:
             resume = await self._resume_repo.get_by_file_asset_id(file_asset_id)
         except Exception:
@@ -99,9 +97,7 @@ class DomainFileAccessPolicy(IFileAccessPolicy):
 
         return False
 
-    async def _is_project_stakeholder(
-        self, actor_id: EntityId, file_asset_id: EntityId
-    ) -> bool:
+    async def _is_project_stakeholder(self, actor_id: EntityId, file_asset_id: EntityId) -> bool:
         deliveries = await self._project_delivery_repo.list_by_file_asset_id(file_asset_id)
         for delivery in deliveries:
             project = await self._project_repo.get_by_id(delivery.project_id)
@@ -111,21 +107,15 @@ class DomainFileAccessPolicy(IFileAccessPolicy):
                 return True
             if project.selected_application_id is not None:
                 try:
-                    application = await self._project_application_repo.get_by_id(
-                        project.selected_application_id
-                    )
-                    profile = await self._profile_repo.get_by_id(
-                        application.freelancer_profile_id
-                    )
+                    application = await self._project_application_repo.get_by_id(project.selected_application_id)
+                    profile = await self._profile_repo.get_by_id(application.freelancer_profile_id)
                     if profile.user_id == actor_id:
                         return True
                 except Exception:
                     pass
         return False
 
-    async def _is_ticket_participant(
-        self, actor_id: EntityId, file_asset_id: EntityId
-    ) -> bool:
+    async def _is_ticket_participant(self, actor_id: EntityId, file_asset_id: EntityId) -> bool:
         messages = await self._ticket_message_repo.list_by_file_asset_id(file_asset_id)
         for message in messages:
             ticket = await self._ticket_repo.get_by_id(message.ticket_id)

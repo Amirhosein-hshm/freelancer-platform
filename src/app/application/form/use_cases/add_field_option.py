@@ -26,9 +26,7 @@ class AddFieldOptionUseCase(UseCase[AddFieldOptionCommand, AddFieldOptionResult]
         self._uow = uow
 
     async def execute(self, request: AddFieldOptionCommand) -> AddFieldOptionResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_FORM_MANAGE
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_FORM_MANAGE)
         request.validate()
         template = await self._template_repo.get_by_id(request.template_id)
         template.require_draft("add options")

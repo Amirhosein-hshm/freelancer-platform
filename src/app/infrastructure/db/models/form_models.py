@@ -31,9 +31,7 @@ class FormFieldModel(TimestampMixin, Base):
     __tablename__ = "form_fields"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    form_template_id: Mapped[str] = mapped_column(
-        ForeignKey("form_templates.id"), index=True, nullable=False
-    )
+    form_template_id: Mapped[str] = mapped_column(ForeignKey("form_templates.id"), index=True, nullable=False)
     field_key: Mapped[str] = mapped_column(String(50), nullable=False)
     label: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -57,9 +55,7 @@ class FormFieldOptionModel(TimestampMixin, Base):
     __tablename__ = "form_field_options"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    form_field_id: Mapped[str] = mapped_column(
-        ForeignKey("form_fields.id"), index=True, nullable=False
-    )
+    form_field_id: Mapped[str] = mapped_column(ForeignKey("form_fields.id"), index=True, nullable=False)
     option_key: Mapped[str] = mapped_column(String(50), nullable=False)
     label: Mapped[str] = mapped_column(String(120), nullable=False)
     value: Mapped[str] = mapped_column(String(200), nullable=False)

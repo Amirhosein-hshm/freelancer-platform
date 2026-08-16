@@ -16,9 +16,7 @@ class ListRolesUseCase(UseCase[ListRolesQuery, ListRolesResult]):
         self._role_repo = role_repo
 
     async def execute(self, request: ListRolesQuery) -> ListRolesResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_IAM_READ
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_IAM_READ)
         roles = await self._role_repo.list_all()
         return ListRolesResult(
             roles=[

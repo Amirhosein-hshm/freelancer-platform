@@ -30,9 +30,7 @@ class SqlAlchemyRoleRepository(IRoleRepository):
         return to_domain_role(row)
 
     async def get_by_key(self, role_key: str) -> Role:
-        result = await self._session.execute(
-            select(RoleModel).where(RoleModel.role_key == role_key)
-        )
+        result = await self._session.execute(select(RoleModel).where(RoleModel.role_key == role_key))
         row = result.scalar_one_or_none()
         if row is None:
             raise RoleNotFoundError(f"Role '{role_key}' not found.")

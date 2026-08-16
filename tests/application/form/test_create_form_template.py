@@ -17,9 +17,7 @@ def build_use_case(template_repo, id_generator, clock, uow, authorization_servic
 
 
 class TestCreateFormTemplateUseCase:
-    async def test_create_draft_version_one(
-        self, template_repo, id_generator, clock, uow, authorization_service
-    ):
+    async def test_create_draft_version_one(self, template_repo, id_generator, clock, uow, authorization_service):
         authorization_service.grant("admin", "form.manage")
         use_case = build_use_case(template_repo, id_generator, clock, uow, authorization_service)
 
@@ -47,7 +45,5 @@ class TestCreateFormTemplateUseCase:
 
         with pytest.raises(ValidationError):
             await use_case.execute(
-                CreateFormTemplateCommand(
-                    actor_id="admin", category_id="cat-1", name="", template_key=""
-                )
+                CreateFormTemplateCommand(actor_id="admin", category_id="cat-1", name="", template_key="")
             )

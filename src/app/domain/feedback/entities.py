@@ -33,6 +33,4 @@ class Rating(Entity):
 
     def __post_init__(self) -> None:
         if not 1 <= self.score <= 5:
-            raise InvalidRatingScoreError(
-                f"Rating score must be between 1 and 5, got {self.score}."
-            )
+            raise InvalidRatingScoreError(f"Rating score must be between 1 and 5, got {self.score}.")

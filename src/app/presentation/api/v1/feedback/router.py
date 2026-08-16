@@ -133,9 +133,7 @@ async def get_freelancer_ratings(
     current_user=Depends(get_current_user),
     use_case: GetFreelancerRatingsUseCase = Depends(get_get_freelancer_ratings_use_case),
 ) -> SuccessEnvelope[FreelancerRatingsResponse]:
-    result = await use_case.execute(
-        GetFreelancerRatingsQuery(freelancer_profile_id=freelancer_profile_id)
-    )
+    result = await use_case.execute(GetFreelancerRatingsQuery(freelancer_profile_id=freelancer_profile_id))
     return SuccessEnvelope(
         message="Freelancer ratings.",
         data=FreelancerRatingsResponse(

@@ -37,24 +37,14 @@ class FakeProjectRepository(IProjectRepository):
     async def update(self, project: Project) -> None:
         self._store[project.id] = project
 
-    async def list_by_customer(
-        self, customer_user_id: EntityId, status: ProjectStatus | None = None
-    ) -> list[Project]:
-        projects = [
-            p
-            for p in self._store.values()
-            if p.customer_user_id == customer_user_id and p.deleted_at is None
-        ]
+    async def list_by_customer(self, customer_user_id: EntityId, status: ProjectStatus | None = None) -> list[Project]:
+        projects = [p for p in self._store.values() if p.customer_user_id == customer_user_id and p.deleted_at is None]
         if status is not None:
             projects = [p for p in projects if p.status == status]
         return projects
 
     async def list_available_for_freelancer(self, level_id: EntityId) -> list[Project]:
-        return [
-            p
-            for p in self._store.values()
-            if p.status in _OPEN_STATUSES and p.deleted_at is None
-        ]
+        return [p for p in self._store.values() if p.status in _OPEN_STATUSES and p.deleted_at is None]
 
     async def list_by_supervisor(self, supervisor_user_id: EntityId) -> list[Project]:
         return [
@@ -67,9 +57,7 @@ class FakeProjectRepository(IProjectRepository):
         return [
             p
             for p in self._store.values()
-            if p.category_id == category_id
-            and p.status in _OPEN_STATUSES
-            and p.deleted_at is None
+            if p.category_id == category_id and p.status in _OPEN_STATUSES and p.deleted_at is None
         ]
 
     async def count_active_by_category(self, category_id: EntityId) -> int:
@@ -77,9 +65,7 @@ class FakeProjectRepository(IProjectRepository):
             [
                 p
                 for p in self._store.values()
-                if p.category_id == category_id
-                and p.deleted_at is None
-                and p.status not in _TERMINAL_STATUSES
+                if p.category_id == category_id and p.deleted_at is None and p.status not in _TERMINAL_STATUSES
             ]
         )
 

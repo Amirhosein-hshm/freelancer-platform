@@ -12,9 +12,7 @@ class FreelancerProfileModel(TimestampMixin, Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
-    current_level_id: Mapped[str | None] = mapped_column(
-        ForeignKey("freelancer_levels.id"), index=True, nullable=True
-    )
+    current_level_id: Mapped[str | None] = mapped_column(ForeignKey("freelancer_levels.id"), index=True, nullable=True)
     approval_status: Mapped[str] = mapped_column(String(20), nullable=False)
     approved_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -52,15 +50,9 @@ class FreelancerLevelHistoryModel(TimestampMixin, Base):
     __tablename__ = "freelancer_level_history"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    freelancer_profile_id: Mapped[str] = mapped_column(
-        ForeignKey("freelancer_profiles.id"), index=True, nullable=False
-    )
-    old_level_id: Mapped[str | None] = mapped_column(
-        ForeignKey("freelancer_levels.id"), nullable=True
-    )
-    new_level_id: Mapped[str] = mapped_column(
-        ForeignKey("freelancer_levels.id"), index=True, nullable=False
-    )
+    freelancer_profile_id: Mapped[str] = mapped_column(ForeignKey("freelancer_profiles.id"), index=True, nullable=False)
+    old_level_id: Mapped[str | None] = mapped_column(ForeignKey("freelancer_levels.id"), nullable=True)
+    new_level_id: Mapped[str] = mapped_column(ForeignKey("freelancer_levels.id"), index=True, nullable=False)
     assigned_by_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
     reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -70,9 +62,7 @@ class ResumeModel(TimestampMixin, Base):
     __tablename__ = "resumes"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    freelancer_profile_id: Mapped[str] = mapped_column(
-        ForeignKey("freelancer_profiles.id"), index=True, nullable=False
-    )
+    freelancer_profile_id: Mapped[str] = mapped_column(ForeignKey("freelancer_profiles.id"), index=True, nullable=False)
     file_asset_id: Mapped[str] = mapped_column(String(36), nullable=False)
     version_no: Mapped[int] = mapped_column(Integer, nullable=False)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -83,9 +73,7 @@ class PortfolioItemModel(TimestampMixin, Base):
     __tablename__ = "portfolio_items"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    freelancer_profile_id: Mapped[str] = mapped_column(
-        ForeignKey("freelancer_profiles.id"), index=True, nullable=False
-    )
+    freelancer_profile_id: Mapped[str] = mapped_column(ForeignKey("freelancer_profiles.id"), index=True, nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     external_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

@@ -26,9 +26,7 @@ def to_profile_result(profile: FreelancerProfile) -> FreelancerProfileResult:
     )
 
 
-class UpdateFreelancerProfileUseCase(
-    UseCase[UpdateFreelancerProfileCommand, FreelancerProfileResult]
-):
+class UpdateFreelancerProfileUseCase(UseCase[UpdateFreelancerProfileCommand, FreelancerProfileResult]):
     def __init__(
         self,
         profile_repo: IFreelancerProfileRepository,
@@ -52,12 +50,8 @@ class UpdateFreelancerProfileUseCase(
             profile.timezone = request.timezone
         if request.hourly_rate_min is not None or request.hourly_rate_max is not None:
             profile.update_rate_range(
-                request.hourly_rate_min
-                if request.hourly_rate_min is not None
-                else profile.hourly_rate_min,
-                request.hourly_rate_max
-                if request.hourly_rate_max is not None
-                else profile.hourly_rate_max,
+                request.hourly_rate_min if request.hourly_rate_min is not None else profile.hourly_rate_min,
+                request.hourly_rate_max if request.hourly_rate_max is not None else profile.hourly_rate_max,
             )
         await self._profile_repo.update(profile)
         return to_profile_result(profile)

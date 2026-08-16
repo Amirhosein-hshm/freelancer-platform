@@ -13,9 +13,7 @@ from app.domain.freelancer.repositories import (
 )
 
 
-class AssignFreelancerLevelUseCase(
-    UseCase[AssignFreelancerLevelCommand, AssignFreelancerLevelResult]
-):
+class AssignFreelancerLevelUseCase(UseCase[AssignFreelancerLevelCommand, AssignFreelancerLevelResult]):
     def __init__(
         self,
         authorization_service: IAuthorizationService,
@@ -34,12 +32,8 @@ class AssignFreelancerLevelUseCase(
         self._clock = clock
         self._uow = uow
 
-    async def execute(
-        self, request: AssignFreelancerLevelCommand
-    ) -> AssignFreelancerLevelResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, "freelancer.assign_level"
-        )
+    async def execute(self, request: AssignFreelancerLevelCommand) -> AssignFreelancerLevelResult:
+        await self._authorization_service.require_permission(request.actor_id, "freelancer.assign_level")
         profile = await self._profile_repo.get_by_id(request.profile_id)
         level = await self._level_repo.get_by_id(request.new_level_id)
         old_level_id = profile.current_level_id

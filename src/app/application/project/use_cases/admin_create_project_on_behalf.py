@@ -21,9 +21,7 @@ from app.domain.project.repositories import (
 )
 
 
-class AdminCreateProjectOnBehalfUseCase(
-    UseCase[CreateProjectOnBehalfCommand, CreateProjectResult]
-):
+class AdminCreateProjectOnBehalfUseCase(UseCase[CreateProjectOnBehalfCommand, CreateProjectResult]):
     def __init__(
         self,
         authorization_service: IAuthorizationService,
@@ -49,9 +47,7 @@ class AdminCreateProjectOnBehalfUseCase(
         self._uow = uow
 
     async def execute(self, request: CreateProjectOnBehalfCommand) -> CreateProjectResult:
-        await self._authorization_service.require_permission(
-            request.actor_id, PERMISSION_PROJECT_CREATE_ON_BEHALF
-        )
+        await self._authorization_service.require_permission(request.actor_id, PERMISSION_PROJECT_CREATE_ON_BEHALF)
         await self._user_repo.get_by_id(request.target_customer_user_id)
         request.validate()
         return await _create_project(

@@ -35,9 +35,7 @@ class Ticket(AggregateRoot):
 
     def close(self, by_user_id: EntityId, at: datetime) -> None:
         if self.is_closed():
-            raise InvalidStateTransitionError(
-                f"Ticket {self.id} is already '{self.status.value}'."
-            )
+            raise InvalidStateTransitionError(f"Ticket {self.id} is already '{self.status.value}'.")
         self.status = TicketStatus.CLOSED
         self.closed_by_user_id = by_user_id
         self.closed_at = at

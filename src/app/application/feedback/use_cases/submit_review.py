@@ -65,9 +65,7 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
             )
         latest = await self._delivery_repo.get_latest_for_project(project.id)
         if latest is None:
-            raise ValidationError(
-                f"Project {project.id} has no delivery to review."
-            )
+            raise ValidationError(f"Project {project.id} has no delivery to review.")
         now = await self._clock.now()
         review = CustomerReview(
             id=await self._id_generator.new_id(),
@@ -109,9 +107,7 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
                 target = ProjectStatus.REVISION_REQUESTED
                 reason = request.comment or f"Customer rejected project {project.id}."
             else:
-                raise ValidationError(
-                    f"Decision '{request.decision.value}' is not a valid review decision."
-                )
+                raise ValidationError(f"Decision '{request.decision.value}' is not a valid review decision.")
             await record_status_history(
                 self._status_history_repo,
                 self._id_generator,

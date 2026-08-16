@@ -80,7 +80,7 @@ def level_repo() -> FakeFreelancerLevelRepository:
 
 @pytest.fixture
 def make_level(level_repo: FakeFreelancerLevelRepository):
-    def _make(level_id: str = "level-1", level_key: str = "standard", **overrides: object) -> FreelancerLevel:
+    async def _make(level_id: str = "level-1", level_key: str = "standard", **overrides: object) -> FreelancerLevel:
         fields: dict[str, object] = {
             "id": level_id,
             "level_key": level_key,
@@ -97,7 +97,7 @@ def make_level(level_repo: FakeFreelancerLevelRepository):
         }
         fields.update(overrides)
         level = FreelancerLevel(**fields)  # type: ignore[arg-type]
-        level_repo.add(level)
+        await level_repo.add(level)
         return level
 
     return _make

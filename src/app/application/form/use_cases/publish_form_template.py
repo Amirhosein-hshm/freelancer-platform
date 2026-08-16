@@ -9,9 +9,7 @@ from app.application.shared.use_case import UseCase
 from app.domain.form.repositories import IFormTemplateRepository
 
 
-class PublishFormTemplateUseCase(
-    UseCase[PublishFormTemplateCommand, PublishFormTemplateResult]
-):
+class PublishFormTemplateUseCase(UseCase[PublishFormTemplateCommand, PublishFormTemplateResult]):
     def __init__(
         self,
         authorization_service: IAuthorizationService,
@@ -25,9 +23,7 @@ class PublishFormTemplateUseCase(
         self._uow = uow
 
     async def execute(self, request: PublishFormTemplateCommand) -> PublishFormTemplateResult:
-        await self._authorization_service.require_permission(
-            request.published_by, PERMISSION_FORM_MANAGE
-        )
+        await self._authorization_service.require_permission(request.published_by, PERMISSION_FORM_MANAGE)
         template = await self._template_repo.get_by_id(request.template_id)
         now = await self._clock.now()
         async with self._uow:
