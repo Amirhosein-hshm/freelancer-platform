@@ -27,8 +27,8 @@ from app.presentation.api.v1.review.schemas import (
     ReviewDeliveryRequest,
     ReviewResponse,
 )
-from app.presentation.core.envelope import PaginationMeta, SuccessEnvelope
-from app.presentation.core.pagination import PageQuery
+from app.presentation.core.envelope import SuccessEnvelope
+from app.presentation.core.pagination import PageQuery, paginate
 from app.presentation.core.providers import (
     get_approve_delivery_use_case,
     get_get_pending_reviews_use_case,
@@ -38,10 +38,11 @@ from app.presentation.core.providers import (
     get_reject_delivery_use_case,
     get_review_delivery_use_case,
 )
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
 
-router = APIRouter(prefix="/reviews", tags=["Review"])
-deliveries_router = APIRouter(prefix="/deliveries", tags=["Review"])
+router = APIRouter(prefix="/reviews", tags=["Review"], route_class=DocumentedAPIRoute)
+deliveries_router = APIRouter(prefix="/deliveries", tags=["Review"], route_class=DocumentedAPIRoute)
 
 
 def _to_project_response(result: ProjectResult) -> ProjectResponse:
@@ -96,15 +97,6 @@ def _to_delivery_review_response(result: ReviewDeliveryResult) -> DeliveryReview
     )
 
 
-def _pagination_meta(pagination: PageQuery, total_items: int) -> PaginationMeta:
-    return PaginationMeta(
-        page=pagination.page,
-        page_size=pagination.page_size,
-        total_items=total_items,
-        total_pages=(total_items + pagination.page_size - 1) // pagination.page_size,
-    )
-
-
 @router.get(
     "/pending",
     response_model=SuccessEnvelope[list[ReviewResponse]],
@@ -117,10 +109,11 @@ async def get_pending_reviews(
 ) -> SuccessEnvelope[list[ReviewResponse]]:
     result = await use_case.execute(GetPendingReviewsQuery(supervisor_user_id=current_user.user_id))
     reviews = [_to_review_response(review) for review in result.reviews]
+    page_reviews, meta = paginate(reviews, pagination)
     return SuccessEnvelope(
         message="Pending reviews.",
-        data=reviews,
-        meta=_pagination_meta(pagination, len(reviews)),
+        data=page_reviews,
+        meta=meta,
     )
 
 
@@ -136,10 +129,11 @@ async def get_supervisor_projects(
 ) -> SuccessEnvelope[list[ProjectResponse]]:
     result = await use_case.execute(GetSupervisorProjectsQuery(supervisor_user_id=current_user.user_id))
     projects = [_to_project_response(project) for project in result.projects]
+    page_projects, meta = paginate(projects, pagination)
     return SuccessEnvelope(
         message="Supervisor projects.",
-        data=projects,
-        meta=_pagination_meta(pagination, len(projects)),
+        data=page_projects,
+        meta=meta,
     )
 
 

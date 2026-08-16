@@ -90,6 +90,7 @@ from app.presentation.api.v1.freelancer.schemas import (
     UploadResumeResponse,
 )
 from app.presentation.core.envelope import SuccessEnvelope
+from app.presentation.core.pagination import PageQuery, paginate
 from app.presentation.core.providers import (
     get_add_portfolio_item_use_case,
     get_approve_freelancer_use_case,
@@ -112,9 +113,10 @@ from app.presentation.core.providers import (
     get_update_resume_use_case,
     get_upload_resume_use_case,
 )
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
 
-router = APIRouter(prefix="/freelancers", tags=["Freelancer"])
+router = APIRouter(prefix="/freelancers", tags=["Freelancer"], route_class=DocumentedAPIRoute)
 
 
 @router.get(
@@ -474,12 +476,16 @@ async def get_current_resume(
 async def list_resume_versions(
     profile_id: str,
     current_user=Depends(get_current_user),
+    pagination: PageQuery = Depends(),
     use_case: ListResumeVersionsUseCase = Depends(get_list_resume_versions_use_case),
 ) -> SuccessEnvelope[list[ResumeResponse]]:
     result = await use_case.execute(ListResumeVersionsQuery(actor_id=current_user.user_id, profile_id=profile_id))
+    resumes = [_to_resume_response(r) for r in result]
+    page_resumes, meta = paginate(resumes, pagination)
     return SuccessEnvelope(
         message="Resume versions.",
-        data=[_to_resume_response(r) for r in result],
+        data=page_resumes,
+        meta=meta,
     )
 
 
@@ -554,12 +560,16 @@ async def delete_resume(
 async def list_portfolio_items(
     profile_id: str,
     current_user=Depends(get_current_user),
+    pagination: PageQuery = Depends(),
     use_case: ListPortfolioItemsUseCase = Depends(get_list_portfolio_items_use_case),
 ) -> SuccessEnvelope[list[PortfolioItemResponse]]:
     result = await use_case.execute(ListPortfolioItemsQuery(actor_id=current_user.user_id, profile_id=profile_id))
+    items = [_to_portfolio_item_response(i) for i in result]
+    page_items, meta = paginate(items, pagination)
     return SuccessEnvelope(
         message="Portfolio items.",
-        data=[_to_portfolio_item_response(i) for i in result],
+        data=page_items,
+        meta=meta,
     )
 
 
@@ -586,12 +596,16 @@ async def get_portfolio_item(
 async def list_freelancer_level_history(
     profile_id: str,
     current_user=Depends(get_current_user),
+    pagination: PageQuery = Depends(),
     use_case: ListFreelancerLevelHistoryUseCase = Depends(get_list_freelancer_level_history_use_case),
 ) -> SuccessEnvelope[list[FreelancerLevelHistoryResponse]]:
     result = await use_case.execute(
         ListFreelancerLevelHistoryQuery(actor_id=current_user.user_id, profile_id=profile_id)
     )
+    history = [_to_history_response(h) for h in result]
+    page_history, meta = paginate(history, pagination)
     return SuccessEnvelope(
         message="Level history.",
-        data=[_to_history_response(h) for h in result],
+        data=page_history,
+        meta=meta,
     )

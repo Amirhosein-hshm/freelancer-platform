@@ -49,6 +49,7 @@ from app.presentation.api.v1.freelancer.schemas import (
     UpdateFreelancerLevelRequest,
 )
 from app.presentation.core.envelope import SuccessEnvelope
+from app.presentation.core.pagination import PageQuery, paginate
 from app.presentation.core.providers import (
     get_activate_freelancer_level_use_case,
     get_admin_create_freelancer_profile_on_behalf_use_case,
@@ -60,10 +61,13 @@ from app.presentation.core.providers import (
     get_soft_delete_freelancer_profile_use_case,
     get_update_freelancer_level_use_case,
 )
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
 
-router = APIRouter(prefix="/admin/freelancers", tags=["Admin - Freelancer"])
-level_router = APIRouter(prefix="/admin/freelancer-levels", tags=["Admin - Freelancer Levels"])
+router = APIRouter(prefix="/admin/freelancers", tags=["Admin - Freelancer"], route_class=DocumentedAPIRoute)
+level_router = APIRouter(
+    prefix="/admin/freelancer-levels", tags=["Admin - Freelancer Levels"], route_class=DocumentedAPIRoute
+)
 
 
 def _to_level_response(result: FreelancerLevelResponse) -> FreelancerLevelResponse:
@@ -121,6 +125,7 @@ async def admin_create_freelancer_profile(
 async def list_freelancer_profiles_by_approval_status(
     status: FreelancerApprovalStatus = Query(...),
     current_user=Depends(get_current_user),
+    pagination: PageQuery = Depends(),
     use_case: ListFreelancerProfilesByApprovalStatusUseCase = Depends(
         get_list_freelancer_profiles_by_approval_status_use_case
     ),
@@ -128,9 +133,12 @@ async def list_freelancer_profiles_by_approval_status(
     result = await use_case.execute(
         ListFreelancerProfilesByApprovalStatusQuery(actor_id=current_user.user_id, status=status)
     )
+    profiles = [to_profile_response(p) for p in result]
+    page_profiles, meta = paginate(profiles, pagination)
     return SuccessEnvelope(
         message="Freelancer profiles.",
-        data=[to_profile_response(p) for p in result],
+        data=page_profiles,
+        meta=meta,
     )
 
 
@@ -160,12 +168,16 @@ async def soft_delete_freelancer_profile(
 )
 async def list_freelancer_levels(
     current_user=Depends(get_current_user),
+    pagination: PageQuery = Depends(),
     use_case: ListFreelancerLevelsUseCase = Depends(get_list_freelancer_levels_use_case),
 ) -> SuccessEnvelope[list[FreelancerLevelResponse]]:
     result = await use_case.execute(ListFreelancerLevelsQuery(actor_id=current_user.user_id))
+    levels = [_to_level_response(level) for level in result]
+    page_levels, meta = paginate(levels, pagination)
     return SuccessEnvelope(
         message="Freelancer levels.",
-        data=[_to_level_response(level) for level in result],
+        data=page_levels,
+        meta=meta,
     )
 
 

@@ -14,9 +14,10 @@ from app.presentation.core.providers import (
     get_list_permissions_use_case,
     get_list_roles_use_case,
 )
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
 
-router = APIRouter(tags=["IAM-Admin"])
+router = APIRouter(tags=["IAM-Admin"], route_class=DocumentedAPIRoute)
 
 
 @router.get(

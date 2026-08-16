@@ -50,9 +50,10 @@ from app.presentation.core.providers import (
     get_update_customer_review_use_case,
     get_update_rating_use_case,
 )
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
 
-router = APIRouter(prefix="/feedback", tags=["Feedback"])
+router = APIRouter(prefix="/feedback", tags=["Feedback"], route_class=DocumentedAPIRoute)
 
 
 def _to_rating_response(result: RatingResult) -> RatingResponse:

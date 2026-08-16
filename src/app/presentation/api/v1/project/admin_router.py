@@ -22,9 +22,10 @@ from app.presentation.core.providers import (
     get_admin_apply_for_project_on_behalf_use_case,
     get_admin_create_project_on_behalf_use_case,
 )
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
 
-router = APIRouter(prefix="/admin/projects", tags=["Admin - Project"])
+router = APIRouter(prefix="/admin/projects", tags=["Admin - Project"], route_class=DocumentedAPIRoute)
 
 
 @router.post(

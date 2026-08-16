@@ -138,5 +138,11 @@ green (tests passing), not just "code written".
     ordering fix for `SubmitRating`.
   - Ticketing: `GET /tickets/{ticket_id}`, `PATCH /tickets/{ticket_id}` (subject/priority/status),
     `GET /tickets/{ticket_id}/participants`, `PATCH /DELETE /tickets/{ticket_id}/messages/{message_id}`.
-- [ ] **Part 5** — OpenAPI/presentation hygiene: tags, `summary`, error response examples,
+- [x] **Part 5** — OpenAPI/presentation hygiene: tags, `summary`, error response examples,
       pagination follow-through.
+  - `DocumentedAPIRoute` (`presentation/core/routes.py`) auto-generates `summary` from
+    `operation_id` and merges default error responses (400/401/403/404/409/422/500) with
+    `ErrorEnvelope` examples; wired as `route_class` on every HTTP router.
+  - Shared `paginate()` helper + `PageQuery` on all 18 bare-list endpoints (project,
+    freelancer, category, review, ticketing); removed duplicated `_pagination_meta`
+    helpers. Verified: 130/130 operations have `summary` and a documented 400 response.

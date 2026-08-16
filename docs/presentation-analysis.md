@@ -335,7 +335,7 @@ maps the `Result` → Pydantic response. Consistent pattern: **one handler = one
 | `POST /admin/freelancers` | `AdminCreateFreelancerProfileOnBehalfUseCase` | Dedicated admin on-behalf route. |
 | `POST /admin/tickets` | `AdminCreateTicketOnBehalfUseCase` | Dedicated admin on-behalf route. |
 | `GET /auth/me` | none — direct repo + authz reads | Only endpoint calling `user_repo` + `list_permissions_for_user` directly. |
-| `GET /projects` | `GetAvailableProjectsUseCase` | Requires a freelancer profile; returns projects per level. Pagination meta computed from the in-memory list length — **no real DB pagination** (see §7). |
+| `GET /projects` | `GetAvailableProjectsUseCase` | Requires a freelancer profile; returns projects per level. Client-side pagination via shared `paginate()` — **no real DB pagination** (see §7). |
 | `GET /users` | `AdminListUsersUseCase` | Only list endpoint (currently) with **real DB offset/limit + `count_all` total** — the reference fix for §7 item 2. |
 | `GET /projects/{id}/applications/{application_id}` | `GetProjectApplicationUseCase` | Ownership check via project customer. |
 | `GET /projects/{id}/deliveries` | `ListProjectDeliveriesUseCase` | Ownership check via project customer. |
@@ -432,24 +432,22 @@ documented design deviation (see §7).
 1. ✅ **Resolved in Part 2 — `GET /form-templates/{template_id}` contract**
    (`form/router.py:~146`): now uses `GetFormTemplateByIdQuery(template_id=template_id)`
    and `GetFormTemplateByIdUseCase`. The old path var misinterpretation is fixed.
-2. **Pagination is fictional**: `PageQuery` paginates only the *client-side* length
-   (`projects/_pagination_meta` computed from `len(projects)`, no `.offset/.limit` passed
-   to any `Query`/repo). `GET /projects`, `/projects/my`, `/reviews/pending`,
-   `/reviews/supervisor/projects` — all do DB listing then slice meta. `total_items` equals
-   the returned page length, never the DB total. **Partial fix (2026-08-09):** `GET /users`
-   (`admin_list_users`, §3.2/17) is the exception — it passes real `limit`/`offset` to
-   `IUserRepository.list_all`/`list_by_status` and reports a true `count_all` total. Use it
-   as the reference for fixing the remaining affected endpoints; this fix is scoped to this
-   one endpoint only.
+2. ⚠️ **Pagination is client-side, not DB-backed** (partial fix 2026-08-09; Part 5
+   2026-08-16): `PageQuery` pages the in-memory list. All 18 bare-list endpoints now use the
+   shared `paginate()` helper (`core/pagination.py`), which slices the list and reports a
+   true `total_items`/`total_pages` from the full list length; out-of-range pages clamp to
+   the last page. `GET /users` (`admin_list_users`, §3.2/17) remains the only endpoint with
+   real `limit`/`offset` passed to the repository. DB-backed offset pagination is still
+   outstanding for the other endpoints (see `DOMAIN.md:193`).
 3. **401 drops the envelope**: `core/security.py` raises raw `HTTPException(401)`, so
    invalid/expired token responses are `{"detail": "..."}` not `ErrorEnvelope`.
 4. **WebSocket auth/error handling is unguarded** (`websocket/router.py`): if
    `decode_access_token` raises, there is no try/except — the WS will abruptly close
    (500-style) instead of a clean close/error frame; token in a query string is a
    security smell (logs/leaks).
-5. **Modularity leak — duplicated mapping helpers**: `_to_budget_response` /
-   `_pagination_meta` are copy-pasted in `project/router.py` and `review/router.py`;
-   `_to_application_response` duplicated. Cross-file consistency issue.
+5. ✅ **Resolved in Part 5 — modularity leak**: the copy-pasted `_pagination_meta`
+   helpers were removed; pagination now lives in the single `paginate()` helper in
+   `core/pagination.py`.
 6. **`GET /auth/me` reads repos directly** instead of a Query UseCase — inconsistent with
    the "one handler = one UseCase" convention.
 7. ✅ **Resolved in Part 4a — on-behalf routes moved to dedicated admin paths.**
@@ -457,10 +455,12 @@ documented design deviation (see §7).
    on-behalf creation has dedicated `POST /admin/projects`,
    `POST /admin/projects/{id}/applications`, `POST /admin/freelancers`, and
    `POST /admin/tickets` endpoints.
-8. **No health/readiness endpoint** for the container/doc stack, and **no OpenAPI
-   `responses` / `400`, `401`, `403`, `404`, `409`, `422`, `500` documented** on individual
-   routes (global handlers exist but the API docs remain generic).
-9. `PageQuery` has an `offset` property (`core/pagination.py:10`) that **nothing uses**.
+8. ✅ **Resolved in Part 5 — OpenAPI error documentation**: `DocumentedAPIRoute`
+   (`core/routes.py`) is now the `route_class` for every HTTP router. It auto-generates a
+   `summary` from `operation_id` and merges `ErrorEnvelope`-modeled 400/401/403/404/409/422/500
+   responses onto every operation. Verified: all 130 operations expose a `summary` and a 400
+   response.
+9. ✅ **Resolved in Part 5 — `PageQuery.offset`** is now used by `paginate()`.
 
 ---
 
@@ -470,11 +470,11 @@ documented design deviation (see §7).
 |---|---|
 | Architecture compliance | **Strong** — layering, dependency direction, DI-override seam, envelope/error mapping all respected. |
 | API surface coverage | **Strong** — 83 HTTP endpoints + 1 WebSocket covering all 9 contexts + file upload. |
-| Consistency (bytes/rules) | **Good but leaky** — 2 stale README claims, 401 global exception, WS unguarded, duplicated mappers. |
-| Correctness risk | **0 confirmed latent bugs**. Remaining: fake pagination, WS close handling. File-attachment existence checks now enforced. |
+| Consistency (bytes/rules) | **Good but leaky** — 2 stale README claims, 401 global exception, WS unguarded. |
+| Correctness risk | **0 confirmed latent bugs**. Remaining: DB-backed pagination, WS close handling. File-attachment existence checks now enforced. |
 | Production readiness | **Not yet** — no auth/refresh storage solution verified here, error envelope deviation on 401s, no WS error handling. |
 
 **Readiness to enter public alpha:** the surface area is real and well-formed (Phase-1
-design fidelity), but item #1, #4, and #8 in §7 should be fixed before signaling a stable
-HTTP API. Overall active architectural health: **~85/100** for structure, **~70/100** for
+design fidelity), but items #3 and #4 in §7 should be fixed before signaling a stable
+HTTP API. Overall active architectural health: **~90/100** for structure, **~80/100** for
 runtime robustness as-shipped.

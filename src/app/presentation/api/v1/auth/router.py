@@ -39,9 +39,10 @@ from app.presentation.core.providers import (
     get_register_user_use_case,
     get_user_repository,
 )
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+router = APIRouter(prefix="/auth", tags=["Auth"], route_class=DocumentedAPIRoute)
 
 
 @router.post(

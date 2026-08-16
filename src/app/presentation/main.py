@@ -32,6 +32,7 @@ from app.presentation.api.v1.ticketing.admin_router import (
 )
 from app.presentation.api.v1.ticketing.router import router as ticketing_router
 from app.presentation.core.error_handlers import register_exception_handlers
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.websocket.router import router as websocket_router
 
 API_PREFIX = "/api/v1"
@@ -42,6 +43,7 @@ def create_app(cors_origins: Sequence[str] | None = None) -> FastAPI:
     app = FastAPI(
         title="Freelance Platform API",
         version="0.1.0",
+        route_class=DocumentedAPIRoute,
     )
     app.add_middleware(
         CORSMiddleware,

@@ -10,9 +10,10 @@ from app.presentation.api.v1.ticketing.schemas import (
 )
 from app.presentation.core.envelope import SuccessEnvelope
 from app.presentation.core.providers import get_admin_create_ticket_on_behalf_use_case
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
 
-router = APIRouter(prefix="/admin/tickets", tags=["Admin - Ticketing"])
+router = APIRouter(prefix="/admin/tickets", tags=["Admin - Ticketing"], route_class=DocumentedAPIRoute)
 
 
 @router.post(

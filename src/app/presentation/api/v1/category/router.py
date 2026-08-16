@@ -37,6 +37,7 @@ from app.presentation.api.v1.category.schemas import (
 )
 from app.presentation.api.v1.project.schemas import ProjectResponse
 from app.presentation.core.envelope import SuccessEnvelope
+from app.presentation.core.pagination import PageQuery, paginate
 from app.presentation.core.providers import (
     get_assign_supervisor_use_case,
     get_create_category_use_case,
@@ -48,9 +49,10 @@ from app.presentation.core.providers import (
     get_remove_supervisor_use_case,
     get_update_category_use_case,
 )
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
 
-router = APIRouter(prefix="/categories", tags=["Category"])
+router = APIRouter(prefix="/categories", tags=["Category"], route_class=DocumentedAPIRoute)
 
 
 def _category_response(result) -> CategoryResponse:
@@ -92,12 +94,16 @@ def _project_response(result) -> ProjectResponse:
     operation_id="get_categories",
 )
 async def get_categories(
+    pagination: PageQuery = Depends(),
     use_case: GetCategoriesUseCase = Depends(get_get_categories_use_case),
 ) -> SuccessEnvelope[list[CategoryResponse]]:
     result = await use_case.execute(GetCategoriesQuery())
+    categories = [_category_response(c) for c in result.categories]
+    page_categories, meta = paginate(categories, pagination)
     return SuccessEnvelope(
         message="Categories.",
-        data=[_category_response(c) for c in result.categories],
+        data=page_categories,
+        meta=meta,
     )
 
 
@@ -152,12 +158,16 @@ async def list_category_supervisors(
 async def get_category_projects(
     category_id: str,
     current_user=Depends(get_current_user),
+    pagination: PageQuery = Depends(),
     use_case: GetCategoryProjectsUseCase = Depends(get_get_category_projects_use_case),
 ) -> SuccessEnvelope[list[ProjectResponse]]:
     result = await use_case.execute(GetCategoryProjectsQuery(category_id=category_id))
+    projects = [_project_response(p) for p in result.projects]
+    page_projects, meta = paginate(projects, pagination)
     return SuccessEnvelope(
         message="Category projects.",
-        data=[_project_response(p) for p in result.projects],
+        data=page_projects,
+        meta=meta,
     )
 
 

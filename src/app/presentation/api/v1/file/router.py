@@ -13,9 +13,10 @@ from app.presentation.core.providers import (
     get_get_file_asset_use_case,
     get_upload_file_use_case,
 )
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
 
-router = APIRouter(prefix="/files", tags=["File"])
+router = APIRouter(prefix="/files", tags=["File"], route_class=DocumentedAPIRoute)
 
 
 CHUNK_SIZE = 64 * 1024

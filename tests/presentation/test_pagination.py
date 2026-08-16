@@ -82,7 +82,7 @@ def test_list_endpoint_pagination_meta(client: TestClient, overrides) -> None:
     body = resp.json()
     assert body["success"] is True
     assert isinstance(body["data"], list)
-    assert len(body["data"]) == 5
+    assert len(body["data"]) == 2
     meta = body["meta"]
     assert meta == {"page": 1, "page_size": 2, "total_items": 5, "total_pages": 3}
 
@@ -97,3 +97,16 @@ def test_list_endpoint_meta_defaults(client: TestClient, overrides) -> None:
     assert resp.status_code == 200
     meta = resp.json()["meta"]
     assert meta == {"page": 1, "page_size": 20, "total_items": 3, "total_pages": 1}
+
+
+def test_list_endpoint_page_beyond_last_clamps(client: TestClient, overrides) -> None:
+    _seed_user(overrides[providers.get_user_repository])
+    _seed_projects(overrides[providers.get_project_repository], count=5)
+
+    headers = auth_header(None, "user-1", ["customer"])
+    resp = client.get("/api/v1/projects/my?page=99&page_size=2", headers=headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["data"]) == 1
+    assert body["meta"] == {"page": 3, "page_size": 2, "total_items": 5, "total_pages": 3}

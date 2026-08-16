@@ -10,8 +10,6 @@ from app.presentation.api.v1.project.schemas import (
     DeliveryResponse,
     ProjectResponse,
 )
-from app.presentation.core.envelope import PaginationMeta
-from app.presentation.core.pagination import PageQuery
 
 
 def to_budget_response(result: BudgetResult) -> BudgetResponse:
@@ -71,13 +69,4 @@ def to_delivery_response(result: DeliveryResult) -> DeliveryResponse:
         reviewed_at=result.reviewed_at,
         reviewer_user_id=result.reviewer_user_id,
         file_asset_ids=list(result.file_asset_ids),
-    )
-
-
-def pagination_meta(pagination: PageQuery, total_items: int) -> PaginationMeta:
-    return PaginationMeta(
-        page=pagination.page,
-        page_size=pagination.page_size,
-        total_items=total_items,
-        total_pages=(total_items + pagination.page_size - 1) // pagination.page_size,
     )

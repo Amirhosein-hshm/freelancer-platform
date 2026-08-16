@@ -24,9 +24,10 @@ from app.presentation.core.providers import (
     get_get_system_analytics_use_case,
     get_get_user_statistics_use_case,
 )
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
 
-router = APIRouter(prefix="/reporting", tags=["Reporting"])
+router = APIRouter(prefix="/reporting", tags=["Reporting"], route_class=DocumentedAPIRoute)
 
 
 @router.get(

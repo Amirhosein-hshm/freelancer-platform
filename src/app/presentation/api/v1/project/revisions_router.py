@@ -17,9 +17,10 @@ from app.presentation.core.providers import (
     get_close_project_revision_request_use_case,
     get_get_project_revision_request_use_case,
 )
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
 
-router = APIRouter(prefix="/revisions", tags=["Project"])
+router = APIRouter(prefix="/revisions", tags=["Project"], route_class=DocumentedAPIRoute)
 
 
 def _to_revision_response(

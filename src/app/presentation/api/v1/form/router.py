@@ -67,9 +67,10 @@ from app.presentation.core.providers import (
     get_update_field_use_case,
     get_update_form_template_use_case,
 )
+from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
 
-router = APIRouter(prefix="/form-templates", tags=["Form"])
+router = APIRouter(prefix="/form-templates", tags=["Form"], route_class=DocumentedAPIRoute)
 
 
 def _option_response(result) -> FormFieldOptionResponse:
