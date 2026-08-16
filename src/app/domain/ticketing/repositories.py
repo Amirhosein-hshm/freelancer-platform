@@ -28,10 +28,20 @@ class ITicketMessageRepository(ABC):
     async def add(self, message: TicketMessage) -> None: ...
 
     @abstractmethod
+    async def get_by_id(self, message_id: EntityId) -> TicketMessage:
+        """Raise ``TicketMessageNotFoundError`` if absent."""
+
+    @abstractmethod
     async def list_by_ticket(self, ticket_id: EntityId) -> list[TicketMessage]: ...
 
     @abstractmethod
     async def list_by_file_asset_id(self, file_asset_id: EntityId) -> list[TicketMessage]: ...
+
+    @abstractmethod
+    async def update(self, message: TicketMessage) -> None: ...
+
+    @abstractmethod
+    async def delete(self, message_id: EntityId) -> None: ...
 
 
 class ITicketParticipantRepository(ABC):

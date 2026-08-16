@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.feedback.entities import Rating
+from app.domain.feedback.exceptions import RatingNotFoundError
 from app.domain.feedback.repositories import IRatingRepository
 from app.domain.shared.types import EntityId
 from app.infrastructure.db.models.feedback_models import RatingModel
@@ -29,6 +30,12 @@ class SqlAlchemyRatingRepository(IRatingRepository):
             )
         )
 
+    async def get_by_id(self, rating_id: EntityId) -> Rating:
+        row = await self._session.get(RatingModel, rating_id)
+        if row is None:
+            raise RatingNotFoundError(f"Rating {rating_id} not found.")
+        return to_domain_rating(row)
+
     async def find_by_project(self, project_id: EntityId) -> Rating | None:
         result = await self._session.execute(select(RatingModel).where(RatingModel.project_id == project_id))
         row = result.scalar_one_or_none()
@@ -41,6 +48,23 @@ class SqlAlchemyRatingRepository(IRatingRepository):
             .order_by(RatingModel.created_at.desc())
         )
         return [to_domain_rating(row) for row in result.scalars().all()]
+
+    async def update(self, rating: Rating) -> None:
+        row = await self._session.get(RatingModel, rating.id)
+        if row is None:
+            raise RatingNotFoundError(f"Rating {rating.id} not found.")
+        row.customer_review_id = rating.customer_review_id
+        row.project_id = rating.project_id
+        row.customer_user_id = rating.customer_user_id
+        row.freelancer_profile_id = rating.freelancer_profile_id
+        row.score = rating.score
+        row.comment = rating.comment
+        row.is_public = rating.is_public
+
+    async def delete(self, rating_id: EntityId) -> None:
+        row = await self._session.get(RatingModel, rating_id)
+        if row is not None:
+            await self._session.delete(row)
 
     async def average_score_for_freelancer(self, freelancer_profile_id: EntityId) -> Decimal | None:
         result = await self._session.execute(

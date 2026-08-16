@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, Field
@@ -41,6 +42,31 @@ class RatingResponse(BaseModel):
     score: int
     comment: str | None
     is_public: bool
+
+
+class UpdateRatingRequest(BaseModel):
+    score: int = Field(..., ge=1, le=5)
+    comment: str | None = None
+    is_public: bool = False
+
+
+class CustomerReviewResponse(BaseModel):
+    review_id: str
+    project_id: str
+    project_delivery_id: str
+    customer_user_id: str
+    decision: ReviewStatus
+    comment: str | None
+    reviewed_at: datetime
+
+
+class CustomerReviewsResponse(BaseModel):
+    project_id: str
+    reviews: list[CustomerReviewResponse]
+
+
+class UpdateCustomerReviewRequest(BaseModel):
+    comment: str | None = None
 
 
 class ProjectRatingResponse(BaseModel):

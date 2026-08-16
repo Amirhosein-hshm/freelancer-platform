@@ -2,7 +2,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.domain.ticketing.enums import TicketMessageType, TicketPriority, TicketStatus
+from app.domain.ticketing.enums import (
+    TicketMessageType,
+    TicketParticipantRole,
+    TicketPriority,
+    TicketStatus,
+)
 
 
 class CreateTicketRequest(BaseModel):
@@ -74,3 +79,21 @@ class TicketResponse(BaseModel):
 class CloseTicketResponse(BaseModel):
     ticket_id: str
     status: TicketStatus
+
+
+class UpdateTicketRequest(BaseModel):
+    subject: str | None = Field(None, min_length=1)
+    priority: TicketPriority | None = None
+    status: TicketStatus | None = None
+
+
+class TicketParticipantResponse(BaseModel):
+    participant_id: str
+    ticket_id: str
+    user_id: str
+    participant_role: TicketParticipantRole
+    joined_at: datetime
+
+
+class UpdateTicketMessageRequest(BaseModel):
+    body: str = Field(..., min_length=1)

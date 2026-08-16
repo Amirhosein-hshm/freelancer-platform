@@ -40,6 +40,45 @@ class Ticket(AggregateRoot):
         self.closed_by_user_id = by_user_id
         self.closed_at = at
 
+    def reopen(self) -> None:
+        if self.status != TicketStatus.CLOSED:
+            raise InvalidStateTransitionError(
+                f"Ticket {self.id} must be closed to reopen; current status is '{self.status.value}'."
+            )
+        self.status = TicketStatus.OPEN
+        self.closed_by_user_id = None
+        self.closed_at = None
+
+    def archive(self, by_user_id: EntityId, at: datetime) -> None:
+        if self.status == TicketStatus.ARCHIVED:
+            raise InvalidStateTransitionError(f"Ticket {self.id} is already archived.")
+        self.status = TicketStatus.ARCHIVED
+        self.closed_by_user_id = by_user_id
+        self.closed_at = at
+
+    def transition_to(self, status: TicketStatus) -> None:
+        if self.status == TicketStatus.ARCHIVED:
+            raise InvalidStateTransitionError(f"Ticket {self.id} is archived and cannot be modified.")
+        if self.status == TicketStatus.CLOSED and status != TicketStatus.OPEN:
+            raise InvalidStateTransitionError(
+                f"Closed ticket {self.id} must be reopened before transitioning to '{status.value}'."
+            )
+        if status in (TicketStatus.CLOSED, TicketStatus.ARCHIVED):
+            raise InvalidStateTransitionError(
+                f"Use close() or archive() to reach '{status.value}', not transition_to()."
+            )
+        self.status = status
+
+    def set_priority(self, priority: TicketPriority) -> None:
+        if self.status == TicketStatus.ARCHIVED:
+            raise InvalidStateTransitionError(f"Ticket {self.id} is archived and cannot be modified.")
+        self.priority = priority
+
+    def update_subject(self, subject: str) -> None:
+        if self.status == TicketStatus.ARCHIVED:
+            raise InvalidStateTransitionError(f"Ticket {self.id} is archived and cannot be modified.")
+        self.subject = subject
+
     def touch_last_message(self, at: datetime) -> None:
         self.last_message_at = at
 
@@ -67,3 +106,14 @@ class TicketMessage(Entity):
     edited_at: datetime | None
     deleted_at: datetime | None
     attachment_file_asset_ids: list[EntityId]
+
+    def edit(self, body: str, at: datetime) -> None:
+        if self.deleted_at is not None:
+            raise InvalidStateTransitionError("Cannot edit a deleted message.")
+        self.body = body
+        self.edited_at = at
+
+    def soft_delete(self, at: datetime) -> None:
+        if self.deleted_at is not None:
+            raise InvalidStateTransitionError("Message is already deleted.")
+        self.deleted_at = at

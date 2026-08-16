@@ -1,5 +1,6 @@
 from app.domain.shared.exceptions import (
     BusinessRuleViolationError,
+    EntityNotFoundError,
     UniqueConstraintViolationError,
 )
 
@@ -18,3 +19,11 @@ class ProjectNotCompletedError(BusinessRuleViolationError):
 
 class CustomerReviewNotApprovedError(BusinessRuleViolationError):
     """Raised when rating requires an approved customer review."""
+
+
+class CustomerReviewNotFoundError(EntityNotFoundError):
+    """Raised when a customer review is not found."""
+
+
+class RatingNotFoundError(EntityNotFoundError):
+    """Raised when a rating is not found."""

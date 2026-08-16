@@ -255,6 +255,7 @@ Read-only surfacing of the seeded role and permission catalogs. Both require `us
 | 73 | POST | `/deliveries/{delivery_id}/approve` | `approve_delivery` | auth | `ApproveDeliveryCommand` → `ApproveDeliveryUseCase` |
 | 74 | POST | `/deliveries/{delivery_id}/reject` | `reject_delivery` | auth | `RejectDeliveryCommand` → `RejectDeliveryUseCase` |
 | 74a | GET | `/deliveries/{delivery_id}` | `get_project_delivery` | auth | `GetProjectDeliveryQuery` → `GetProjectDeliveryUseCase` |
+| 74b | GET | `/deliveries/{delivery_id}/review` | `get_supervisor_review` | auth | `GetSupervisorReviewQuery` → `GetSupervisorReviewUseCase` |
 
 ### 3.7a Project Revision Requests — `/api/v1/revisions`
 
@@ -271,6 +272,12 @@ Read-only surfacing of the seeded role and permission catalogs. Both require `us
 | 76 | POST | `/feedback/ratings` | `submit_rating` | auth | `SubmitRatingCommand` → `SubmitRatingUseCase` (201) |
 | 77 | GET | `/feedback/projects/{project_id}/rating` | `get_project_rating` | auth | `GetProjectRatingQuery` → `GetProjectRatingUseCase` |
 | 78 | GET | `/feedback/freelancers/{freelancer_profile_id}/ratings` | `get_freelancer_ratings` | auth | `GetFreelancerRatingsQuery` → `GetFreelancerRatingsUseCase` |
+| 78a | GET | `/feedback/reviews/{review_id}` | `get_customer_review` | auth | `GetCustomerReviewQuery` → `GetCustomerReviewUseCase` |
+| 78b | GET | `/feedback/projects/{project_id}/reviews` | `list_customer_reviews` | auth | `ListCustomerReviewsQuery` → `ListCustomerReviewsUseCase` |
+| 78c | PATCH | `/feedback/reviews/{review_id}` | `update_customer_review` | auth | `UpdateCustomerReviewCommand` → `UpdateCustomerReviewUseCase` |
+| 78d | DELETE | `/feedback/reviews/{review_id}` | `delete_customer_review` | auth | `DeleteCustomerReviewCommand` → `DeleteCustomerReviewUseCase` |
+| 78e | PATCH | `/feedback/ratings/{rating_id}` | `update_rating` | auth | `UpdateRatingCommand` → `UpdateRatingUseCase` |
+| 78f | DELETE | `/feedback/ratings/{rating_id}` | `delete_rating` | auth | `DeleteRatingCommand` → `DeleteRatingUseCase` |
 
 ### 3.9 Ticketing — `/api/v1/tickets`
 
@@ -282,6 +289,11 @@ Read-only surfacing of the seeded role and permission catalogs. Both require `us
 | 82 | POST | `/tickets/{ticket_id}/messages` | `send_message` | auth | `SendMessageCommand` → `SendMessageUseCase` (201) |
 | 83 | POST | `/tickets/{ticket_id}/assign` | `assign_ticket` | auth | `AssignTicketCommand` → `AssignTicketUseCase` |
 | 84 | POST | `/tickets/{ticket_id}/close` | `close_ticket` | auth | `CloseTicketCommand` → `CloseTicketUseCase` |
+| 84b | GET | `/tickets/{ticket_id}` | `get_ticket` | auth | `GetTicketQuery` → `GetTicketUseCase` |
+| 84c | PATCH | `/tickets/{ticket_id}` | `update_ticket` | auth | `UpdateTicketCommand` → `UpdateTicketUseCase` |
+| 84d | GET | `/tickets/{ticket_id}/participants` | `list_ticket_participants` | auth | `ListTicketParticipantsQuery` → `ListTicketParticipantsUseCase` |
+| 84e | PATCH | `/tickets/{ticket_id}/messages/{message_id}` | `update_ticket_message` | auth | `UpdateTicketMessageCommand` → `UpdateTicketMessageUseCase` |
+| 84f | DELETE | `/tickets/{ticket_id}/messages/{message_id}` | `delete_ticket_message` | auth | `DeleteTicketMessageCommand` → `DeleteTicketMessageUseCase` |
 
 ### 3.9a Admin Ticketing (on-behalf) — `/api/v1/admin/tickets`
 
@@ -332,6 +344,18 @@ maps the `Result` → Pydantic response. Consistent pattern: **one handler = one
 | `GET /revisions/{revision_id}` | `GetProjectRevisionRequestUseCase` | Ownership check via project customer. |
 | `POST /revisions/{revision_id}/close` | `CloseProjectRevisionRequestUseCase` | Ownership check via project customer; closes an OPEN revision request. |
 | `GET /projects/{id}/status-history` | `ListProjectStatusHistoryUseCase` | Ownership check via project customer. |
+| `GET /deliveries/{delivery_id}/review` | `GetSupervisorReviewUseCase` | Supervisor of category, project owner, or admin. |
+| `GET /feedback/reviews/{review_id}` | `GetCustomerReviewUseCase` | Project owner/admin. |
+| `GET /feedback/projects/{id}/reviews` | `ListCustomerReviewsUseCase` | Project owner/admin; ordered by `reviewed_at` desc. |
+| `PATCH /feedback/reviews/{review_id}` | `UpdateCustomerReviewUseCase` | Project owner/admin; updates comment. |
+| `DELETE /feedback/reviews/{review_id}` | `DeleteCustomerReviewUseCase` | Project owner/admin. |
+| `PATCH /feedback/ratings/{rating_id}` | `UpdateRatingUseCase` | Project owner/admin. |
+| `DELETE /feedback/ratings/{rating_id}` | `DeleteRatingUseCase` | Project owner/admin. |
+| `GET /tickets/{ticket_id}` | `GetTicketUseCase` | Participant or `ticket.read_any`. |
+| `PATCH /tickets/{ticket_id}` | `UpdateTicketUseCase` | Ticket owner/admin; subject, priority, status transitions. |
+| `GET /tickets/{ticket_id}/participants` | `ListTicketParticipantsUseCase` | Participant or `ticket.read_any`. |
+| `PATCH /tickets/{ticket_id}/messages/{message_id}` | `UpdateTicketMessageUseCase` | Sender or admin. |
+| `DELETE /tickets/{ticket_id}/messages/{message_id}` | `DeleteTicketMessageUseCase` | Sender or admin; soft delete. |
 | All reporting GETs | `GetXStatisticsUseCase` | `ReportingQuery(actor_id)` reused for all — coarse (no filters). |
 
 ---

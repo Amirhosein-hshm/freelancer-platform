@@ -207,9 +207,11 @@ def build_app() -> FastAPI:
     app.dependency_overrides[providers.get_project_revision_request_repository] = (
         lambda session=Depends(get_db_session): SqlAlchemyProjectRevisionRequestRepository(session)
     )
-    app.dependency_overrides[providers.get_project_status_history_repository] = (
-        lambda session=Depends(get_db_session): SqlAlchemyProjectStatusHistoryRepository(session)
-    )
+
+    def _status_history_repo(session=Depends(get_db_session)) -> SqlAlchemyProjectStatusHistoryRepository:
+        return SqlAlchemyProjectStatusHistoryRepository(session)
+
+    app.dependency_overrides[providers.get_project_status_history_repository] = _status_history_repo
     app.dependency_overrides[providers.get_customer_review_repository] = lambda session=Depends(get_db_session): (
         SqlAlchemyCustomerReviewRepository(session)
     )

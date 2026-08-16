@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.shared.types import EntityId
 from app.domain.ticketing.entities import TicketMessage
+from app.domain.ticketing.exceptions import TicketMessageNotFoundError
 from app.domain.ticketing.repositories import ITicketMessageRepository
 from app.infrastructure.db.models.ticketing_models import TicketMessageModel
 from app.infrastructure.repositories.ticketing_mapping import to_domain_ticket_message
@@ -29,6 +30,12 @@ class SqlAlchemyTicketMessageRepository(ITicketMessageRepository):
             )
         )
 
+    async def get_by_id(self, message_id: EntityId) -> TicketMessage:
+        row = await self._session.get(TicketMessageModel, message_id)
+        if row is None:
+            raise TicketMessageNotFoundError(f"Ticket message {message_id} not found.")
+        return to_domain_ticket_message(row)
+
     async def list_by_ticket(self, ticket_id: EntityId) -> list[TicketMessage]:
         result = await self._session.execute(
             select(TicketMessageModel)
@@ -42,3 +49,16 @@ class SqlAlchemyTicketMessageRepository(ITicketMessageRepository):
             select(TicketMessageModel).where(TicketMessageModel.attachment_file_asset_ids.contains([file_asset_id]))
         )
         return [to_domain_ticket_message(row) for row in result.scalars().all()]
+
+    async def update(self, message: TicketMessage) -> None:
+        row = await self._session.get(TicketMessageModel, message.id)
+        if row is None:
+            raise TicketMessageNotFoundError(f"Ticket message {message.id} not found.")
+        row.body = message.body
+        row.edited_at = message.edited_at
+        row.deleted_at = message.deleted_at
+
+    async def delete(self, message_id: EntityId) -> None:
+        row = await self._session.get(TicketMessageModel, message_id)
+        if row is not None:
+            await self._session.delete(row)

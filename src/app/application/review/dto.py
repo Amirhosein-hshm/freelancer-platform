@@ -68,3 +68,14 @@ class ReviewDeliveryResult:
     project_id: EntityId
     decision: ReviewStatus
     project_status: ProjectStatus
+
+
+@dataclass(frozen=True)
+class GetSupervisorReviewQuery:
+    actor_id: EntityId
+    project_delivery_id: EntityId
+
+
+@dataclass(frozen=True)
+class GetSupervisorReviewResult:
+    review: ReviewResult

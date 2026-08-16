@@ -18,6 +18,9 @@ class CustomerReview(Entity):
     comment: str | None
     reviewed_at: datetime
 
+    def update_comment(self, comment: str | None) -> None:
+        self.comment = comment
+
 
 @dataclass(eq=False)
 class Rating(Entity):
@@ -34,3 +37,10 @@ class Rating(Entity):
     def __post_init__(self) -> None:
         if not 1 <= self.score <= 5:
             raise InvalidRatingScoreError(f"Rating score must be between 1 and 5, got {self.score}.")
+
+    def update_details(self, score: int, comment: str | None, is_public: bool) -> None:
+        if not 1 <= score <= 5:
+            raise InvalidRatingScoreError(f"Rating score must be between 1 and 5, got {score}.")
+        self.score = score
+        self.comment = comment
+        self.is_public = is_public

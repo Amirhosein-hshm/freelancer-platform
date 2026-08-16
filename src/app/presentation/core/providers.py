@@ -20,10 +20,16 @@ from app.application.category.use_cases.get_category_projects import GetCategory
 from app.application.category.use_cases.list_category_supervisors import ListCategorySupervisorsUseCase
 from app.application.category.use_cases.remove_supervisor import RemoveSupervisorUseCase
 from app.application.category.use_cases.update_category import UpdateCategoryUseCase
+from app.application.feedback.use_cases.delete_customer_review import DeleteCustomerReviewUseCase
+from app.application.feedback.use_cases.delete_rating import DeleteRatingUseCase
+from app.application.feedback.use_cases.get_customer_review import GetCustomerReviewUseCase
 from app.application.feedback.use_cases.get_freelancer_ratings import GetFreelancerRatingsUseCase
 from app.application.feedback.use_cases.get_project_rating import GetProjectRatingUseCase
+from app.application.feedback.use_cases.list_customer_reviews import ListCustomerReviewsUseCase
 from app.application.feedback.use_cases.submit_rating import SubmitRatingUseCase
 from app.application.feedback.use_cases.submit_review import SubmitReviewUseCase
+from app.application.feedback.use_cases.update_customer_review import UpdateCustomerReviewUseCase
+from app.application.feedback.use_cases.update_rating import UpdateRatingUseCase
 from app.application.file.use_cases.get_file_asset import GetFileAssetUseCase
 from app.application.file.use_cases.upload_file import UploadFileUseCase
 from app.application.form.use_cases.add_field import AddFieldUseCase
@@ -123,6 +129,7 @@ from app.application.reporting.use_cases.get_user_statistics import GetUserStati
 from app.application.review.use_cases.approve_delivery import ApproveDeliveryUseCase
 from app.application.review.use_cases.get_pending_reviews import GetPendingReviewsUseCase
 from app.application.review.use_cases.get_supervisor_projects import GetSupervisorProjectsUseCase
+from app.application.review.use_cases.get_supervisor_review import GetSupervisorReviewUseCase
 from app.application.review.use_cases.reject_delivery import RejectDeliveryUseCase
 from app.application.review.use_cases.review_delivery import ReviewDeliveryUseCase
 from app.application.shared.authorization import IAuthorizationService
@@ -142,9 +149,14 @@ from app.application.ticketing.use_cases.admin_create_ticket_on_behalf import Ad
 from app.application.ticketing.use_cases.assign_ticket import AssignTicketUseCase
 from app.application.ticketing.use_cases.close_ticket import CloseTicketUseCase
 from app.application.ticketing.use_cases.create_ticket import CreateTicketUseCase
+from app.application.ticketing.use_cases.delete_ticket_message import DeleteTicketMessageUseCase
+from app.application.ticketing.use_cases.get_ticket import GetTicketUseCase
 from app.application.ticketing.use_cases.get_ticket_messages import GetTicketMessagesUseCase
 from app.application.ticketing.use_cases.get_user_tickets import GetUserTicketsUseCase
+from app.application.ticketing.use_cases.list_ticket_participants import ListTicketParticipantsUseCase
 from app.application.ticketing.use_cases.send_message import SendMessageUseCase
+from app.application.ticketing.use_cases.update_ticket import UpdateTicketUseCase
+from app.application.ticketing.use_cases.update_ticket_message import UpdateTicketMessageUseCase
 from app.domain.category.repositories import ICategoryRepository, ICategorySupervisorRepository
 from app.domain.feedback.repositories import ICustomerReviewRepository, IRatingRepository
 from app.domain.form.repositories import IFormTemplateRepository
@@ -872,6 +884,20 @@ def get_delete_category_use_case(
     return DeleteCategoryUseCase(authorization_service, category_repo, project_repo, clock, uow)
 
 
+def get_delete_customer_review_use_case(
+    project_repo: IProjectRepository = Depends(get_project_repository),
+    customer_review_repo: ICustomerReviewRepository = Depends(get_customer_review_repository),
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
+) -> DeleteCustomerReviewUseCase:
+    return DeleteCustomerReviewUseCase(
+        project_repo,
+        customer_review_repo,
+        authorization_service,
+        uow,
+    )
+
+
 def get_delete_form_template_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
@@ -895,12 +921,39 @@ def get_delete_portfolio_item_use_case(
     return DeletePortfolioItemUseCase(profile_repo, portfolio_item_repo)
 
 
+def get_delete_rating_use_case(
+    project_repo: IProjectRepository = Depends(get_project_repository),
+    rating_repo: IRatingRepository = Depends(get_rating_repository),
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
+) -> DeleteRatingUseCase:
+    return DeleteRatingUseCase(project_repo, rating_repo, authorization_service, uow)
+
+
 def get_delete_resume_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
     resume_repo: IResumeRepository = Depends(get_resume_repository),
 ) -> DeleteResumeUseCase:
     return DeleteResumeUseCase(authorization_service, profile_repo, resume_repo)
+
+
+def get_delete_ticket_message_use_case(
+    ticket_repo: ITicketRepository = Depends(get_ticket_repository),
+    message_repo: ITicketMessageRepository = Depends(get_ticket_message_repository),
+    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    clock: IClock = Depends(get_clock),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
+) -> DeleteTicketMessageUseCase:
+    return DeleteTicketMessageUseCase(
+        ticket_repo,
+        message_repo,
+        participant_repo,
+        authorization_service,
+        clock,
+        uow,
+    )
 
 
 def get_forgot_password_use_case(
@@ -944,6 +997,14 @@ def get_get_current_resume_use_case(
     resume_repo: IResumeRepository = Depends(get_resume_repository),
 ) -> GetCurrentResumeUseCase:
     return GetCurrentResumeUseCase(authorization_service, profile_repo, resume_repo)
+
+
+def get_get_customer_review_use_case(
+    project_repo: IProjectRepository = Depends(get_project_repository),
+    customer_review_repo: ICustomerReviewRepository = Depends(get_customer_review_repository),
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+) -> GetCustomerReviewUseCase:
+    return GetCustomerReviewUseCase(project_repo, customer_review_repo, authorization_service)
 
 
 def get_get_customer_statistics_use_case(
@@ -1083,6 +1144,22 @@ def get_get_supervisor_projects_use_case(
     return GetSupervisorProjectsUseCase(project_repo)
 
 
+def get_get_supervisor_review_use_case(
+    project_repo: IProjectRepository = Depends(get_project_repository),
+    delivery_repo: IProjectDeliveryRepository = Depends(get_project_delivery_repository),
+    review_repo: ISupervisorReviewRepository = Depends(get_supervisor_review_repository),
+    category_supervisor_repo: ICategorySupervisorRepository = Depends(get_category_supervisor_repository),
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+) -> GetSupervisorReviewUseCase:
+    return GetSupervisorReviewUseCase(
+        project_repo,
+        delivery_repo,
+        review_repo,
+        category_supervisor_repo,
+        authorization_service,
+    )
+
+
 def get_get_system_analytics_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     reporting_read_repo: IReportingReadRepository = Depends(get_reporting_read_repository),
@@ -1096,6 +1173,14 @@ def get_get_ticket_messages_use_case(
     participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
 ) -> GetTicketMessagesUseCase:
     return GetTicketMessagesUseCase(ticket_repo, message_repo, participant_repo)
+
+
+def get_get_ticket_use_case(
+    ticket_repo: ITicketRepository = Depends(get_ticket_repository),
+    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+) -> GetTicketUseCase:
+    return GetTicketUseCase(ticket_repo, participant_repo, authorization_service)
 
 
 def get_get_user_statistics_use_case(
@@ -1137,6 +1222,14 @@ def get_list_category_supervisors_use_case(
     supervisor_repo: ICategorySupervisorRepository = Depends(get_category_supervisor_repository),
 ) -> ListCategorySupervisorsUseCase:
     return ListCategorySupervisorsUseCase(category_repo, supervisor_repo)
+
+
+def get_list_customer_reviews_use_case(
+    project_repo: IProjectRepository = Depends(get_project_repository),
+    customer_review_repo: ICustomerReviewRepository = Depends(get_customer_review_repository),
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+) -> ListCustomerReviewsUseCase:
+    return ListCustomerReviewsUseCase(project_repo, customer_review_repo, authorization_service)
 
 
 def get_list_form_template_versions_use_case(
@@ -1223,6 +1316,14 @@ def get_list_roles_use_case(
     role_repo: IRoleRepository = Depends(get_role_repository),
 ) -> ListRolesUseCase:
     return ListRolesUseCase(authorization_service, role_repo)
+
+
+def get_list_ticket_participants_use_case(
+    ticket_repo: ITicketRepository = Depends(get_ticket_repository),
+    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+) -> ListTicketParticipantsUseCase:
+    return ListTicketParticipantsUseCase(ticket_repo, participant_repo, authorization_service)
 
 
 def get_login_user_use_case(
@@ -1614,6 +1715,20 @@ def get_update_category_use_case(
     return UpdateCategoryUseCase(authorization_service, category_repo, uow)
 
 
+def get_update_customer_review_use_case(
+    project_repo: IProjectRepository = Depends(get_project_repository),
+    customer_review_repo: ICustomerReviewRepository = Depends(get_customer_review_repository),
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
+) -> UpdateCustomerReviewUseCase:
+    return UpdateCustomerReviewUseCase(
+        project_repo,
+        customer_review_repo,
+        authorization_service,
+        uow,
+    )
+
+
 def get_update_field_option_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
@@ -1657,11 +1772,47 @@ def get_update_portfolio_item_use_case(
     return UpdatePortfolioItemUseCase(profile_repo, portfolio_item_repo, file_storage)
 
 
+def get_update_rating_use_case(
+    project_repo: IProjectRepository = Depends(get_project_repository),
+    rating_repo: IRatingRepository = Depends(get_rating_repository),
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
+) -> UpdateRatingUseCase:
+    return UpdateRatingUseCase(project_repo, rating_repo, authorization_service, uow)
+
+
 def get_update_resume_use_case(
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
     resume_repo: IResumeRepository = Depends(get_resume_repository),
 ) -> UpdateResumeUseCase:
     return UpdateResumeUseCase(profile_repo, resume_repo)
+
+
+def get_update_ticket_message_use_case(
+    ticket_repo: ITicketRepository = Depends(get_ticket_repository),
+    message_repo: ITicketMessageRepository = Depends(get_ticket_message_repository),
+    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    clock: IClock = Depends(get_clock),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
+) -> UpdateTicketMessageUseCase:
+    return UpdateTicketMessageUseCase(
+        ticket_repo,
+        message_repo,
+        participant_repo,
+        authorization_service,
+        clock,
+        uow,
+    )
+
+
+def get_update_ticket_use_case(
+    ticket_repo: ITicketRepository = Depends(get_ticket_repository),
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    clock: IClock = Depends(get_clock),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
+) -> UpdateTicketUseCase:
+    return UpdateTicketUseCase(ticket_repo, authorization_service, clock, uow)
 
 
 def get_upload_file_use_case(

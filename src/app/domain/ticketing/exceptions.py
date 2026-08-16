@@ -14,3 +14,7 @@ class TicketClosedError(BusinessRuleViolationError):
 
 class NotTicketParticipantError(BusinessRuleViolationError):
     """Raised when a user who is not a ticket participant performs an action."""
+
+
+class TicketMessageNotFoundError(EntityNotFoundError):
+    """Raised when a ticket message cannot be found."""

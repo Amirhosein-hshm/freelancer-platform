@@ -6,6 +6,7 @@ from app.application.review.dto import (
     ApproveDeliveryCommand,
     GetPendingReviewsQuery,
     GetSupervisorProjectsQuery,
+    GetSupervisorReviewQuery,
     RejectDeliveryCommand,
     ReviewDeliveryCommand,
     ReviewDeliveryResult,
@@ -14,6 +15,7 @@ from app.application.review.dto import (
 from app.application.review.use_cases.approve_delivery import ApproveDeliveryUseCase
 from app.application.review.use_cases.get_pending_reviews import GetPendingReviewsUseCase
 from app.application.review.use_cases.get_supervisor_projects import GetSupervisorProjectsUseCase
+from app.application.review.use_cases.get_supervisor_review import GetSupervisorReviewUseCase
 from app.application.review.use_cases.reject_delivery import RejectDeliveryUseCase
 from app.application.review.use_cases.review_delivery import ReviewDeliveryUseCase
 from app.presentation.api.v1.project.mappers import to_delivery_response
@@ -32,6 +34,7 @@ from app.presentation.core.providers import (
     get_get_pending_reviews_use_case,
     get_get_project_delivery_use_case,
     get_get_supervisor_projects_use_case,
+    get_get_supervisor_review_use_case,
     get_reject_delivery_use_case,
     get_review_delivery_use_case,
 )
@@ -154,6 +157,25 @@ async def get_project_delivery(
     return SuccessEnvelope(
         message="Delivery details.",
         data=to_delivery_response(result),
+    )
+
+
+@deliveries_router.get(
+    "/{delivery_id}/review",
+    response_model=SuccessEnvelope[ReviewResponse],
+    operation_id="get_supervisor_review",
+)
+async def get_supervisor_review(
+    delivery_id: str,
+    current_user=Depends(get_current_user),
+    use_case: GetSupervisorReviewUseCase = Depends(get_get_supervisor_review_use_case),
+) -> SuccessEnvelope[ReviewResponse]:
+    result = await use_case.execute(
+        GetSupervisorReviewQuery(actor_id=current_user.user_id, project_delivery_id=delivery_id)
+    )
+    return SuccessEnvelope(
+        message="Supervisor review details.",
+        data=_to_review_response(result.review),
     )
 
 

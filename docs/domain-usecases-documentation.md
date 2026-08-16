@@ -3937,7 +3937,18 @@ The remaining current deviations follow:
 | GetProjectRevisionRequest | `/revisions/{revision_id}` | GET | `get_project_revision_request` |
 | CloseProjectRevisionRequest | `/revisions/{revision_id}/close` | POST | `close_project_revision_request` |
 | ListProjectStatusHistory | `/projects/{project_id}/status-history` | GET | `list_project_status_history` |
+| GetSupervisorReview | `/deliveries/{delivery_id}/review` | GET | `get_supervisor_review` |
 | GetPendingReviews | `/reviews/pending` | GET | `get_pending_reviews` |
+| SubmitReview | `/feedback/reviews` | POST | `submit_review` |
+| GetCustomerReview | `/feedback/reviews/{review_id}` | GET | `get_customer_review` |
+| ListCustomerReviews | `/feedback/projects/{project_id}/reviews` | GET | `list_customer_reviews` |
+| UpdateCustomerReview | `/feedback/reviews/{review_id}` | PATCH | `update_customer_review` |
+| DeleteCustomerReview | `/feedback/reviews/{review_id}` | DELETE | `delete_customer_review` |
+| SubmitRating | `/feedback/ratings` | POST | `submit_rating` |
+| UpdateRating | `/feedback/ratings/{rating_id}` | PATCH | `update_rating` |
+| DeleteRating | `/feedback/ratings/{rating_id}` | DELETE | `delete_rating` |
+| GetProjectRating | `/feedback/projects/{project_id}/rating` | GET | `get_project_rating` |
+| GetFreelancerRatings | `/feedback/freelancers/{freelancer_profile_id}/ratings` | GET | `get_freelancer_ratings` |
 | GetSupervisorProjects | `/reviews/supervisor/projects` | GET | `get_supervisor_projects` |
 | ReviewDelivery | `/deliveries/{delivery_id}/review` | POST | `review_delivery` |
 | ApproveDelivery | `/deliveries/{delivery_id}/approve` | POST | `approve_delivery` |
@@ -3953,6 +3964,11 @@ The remaining current deviations follow:
 | SendMessage | `/tickets/{ticket_id}/messages` | POST | `send_message` |
 | AssignTicket | `/tickets/{ticket_id}/assign` | POST | `assign_ticket` |
 | CloseTicket | `/tickets/{ticket_id}/close` | POST | `close_ticket` |
+| GetTicket | `/tickets/{ticket_id}` | GET | `get_ticket` |
+| UpdateTicket | `/tickets/{ticket_id}` | PATCH | `update_ticket` |
+| ListTicketParticipants | `/tickets/{ticket_id}/participants` | GET | `list_ticket_participants` |
+| UpdateTicketMessage | `/tickets/{ticket_id}/messages/{message_id}` | PATCH | `update_ticket_message` |
+| DeleteTicketMessage | `/tickets/{ticket_id}/messages/{message_id}` | DELETE | `delete_ticket_message` |
 | GetDashboardStatistics | `/reporting/dashboard` | GET | `get_dashboard_statistics` |
 | GetUserStatistics | `/reporting/users` | GET | `get_user_statistics` |
 | GetProjectStatistics | `/reporting/projects` | GET | `get_project_statistics` |
@@ -4011,6 +4027,13 @@ The remaining current deviations follow:
   `/projects/{project_id}/applications/{application_id}`, `/projects/{project_id}/deliveries`,
   `/projects/{project_id}/revisions`, `/projects/{project_id}/status-history`, `/deliveries/{delivery_id}`,
   and `/revisions/{revision_id}` (`GET` + `POST /close`).
+- **2026-08-16 — Part 4d: review/feedback/ticketing gaps closed.** Added `GetSupervisorReviewUseCase`
+  (`GET /deliveries/{delivery_id}/review`); `CustomerReview` read/list/update/delete and `Rating`
+  update/delete use cases with routes; fixed `SubmitRatingUseCase` to attach to the latest approved
+  review; added `GetTicketUseCase`, `UpdateTicketUseCase`, `ListTicketParticipantsUseCase`,
+  `UpdateTicketMessageUseCase`, and `DeleteTicketMessageUseCase` with routes; added `Ticket`
+  `reopen()`/`archive()`/`transition_to()`/`set_priority()`/`update_subject()` domain methods and
+  `TicketMessage.edit()`/`soft_delete()`; added `ticket.manage_own`/`ticket.manage_any` permissions.
 - **2026-08-15 — Read-only IAM catalog endpoints added.** `ListRolesUseCase` / `ListPermissionsUseCase`
   exposed as `GET /roles` and `GET /permissions`, requiring `user.read`. Added `IPermissionRepository.list_all()`
   and documented the seed-only `Role`/`Permission` entity CRUD constraint in §12.5.

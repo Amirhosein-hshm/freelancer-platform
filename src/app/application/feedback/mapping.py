@@ -1,5 +1,17 @@
-from app.application.feedback.dto import RatingResult
-from app.domain.feedback.entities import Rating
+from app.application.feedback.dto import CustomerReviewResult, RatingResult
+from app.domain.feedback.entities import CustomerReview, Rating
+
+
+def to_review_result(review: CustomerReview) -> CustomerReviewResult:
+    return CustomerReviewResult(
+        review_id=review.id,
+        project_id=review.project_id,
+        project_delivery_id=review.project_delivery_id,
+        customer_user_id=review.customer_user_id,
+        decision=review.decision,
+        comment=review.comment,
+        reviewed_at=review.reviewed_at,
+    )
 
 
 def to_rating_result(rating: Rating) -> RatingResult:

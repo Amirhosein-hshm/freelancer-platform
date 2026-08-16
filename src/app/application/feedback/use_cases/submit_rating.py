@@ -64,14 +64,19 @@ class SubmitRatingUseCase(UseCase[SubmitRatingCommand, SubmitRatingResult]):
         if project.selected_application_id is None:
             raise ValidationError(f"Project {project.id} has no selected freelancer to rate.")
         application = await self._application_repo.get_by_id(project.selected_application_id)
-        customer_review = await self._customer_review_repo.find_by_project(project.id)
-        if customer_review is None:
-            raise ValidationError(f"Project {project.id} has no customer review yet; submit a review before rating.")
-        if customer_review.decision != ReviewStatus.APPROVED:
+        reviews = await self._customer_review_repo.list_by_project(project.id)
+        approved_reviews = [r for r in reviews if r.decision == ReviewStatus.APPROVED]
+        if not approved_reviews:
+            latest = reviews[0] if reviews else None
+            if latest is None:
+                raise ValidationError(
+                    f"Project {project.id} has no customer review yet; submit a review before rating."
+                )
             raise CustomerReviewNotApprovedError(
                 f"Project {project.id} cannot be rated until its customer review is "
-                f"approved (current decision: '{customer_review.decision.value}')."
+                f"approved (current decision: '{latest.decision.value}')."
             )
+        customer_review = approved_reviews[0]
         now = await self._clock.now()
         rating = Rating(
             id=await self._id_generator.new_id(),

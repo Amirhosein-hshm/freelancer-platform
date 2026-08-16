@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 
 from app.domain.project.enums import ProjectStatus
@@ -69,3 +70,85 @@ class GetProjectRatingQuery:
 @dataclass(frozen=True)
 class GetProjectRatingResult:
     rating: RatingResult | None
+
+
+@dataclass(frozen=True)
+class CustomerReviewResult:
+    review_id: EntityId
+    project_id: EntityId
+    project_delivery_id: EntityId
+    customer_user_id: EntityId
+    decision: ReviewStatus
+    comment: str | None
+    reviewed_at: datetime
+
+
+@dataclass(frozen=True)
+class GetCustomerReviewQuery:
+    actor_id: EntityId
+    review_id: EntityId
+
+
+@dataclass(frozen=True)
+class GetCustomerReviewResult:
+    review: CustomerReviewResult
+
+
+@dataclass(frozen=True)
+class ListCustomerReviewsQuery:
+    actor_id: EntityId
+    project_id: EntityId
+
+
+@dataclass(frozen=True)
+class ListCustomerReviewsResult:
+    project_id: EntityId
+    reviews: list[CustomerReviewResult]
+
+
+@dataclass(frozen=True)
+class UpdateCustomerReviewCommand:
+    actor_id: EntityId
+    review_id: EntityId
+    comment: str | None = None
+
+
+@dataclass(frozen=True)
+class UpdateCustomerReviewResult:
+    review_id: EntityId
+
+
+@dataclass(frozen=True)
+class DeleteCustomerReviewCommand:
+    actor_id: EntityId
+    review_id: EntityId
+
+
+@dataclass(frozen=True)
+class DeleteCustomerReviewResult:
+    review_id: EntityId
+
+
+@dataclass(frozen=True)
+class UpdateRatingCommand:
+    actor_id: EntityId
+    rating_id: EntityId
+    score: int
+    comment: str | None = None
+    is_public: bool = False
+
+
+@dataclass(frozen=True)
+class UpdateRatingResult:
+    rating_id: EntityId
+
+
+@dataclass(frozen=True)
+class DeleteRatingCommand:
+    actor_id: EntityId
+    rating_id: EntityId
+
+
+@dataclass(frozen=True)
+class DeleteRatingResult:
+    rating_id: EntityId

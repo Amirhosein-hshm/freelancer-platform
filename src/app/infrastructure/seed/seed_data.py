@@ -60,6 +60,8 @@ _PERMISSIONS = [
     ("ticket.read_any", "ticket", "read_any"),
     ("ticket.close_own", "ticket", "close_own"),
     ("ticket.close_any", "ticket", "close_any"),
+    ("ticket.manage_own", "ticket", "manage_own"),
+    ("ticket.manage_any", "ticket", "manage_any"),
     # Reporting
     ("reporting.read", "reporting", "read"),
     # File
@@ -86,6 +88,7 @@ ROLE_PERMISSIONS = {
         "feedback.manage_own",
         "ticket.read_own",
         "ticket.close_own",
+        "ticket.manage_own",
         "file.upload",
     ],
     "freelancer": [
@@ -95,6 +98,7 @@ ROLE_PERMISSIONS = {
         "feedback.manage_own",
         "ticket.read_own",
         "ticket.close_own",
+        "ticket.manage_own",
         "file.upload",
     ],
     "supervisor": [

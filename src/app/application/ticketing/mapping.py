@@ -1,5 +1,9 @@
-from app.application.ticketing.dto import TicketMessageResult, TicketResult
-from app.domain.ticketing.entities import Ticket, TicketMessage
+from app.application.ticketing.dto import (
+    TicketMessageResult,
+    TicketParticipantResult,
+    TicketResult,
+)
+from app.domain.ticketing.entities import Ticket, TicketMessage, TicketParticipant
 
 
 def to_ticket_result(ticket: Ticket) -> TicketResult:
@@ -28,4 +32,14 @@ def to_message_result(message: TicketMessage) -> TicketMessageResult:
         is_internal=message.is_internal,
         sent_at=message.sent_at,
         attachment_file_asset_ids=list(message.attachment_file_asset_ids),
+    )
+
+
+def to_participant_result(participant: TicketParticipant) -> TicketParticipantResult:
+    return TicketParticipantResult(
+        participant_id=participant.id,
+        ticket_id=participant.ticket_id,
+        user_id=participant.user_id,
+        participant_role=participant.participant_role,
+        joined_at=participant.joined_at,
     )

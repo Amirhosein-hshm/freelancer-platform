@@ -4,6 +4,7 @@ from datetime import datetime
 from app.domain.shared.types import EntityId
 from app.domain.ticketing.enums import (
     TicketMessageType,
+    TicketParticipantRole,
     TicketPriority,
     TicketStatus,
 )
@@ -122,3 +123,74 @@ class CloseTicketCommand:
 class CloseTicketResult:
     ticket_id: EntityId
     status: TicketStatus
+
+
+@dataclass(frozen=True)
+class GetTicketQuery:
+    actor_id: EntityId
+    ticket_id: EntityId
+
+
+@dataclass(frozen=True)
+class GetTicketResult:
+    ticket: TicketResult
+
+
+@dataclass(frozen=True)
+class UpdateTicketCommand:
+    actor_id: EntityId
+    ticket_id: EntityId
+    subject: str | None = None
+    priority: TicketPriority | None = None
+    status: TicketStatus | None = None
+
+
+@dataclass(frozen=True)
+class UpdateTicketResult:
+    ticket_id: EntityId
+    status: TicketStatus
+
+
+@dataclass(frozen=True)
+class ListTicketParticipantsQuery:
+    actor_id: EntityId
+    ticket_id: EntityId
+
+
+@dataclass(frozen=True)
+class TicketParticipantResult:
+    participant_id: EntityId
+    ticket_id: EntityId
+    user_id: EntityId
+    participant_role: TicketParticipantRole
+    joined_at: datetime
+
+
+@dataclass(frozen=True)
+class ListTicketParticipantsResult:
+    participants: list[TicketParticipantResult]
+
+
+@dataclass(frozen=True)
+class UpdateTicketMessageCommand:
+    actor_id: EntityId
+    ticket_id: EntityId
+    message_id: EntityId
+    body: str
+
+
+@dataclass(frozen=True)
+class UpdateTicketMessageResult:
+    message_id: EntityId
+
+
+@dataclass(frozen=True)
+class DeleteTicketMessageCommand:
+    actor_id: EntityId
+    ticket_id: EntityId
+    message_id: EntityId
+
+
+@dataclass(frozen=True)
+class DeleteTicketMessageResult:
+    message_id: EntityId

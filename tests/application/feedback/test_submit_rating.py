@@ -231,6 +231,41 @@ class TestSubmitRatingUseCase:
         with pytest.raises(PermissionDeniedError):
             await use_case.execute(SubmitRatingCommand(actor_id="intruder", project_id="project-1", score=4))
 
+    async def test_approved_review_wins_over_older_rejected_review(
+        self,
+        authorization_service,
+        project_repo,
+        application_repo,
+        customer_review_repo,
+        rating_repo,
+        id_generator,
+        clock,
+        uow,
+        make_project,
+        make_application,
+        make_customer_review,
+    ):
+        await make_project(status=ProjectStatus.COMPLETED)
+        await make_application()
+        await make_customer_review(review_id="review-rejected", decision=ReviewStatus.REJECTED)
+        await make_customer_review(review_id="review-approved", decision=ReviewStatus.APPROVED)
+        authorization_service.grant("customer-1", "feedback.manage_own")
+        use_case = build_rating(
+            authorization_service,
+            project_repo,
+            application_repo,
+            customer_review_repo,
+            rating_repo,
+            id_generator,
+            clock,
+            uow,
+        )
+
+        result = await use_case.execute(SubmitRatingCommand(actor_id="customer-1", project_id="project-1", score=4))
+
+        rating = await rating_repo.get_by_id(result.rating_id)
+        assert rating.customer_review_id == "review-approved"
+
     async def test_unapproved_customer_review_raises(
         self,
         authorization_service,

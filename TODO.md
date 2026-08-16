@@ -132,6 +132,11 @@ green (tests passing), not just "code written".
       `GET /projects/{id}/deliveries`, `GET /projects/{id}/revisions`,
       `GET /projects/{id}/status-history`, `GET /deliveries/{delivery_id}`,
       `GET /revisions/{revision_id}`, `POST /revisions/{revision_id}/close`.
-- [ ] **Part 4d** — Remaining review/feedback/ticketing/auth audit gaps from the audit table.
+- [x] **Part 4d** — Remaining review/feedback/ticketing/auth audit gaps from the audit table.
+  - Review: `GET /deliveries/{delivery_id}/review`.
+  - Feedback: `CustomerReview` read/list/update/delete, `Rating` update/delete, semantic
+    ordering fix for `SubmitRating`.
+  - Ticketing: `GET /tickets/{ticket_id}`, `PATCH /tickets/{ticket_id}` (subject/priority/status),
+    `GET /tickets/{ticket_id}/participants`, `PATCH /DELETE /tickets/{ticket_id}/messages/{message_id}`.
 - [ ] **Part 5** — OpenAPI/presentation hygiene: tags, `summary`, error response examples,
       pagination follow-through.
