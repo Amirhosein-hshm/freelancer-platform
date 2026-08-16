@@ -100,3 +100,28 @@ class AdminUserSummaryResponse(BaseModel):
 
 class AdminListUsersResponse(BaseModel):
     users: list[AdminUserSummaryResponse]
+
+
+class RoleResponse(BaseModel):
+    role_id: str
+    role_key: str
+    name: str
+    description: str | None = None
+    is_system: bool
+
+
+class ListRolesResponse(BaseModel):
+    roles: list[RoleResponse]
+
+
+class PermissionResponse(BaseModel):
+    permission_id: str
+    permission_key: str
+    module: str
+    action: str
+    description: str | None = None
+    is_system: bool
+
+
+class ListPermissionsResponse(BaseModel):
+    permissions: list[PermissionResponse]

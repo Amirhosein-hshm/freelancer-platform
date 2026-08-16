@@ -8,6 +8,7 @@ from app.presentation.api.v1.category.router import router as category_router
 from app.presentation.api.v1.feedback.router import router as feedback_router
 from app.presentation.api.v1.form.router import router as form_router
 from app.presentation.api.v1.freelancer.router import router as freelancer_router
+from app.presentation.api.v1.iam.catalog_router import router as iam_catalog_router
 from app.presentation.api.v1.iam.router import router as iam_router
 from app.presentation.api.v1.project.router import router as project_router
 from app.presentation.api.v1.reporting.router import router as reporting_router
@@ -40,6 +41,7 @@ def create_app(cors_origins: Sequence[str] | None = None) -> FastAPI:
     for router in (
         auth_router,
         iam_router,
+        iam_catalog_router,
         freelancer_router,
         category_router,
         form_router,

@@ -9,7 +9,6 @@ infrastructure implementation via ``app.dependency_overrides``.
 This file must never import from ``app.infrastructure``.
 """
 
-from typing import Any
 
 from fastapi import Depends
 
@@ -33,7 +32,9 @@ from app.application.form.use_cases.remove_field import RemoveFieldUseCase
 from app.application.form.use_cases.update_field import UpdateFieldUseCase
 from app.application.form.use_cases.update_form_template import UpdateFormTemplateUseCase
 from app.application.freelancer.use_cases.add_portfolio_item import AddPortfolioItemUseCase
-from app.application.freelancer.use_cases.admin_create_freelancer_profile_on_behalf import AdminCreateFreelancerProfileOnBehalfUseCase
+from app.application.freelancer.use_cases.admin_create_freelancer_profile_on_behalf import (
+    AdminCreateFreelancerProfileOnBehalfUseCase,
+)
 from app.application.freelancer.use_cases.approve_freelancer import ApproveFreelancerUseCase
 from app.application.freelancer.use_cases.assign_freelancer_level import AssignFreelancerLevelUseCase
 from app.application.freelancer.use_cases.create_freelancer_profile import CreateFreelancerProfileUseCase
@@ -55,6 +56,8 @@ from app.application.iam.use_cases.block_user import BlockUserUseCase
 from app.application.iam.use_cases.change_password import ChangePasswordUseCase
 from app.application.iam.use_cases.forgot_password import ForgotPasswordUseCase
 from app.application.iam.use_cases.grant_permission import GrantPermissionUseCase
+from app.application.iam.use_cases.list_permissions import ListPermissionsUseCase
+from app.application.iam.use_cases.list_roles import ListRolesUseCase
 from app.application.iam.use_cases.login_user import LoginUserUseCase
 from app.application.iam.use_cases.logout_user import LogoutUserUseCase
 from app.application.iam.use_cases.refresh_token import RefreshTokenUseCase
@@ -90,7 +93,17 @@ from app.application.review.use_cases.get_supervisor_projects import GetSupervis
 from app.application.review.use_cases.reject_delivery import RejectDeliveryUseCase
 from app.application.review.use_cases.review_delivery import ReviewDeliveryUseCase
 from app.application.shared.authorization import IAuthorizationService
-from app.application.shared.ports import IClock, IFileStorageService, IIdGenerator, INotificationService, IPasswordHasher, IProjectCodeGenerator, ITicketCodeGenerator, ITokenService, IUnitOfWork
+from app.application.shared.ports import (
+    IClock,
+    IFileStorageService,
+    IIdGenerator,
+    INotificationService,
+    IPasswordHasher,
+    IProjectCodeGenerator,
+    ITicketCodeGenerator,
+    ITokenService,
+    IUnitOfWork,
+)
 from app.application.ticketing.use_cases.admin_create_ticket_on_behalf import AdminCreateTicketOnBehalfUseCase
 from app.application.ticketing.use_cases.assign_ticket import AssignTicketUseCase
 from app.application.ticketing.use_cases.close_ticket import CloseTicketUseCase
@@ -101,12 +114,32 @@ from app.application.ticketing.use_cases.send_message import SendMessageUseCase
 from app.domain.category.repositories import ICategoryRepository, ICategorySupervisorRepository
 from app.domain.feedback.repositories import ICustomerReviewRepository, IRatingRepository
 from app.domain.form.repositories import IFormTemplateRepository
-from app.domain.freelancer.repositories import IFreelancerLevelHistoryRepository, IFreelancerLevelRepository, IFreelancerProfileRepository, IPortfolioItemRepository, IResumeRepository
-from app.domain.iam.repositories import IPermissionRepository, IRefreshTokenRepository, IRolePermissionRepository, IRoleRepository, IUserRepository, IUserRoleRepository
-from app.domain.project.repositories import IProjectApplicationRepository, IProjectDeliveryRepository, IProjectRepository, IProjectRevisionRequestRepository, IProjectStatusHistoryRepository
+from app.domain.freelancer.repositories import (
+    IFreelancerLevelHistoryRepository,
+    IFreelancerLevelRepository,
+    IFreelancerProfileRepository,
+    IPortfolioItemRepository,
+    IResumeRepository,
+)
+from app.domain.iam.repositories import (
+    IPermissionRepository,
+    IRefreshTokenRepository,
+    IRolePermissionRepository,
+    IRoleRepository,
+    IUserRepository,
+    IUserRoleRepository,
+)
+from app.domain.project.repositories import (
+    IProjectApplicationRepository,
+    IProjectDeliveryRepository,
+    IProjectRepository,
+    IProjectRevisionRequestRepository,
+    IProjectStatusHistoryRepository,
+)
 from app.domain.reporting.repositories import IReportingReadRepository
 from app.domain.review.repositories import ISupervisorReviewRepository
 from app.domain.ticketing.repositories import ITicketMessageRepository, ITicketParticipantRepository, ITicketRepository
+
 
 def get_authorization_service() -> IAuthorizationService:
     raise NotImplementedError("must be overridden by bootstrap.container")
@@ -401,6 +434,18 @@ def get_admin_list_users_use_case(
     user_repo: IUserRepository = Depends(get_user_repository),
 ) -> AdminListUsersUseCase:
     return AdminListUsersUseCase(authorization_service, user_repo)
+
+def get_list_roles_use_case(
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    role_repo: IRoleRepository = Depends(get_role_repository),
+) -> ListRolesUseCase:
+    return ListRolesUseCase(authorization_service, role_repo)
+
+def get_list_permissions_use_case(
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    permission_repo: IPermissionRepository = Depends(get_permission_repository),
+) -> ListPermissionsUseCase:
+    return ListPermissionsUseCase(authorization_service, permission_repo)
 
 def get_admin_update_user_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),

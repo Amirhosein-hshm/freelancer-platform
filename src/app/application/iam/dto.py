@@ -282,3 +282,43 @@ class AdminListUsersResult:
     total_items: int
     page: int
     page_size: int
+
+
+@dataclass(frozen=True)
+class RoleSummary:
+    role_id: EntityId
+    role_key: str
+    name: str
+    description: str | None
+    is_system: bool
+
+
+@dataclass(frozen=True)
+class ListRolesQuery:
+    actor_id: EntityId
+
+
+@dataclass(frozen=True)
+class ListRolesResult:
+    roles: list[RoleSummary]
+
+
+@dataclass(frozen=True)
+class PermissionSummary:
+    permission_id: EntityId
+    permission_key: str
+    module: str
+    action: str
+    description: str | None
+    is_system: bool
+
+
+@dataclass(frozen=True)
+class ListPermissionsQuery:
+    actor_id: EntityId
+    module: str | None = None
+
+
+@dataclass(frozen=True)
+class ListPermissionsResult:
+    permissions: list[PermissionSummary]

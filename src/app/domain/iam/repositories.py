@@ -67,6 +67,9 @@ class IPermissionRepository(ABC):
         """Raise ``PermissionNotFoundError`` if absent."""
 
     @abstractmethod
+    async def list_all(self) -> list[Permission]: ...
+
+    @abstractmethod
     async def list_by_module(self, module: str) -> list[Permission]: ...
 
 

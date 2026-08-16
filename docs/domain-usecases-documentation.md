@@ -3401,6 +3401,21 @@ The remaining current deviations follow:
   implementation; design docs remain the source of truth only where code has not yet
   implemented them.
 
+### 12.5 Explicitly out-of-scope design constraints
+
+- **Role and Permission entity CRUD is a deliberate design constraint, not a missing
+  feature.** The four system roles (`admin`, `customer`, `freelancer`, `supervisor`) and
+  the permission catalog are **seed-only**. No use case, route, admin screen, or CLI path
+  may create, rename, or delete a `Role` or `Permission` entity. The only supported RBAC
+  management operations are:
+  - Assigning or removing an **existing** role to/from a user (`AssignRoleUseCase` /
+    `RemoveRoleUseCase`).
+  - Granting or revoking an **existing** permission on an **existing** role
+    (`GrantPermissionUseCase` / `RevokePermissionUseCase`). These mutate only the
+    `RolePermission` link table and are guarded by `SystemRoleImmutableError` for system
+    roles.
+- A future audit should not re-list "missing Role/Permission CRUD" as a gap.
+
 ---
 
 ## 13. Presentation Layer (HTTP Exposure)
@@ -3432,6 +3447,8 @@ The remaining current deviations follow:
 | RemoveRole | `/users/{user_id}/roles/{role_key}` | DELETE | `remove_role` |
 | GrantPermission | `/users/roles/{role_id}/permissions` | POST | `grant_permission` |
 | RevokePermission | `/users/roles/{role_id}/permissions/{permission_id}` | DELETE | `revoke_permission` |
+| ListRoles | `/roles` | GET | `list_roles` |
+| ListPermissions | `/permissions` | GET | `list_permissions` |
 | GetCategories | `/categories` | GET | `get_categories` |
 | GetCategoryProjects | `/categories/{category_id}/projects` | GET | `get_category_projects` |
 | CreateCategory | `/categories` | POST | `create_category` |
@@ -3514,6 +3531,9 @@ The remaining current deviations follow:
 
 ### 13.3 Changelog
 
+- **2026-08-15 — Read-only IAM catalog endpoints added.** `ListRolesUseCase` / `ListPermissionsUseCase`
+  exposed as `GET /roles` and `GET /permissions`, requiring `user.read`. Added `IPermissionRepository.list_all()`
+  and documented the seed-only `Role`/`Permission` entity CRUD constraint in §12.5.
 - **2026-08-09 — `AdminGetUser` / `AdminListUsers` added.** New `user.read` permission; two read
   use cases, `IUserRepository.list_all`/`count_all`, `GET /users` (real DB pagination) and
   `GET /users/{user_id}`, seed, and docs updated.

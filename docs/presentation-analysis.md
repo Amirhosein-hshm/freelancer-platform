@@ -123,6 +123,15 @@ All prefix/paths below are appended to `API_PREFIX = "/api/v1"` unless marked `(
 | 17 | GET | `/users` | `admin_list_users` | auth | `AdminListUsersQuery` → `AdminListUsersUseCase` — **real DB offset/limit + `count_all` total** (partial fix of §7 item 2; only this endpoint paginates server-side) |
 | 18 | GET | `/users/{user_id}` | `admin_get_user` | auth | `AdminGetUserQuery` → `AdminGetUserUseCase` (includes active `roles`) |
 
+### 3.2a IAM Catalog — `/api/v1`
+
+Read-only surfacing of the seeded role and permission catalogs. Both require `user.read`.
+
+| # | Method | Path | op_id | Auth | Request → Response |
+|---|---|---|---|---|---|
+| 18a | GET | `/roles` | `list_roles` | auth | `ListRolesQuery` → `ListRolesUseCase` |
+| 18b | GET | `/permissions` | `list_permissions` | auth | `ListPermissionsQuery` → `ListPermissionsUseCase` (optional `?module=` filter) |
+
 ### 3.3 Category — `/api/v1/categories`
 
 | # | Method | Path | op_id | Auth | Request → Response |

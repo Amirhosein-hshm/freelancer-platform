@@ -30,6 +30,12 @@ class SqlAlchemyPermissionRepository(IPermissionRepository):
             raise PermissionNotFoundError(f"Permission {permission_id} not found.")
         return to_domain_permission(row)
 
+    async def list_all(self) -> list[Permission]:
+        result = await self._session.execute(
+            select(PermissionModel).order_by(PermissionModel.module, PermissionModel.permission_key)
+        )
+        return [to_domain_permission(row) for row in result.scalars().all()]
+
     async def list_by_module(self, module: str) -> list[Permission]:
         result = await self._session.execute(
             select(PermissionModel)
