@@ -112,3 +112,26 @@ class AddFieldOptionRequest(BaseModel):
 
 class AddFieldOptionResponse(BaseModel):
     option_id: str
+
+
+class UpdateFieldOptionRequest(BaseModel):
+    label: str | None = None
+    value: str | None = None
+    sort_order: int | None = None
+    is_active: bool | None = None
+
+
+class UpdateFieldOptionResponse(BaseModel):
+    option_id: str
+
+
+class RemoveFieldOptionResponse(BaseModel):
+    option_id: str
+
+
+class DeleteFormTemplateResponse(BaseModel):
+    template_id: str
+
+
+class ListFormTemplateVersionsResponse(BaseModel):
+    versions: list[FormTemplateResponse]

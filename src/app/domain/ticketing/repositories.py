@@ -30,6 +30,9 @@ class ITicketMessageRepository(ABC):
     @abstractmethod
     async def list_by_ticket(self, ticket_id: EntityId) -> list[TicketMessage]: ...
 
+    @abstractmethod
+    async def list_by_file_asset_id(self, file_asset_id: EntityId) -> list[TicketMessage]: ...
+
 
 class ITicketParticipantRepository(ABC):
     @abstractmethod

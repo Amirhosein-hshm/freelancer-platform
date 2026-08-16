@@ -92,3 +92,30 @@ green (tests passing), not just "code written".
 - [ ] `ARCHITECTURE.md`, `DOMAIN.md`, `APPLICATION.md`, `AUTHORIZATION.md` updated for any
       new field/exception/interface discovered during implementation.
 - [ ] This file's checkboxes all checked.
+
+## CRUD/Presentation Audit Remediation (Parts 1–5)
+
+- [x] **Part 1** — Audit all Phase-1 presentation endpoints against implemented use cases;
+      read-only catalog endpoints `GET /roles` and `GET /permissions` implemented
+      (`user.read` permission); docs updated.
+- [x] **Part 2** — Category/Form integrity:
+  - `DeleteCategoryUseCase` guards against child categories and active projects.
+  - `GetCategoryUseCase`, `ListCategorySupervisorsUseCase` + public routes.
+  - `GetFormTemplateByIdUseCase` fixes `/form-templates/{template_id}` route bug.
+  - `ListFormTemplateVersionsUseCase`, `DeleteFormTemplateUseCase`,
+    `UpdateFieldOptionUseCase`, `RemoveFieldOptionUseCase`.
+  - `FormField` option domain methods; `ReferencedEntityConflictError` → HTTP 409.
+  - Tests green (`tests/application`, `tests/presentation`), `ruff`, `mypy` clean.
+- [x] **Part 3** — File upload subsystem:
+  - `POST /files` with content-derived MIME validation (`filetype`) and server-generated asset IDs.
+  - `GET /files/{file_asset_id}` with context-aware authorization (`IFileAccessPolicy`).
+  - File-existence checks added to `AddPortfolioItemUseCase`, `UpdatePortfolioItemUseCase`,
+    `SubmitDeliveryUseCase`, and `SendMessageUseCase`.
+  - New `file.upload`/`file.read_any` permissions seeded.
+  - End-to-end tests for all four consumers + file routes; `ruff`, `mypy` clean.
+- [ ] **Part 4** — On-behalf admin routes: implement missing on-behalf creation/mutation paths
+      from audit table.
+- [ ] **Part 4** — On-behalf admin routes: implement missing on-behalf creation/mutation paths
+      from audit table.
+- [ ] **Part 5** — OpenAPI/presentation hygiene: tags, `summary`, error response examples,
+      pagination follow-through.

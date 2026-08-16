@@ -4,19 +4,31 @@ from app.application.form.dto import (
     AddFieldCommand,
     AddFieldOptionCommand,
     CreateFormTemplateCommand,
-    GetFormTemplateQuery,
+    DeleteFormTemplateCommand,
     PublishFormTemplateCommand,
     RemoveFieldCommand,
+    RemoveFieldOptionCommand,
     UpdateFieldCommand,
+    UpdateFieldOptionCommand,
     UpdateFormTemplateCommand,
 )
 from app.application.form.use_cases.add_field import AddFieldUseCase
 from app.application.form.use_cases.add_field_option import AddFieldOptionUseCase
 from app.application.form.use_cases.create_form_template import CreateFormTemplateUseCase
-from app.application.form.use_cases.get_form_template import GetFormTemplateUseCase
+from app.application.form.use_cases.delete_form_template import DeleteFormTemplateUseCase
+from app.application.form.use_cases.get_form_template_by_id import (
+    GetFormTemplateByIdQuery,
+    GetFormTemplateByIdUseCase,
+)
+from app.application.form.use_cases.list_form_template_versions import (
+    ListFormTemplateVersionsQuery,
+    ListFormTemplateVersionsUseCase,
+)
 from app.application.form.use_cases.publish_form_template import PublishFormTemplateUseCase
 from app.application.form.use_cases.remove_field import RemoveFieldUseCase
+from app.application.form.use_cases.remove_field_option import RemoveFieldOptionUseCase
 from app.application.form.use_cases.update_field import UpdateFieldUseCase
+from app.application.form.use_cases.update_field_option import UpdateFieldOptionUseCase
 from app.application.form.use_cases.update_form_template import UpdateFormTemplateUseCase
 from app.presentation.api.v1.form.schemas import (
     AddFieldOptionRequest,
@@ -25,11 +37,16 @@ from app.presentation.api.v1.form.schemas import (
     AddFieldResponse,
     CreateFormTemplateRequest,
     CreateFormTemplateResponse,
+    DeleteFormTemplateResponse,
     FormFieldOptionResponse,
     FormFieldResponse,
     FormTemplateResponse,
+    ListFormTemplateVersionsResponse,
     PublishFormTemplateResponse,
+    RemoveFieldOptionResponse,
     RemoveFieldResponse,
+    UpdateFieldOptionRequest,
+    UpdateFieldOptionResponse,
     UpdateFieldRequest,
     UpdateFieldResponse,
     UpdateFormTemplateRequest,
@@ -40,9 +57,13 @@ from app.presentation.core.providers import (
     get_add_field_option_use_case,
     get_add_field_use_case,
     get_create_form_template_use_case,
-    get_get_form_template_use_case,
+    get_delete_form_template_use_case,
+    get_get_form_template_by_id_use_case,
+    get_list_form_template_versions_use_case,
     get_publish_form_template_use_case,
+    get_remove_field_option_use_case,
     get_remove_field_use_case,
+    get_update_field_option_use_case,
     get_update_field_use_case,
     get_update_form_template_use_case,
 )
@@ -130,9 +151,9 @@ async def create_form_template(
 async def get_form_template(
     template_id: str,
     current_user=Depends(get_current_user),
-    use_case: GetFormTemplateUseCase = Depends(get_get_form_template_use_case),
+    use_case: GetFormTemplateByIdUseCase = Depends(get_get_form_template_by_id_use_case),
 ) -> SuccessEnvelope[FormTemplateResponse]:
-    result = await use_case.execute(GetFormTemplateQuery(category_id=template_id))
+    result = await use_case.execute(GetFormTemplateByIdQuery(template_id=template_id))
     return SuccessEnvelope(message="Form template.", data=_template_response(result))
 
 
@@ -186,6 +207,48 @@ async def publish_form_template(
             status=result.status.value,
             published_at=result.published_at.isoformat(),
         ),
+    )
+
+
+@router.get(
+    "/{template_id}/versions",
+    response_model=SuccessEnvelope[ListFormTemplateVersionsResponse],
+    operation_id="list_form_template_versions",
+)
+async def list_form_template_versions(
+    template_id: str,
+    current_user=Depends(get_current_user),
+    use_case: ListFormTemplateVersionsUseCase = Depends(
+        get_list_form_template_versions_use_case
+    ),
+) -> SuccessEnvelope[ListFormTemplateVersionsResponse]:
+    result = await use_case.execute(ListFormTemplateVersionsQuery(template_id=template_id))
+    return SuccessEnvelope(
+        message="Form template versions.",
+        data=ListFormTemplateVersionsResponse(
+            versions=[_template_response(t) for t in result.versions]
+        ),
+    )
+
+
+@router.delete(
+    "/{template_id}",
+    response_model=SuccessEnvelope[DeleteFormTemplateResponse],
+    operation_id="delete_form_template",
+)
+async def delete_form_template(
+    template_id: str,
+    current_user=Depends(get_current_user),
+    use_case: DeleteFormTemplateUseCase = Depends(get_delete_form_template_use_case),
+) -> SuccessEnvelope[DeleteFormTemplateResponse]:
+    result = await use_case.execute(
+        DeleteFormTemplateCommand(
+            actor_id=current_user.user_id, template_id=template_id
+        )
+    )
+    return SuccessEnvelope(
+        message="Form template deleted.",
+        data=DeleteFormTemplateResponse(template_id=result.template_id),
     )
 
 
@@ -308,4 +371,61 @@ async def add_field_option(
     return SuccessEnvelope(
         message="Field option added.",
         data=AddFieldOptionResponse(option_id=result.option_id),
+    )
+
+
+@router.patch(
+    "/{template_id}/fields/{field_id}/options/{option_id}",
+    response_model=SuccessEnvelope[UpdateFieldOptionResponse],
+    operation_id="update_field_option",
+)
+async def update_field_option(
+    template_id: str,
+    field_id: str,
+    option_id: str,
+    payload: UpdateFieldOptionRequest,
+    current_user=Depends(get_current_user),
+    use_case: UpdateFieldOptionUseCase = Depends(get_update_field_option_use_case),
+) -> SuccessEnvelope[UpdateFieldOptionResponse]:
+    result = await use_case.execute(
+        UpdateFieldOptionCommand(
+            actor_id=current_user.user_id,
+            template_id=template_id,
+            field_id=field_id,
+            option_id=option_id,
+            label=payload.label,
+            value=payload.value,
+            sort_order=payload.sort_order,
+            is_active=payload.is_active,
+        )
+    )
+    return SuccessEnvelope(
+        message="Field option updated.",
+        data=UpdateFieldOptionResponse(option_id=result.option_id),
+    )
+
+
+@router.delete(
+    "/{template_id}/fields/{field_id}/options/{option_id}",
+    response_model=SuccessEnvelope[RemoveFieldOptionResponse],
+    operation_id="remove_field_option",
+)
+async def remove_field_option(
+    template_id: str,
+    field_id: str,
+    option_id: str,
+    current_user=Depends(get_current_user),
+    use_case: RemoveFieldOptionUseCase = Depends(get_remove_field_option_use_case),
+) -> SuccessEnvelope[RemoveFieldOptionResponse]:
+    result = await use_case.execute(
+        RemoveFieldOptionCommand(
+            actor_id=current_user.user_id,
+            template_id=template_id,
+            field_id=field_id,
+            option_id=option_id,
+        )
+    )
+    return SuccessEnvelope(
+        message="Field option removed.",
+        data=RemoveFieldOptionResponse(option_id=result.option_id),
     )

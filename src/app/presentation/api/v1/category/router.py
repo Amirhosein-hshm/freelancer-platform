@@ -5,6 +5,8 @@ from app.application.category.dto import (
     CreateCategoryCommand,
     DeleteCategoryCommand,
     GetCategoriesQuery,
+    GetCategoryQuery,
+    ListCategorySupervisorsQuery,
     RemoveSupervisorCommand,
     UpdateCategoryCommand,
 )
@@ -12,9 +14,13 @@ from app.application.category.use_cases.assign_supervisor import AssignSuperviso
 from app.application.category.use_cases.create_category import CreateCategoryUseCase
 from app.application.category.use_cases.delete_category import DeleteCategoryUseCase
 from app.application.category.use_cases.get_categories import GetCategoriesUseCase
+from app.application.category.use_cases.get_category import GetCategoryUseCase
 from app.application.category.use_cases.get_category_projects import (
     GetCategoryProjectsQuery,
     GetCategoryProjectsUseCase,
+)
+from app.application.category.use_cases.list_category_supervisors import (
+    ListCategorySupervisorsUseCase,
 )
 from app.application.category.use_cases.remove_supervisor import RemoveSupervisorUseCase
 from app.application.category.use_cases.update_category import UpdateCategoryUseCase
@@ -22,8 +28,10 @@ from app.presentation.api.v1.category.schemas import (
     AssignSupervisorRequest,
     AssignSupervisorResponse,
     CategoryResponse,
+    CategorySupervisorResponse,
     CreateCategoryRequest,
     DeleteCategoryResponse,
+    ListCategorySupervisorsResponse,
     RemoveSupervisorResponse,
     UpdateCategoryRequest,
 )
@@ -35,6 +43,8 @@ from app.presentation.core.providers import (
     get_delete_category_use_case,
     get_get_categories_use_case,
     get_get_category_projects_use_case,
+    get_get_category_use_case,
+    get_list_category_supervisors_use_case,
     get_remove_supervisor_use_case,
     get_update_category_use_case,
 )
@@ -88,6 +98,51 @@ async def get_categories(
     return SuccessEnvelope(
         message="Categories.",
         data=[_category_response(c) for c in result.categories],
+    )
+
+
+@router.get(
+    "/{category_id}",
+    response_model=SuccessEnvelope[CategoryResponse],
+    operation_id="get_category",
+)
+async def get_category(
+    category_id: str,
+    use_case: GetCategoryUseCase = Depends(get_get_category_use_case),
+) -> SuccessEnvelope[CategoryResponse]:
+    result = await use_case.execute(GetCategoryQuery(category_id=category_id))
+    return SuccessEnvelope(
+        message="Category details.",
+        data=_category_response(result),
+    )
+
+
+@router.get(
+    "/{category_id}/supervisors",
+    response_model=SuccessEnvelope[ListCategorySupervisorsResponse],
+    operation_id="list_category_supervisors",
+)
+async def list_category_supervisors(
+    category_id: str,
+    use_case: ListCategorySupervisorsUseCase = Depends(
+        get_list_category_supervisors_use_case
+    ),
+) -> SuccessEnvelope[ListCategorySupervisorsResponse]:
+    result = await use_case.execute(ListCategorySupervisorsQuery(category_id=category_id))
+    return SuccessEnvelope(
+        message="Category supervisors.",
+        data=ListCategorySupervisorsResponse(
+            supervisors=[
+                CategorySupervisorResponse(
+                    link_id=supervisor.link_id,
+                    category_id=supervisor.category_id,
+                    supervisor_user_id=supervisor.supervisor_user_id,
+                    is_primary=supervisor.is_primary,
+                    assigned_at=supervisor.assigned_at.isoformat(),
+                )
+                for supervisor in result.supervisors
+            ]
+        ),
     )
 
 

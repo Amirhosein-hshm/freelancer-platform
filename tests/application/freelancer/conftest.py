@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.application.shared.ports import FileAssetMetadata
+from app.application.shared.ports import FileAssetContext, FileAssetMetadata
 from app.domain.freelancer.entities import FreelancerLevel, FreelancerProfile, PortfolioItem
 from app.domain.freelancer.enums import FreelancerApprovalStatus, FreelancerLevelAccessType
 from tests.fakes.fake_file_storage import FakeFileStorageService
@@ -47,7 +47,11 @@ def file_storage() -> FakeFileStorageService:
 
 @pytest.fixture
 def make_asset(file_storage: FakeFileStorageService):
-    def _make(asset_id: str = "asset-1") -> str:
+    def _make(
+        asset_id: str = "asset-1",
+        owner_user_id: str = "user-1",
+        context: FileAssetContext = FileAssetContext.GENERIC,
+    ) -> str:
         file_storage.add(
             FileAssetMetadata(
                 file_asset_id=asset_id,
@@ -56,6 +60,8 @@ def make_asset(file_storage: FakeFileStorageService):
                 mime_type="application/pdf",
                 url=None,
                 uploaded_at=NOW,
+                owner_user_id=owner_user_id,
+                context=context,
             )
         )
         return asset_id

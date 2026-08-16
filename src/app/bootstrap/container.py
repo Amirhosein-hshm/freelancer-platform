@@ -1,5 +1,6 @@
 from fastapi import Depends, FastAPI
 
+from app.application.shared.file_access_policy import DomainFileAccessPolicy
 from app.infrastructure.clock import SystemClock
 from app.infrastructure.code_generators import (
     SqlSequenceProjectCodeGenerator,
@@ -107,6 +108,22 @@ def build_app() -> FastAPI:
     app.dependency_overrides[providers.get_token_service] = lambda: token_service
     app.dependency_overrides[providers.get_notification_service] = lambda: notification_service
     app.dependency_overrides[providers.get_file_storage_service] = lambda: file_storage_service
+
+    app.dependency_overrides[providers.get_file_access_policy] = (
+        lambda session=Depends(get_db_session): DomainFileAccessPolicy(
+            file_storage=file_storage_service,
+            authorization_service=SqlAlchemyAuthorizationService(session),
+            profile_repo=SqlAlchemyFreelancerProfileRepository(session),
+            resume_repo=SqlAlchemyResumeRepository(session),
+            portfolio_item_repo=SqlAlchemyPortfolioItemRepository(session),
+            project_repo=SqlAlchemyProjectRepository(session),
+            project_application_repo=SqlAlchemyProjectApplicationRepository(session),
+            project_delivery_repo=SqlAlchemyProjectDeliveryRepository(session),
+            ticket_repo=SqlAlchemyTicketRepository(session),
+            ticket_participant_repo=SqlAlchemyTicketParticipantRepository(session),
+            ticket_message_repo=SqlAlchemyTicketMessageRepository(session),
+        )
+    )
 
     app.dependency_overrides[providers.get_unit_of_work] = (
         lambda session=Depends(get_db_session): SqlAlchemyUnitOfWork(session)

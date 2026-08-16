@@ -93,3 +93,32 @@ class GetCategoriesQuery:
 @dataclass(frozen=True)
 class GetCategoriesResult:
     categories: list[CategoryResult]
+
+
+@dataclass(frozen=True)
+class GetCategoryQuery:
+    category_id: EntityId
+
+
+@dataclass(frozen=True)
+class GetCategoryResult(CategoryResult):
+    pass
+
+
+@dataclass(frozen=True)
+class CategorySupervisorResult:
+    link_id: EntityId
+    category_id: EntityId
+    supervisor_user_id: EntityId
+    is_primary: bool
+    assigned_at: datetime
+
+
+@dataclass(frozen=True)
+class ListCategorySupervisorsQuery:
+    category_id: EntityId
+
+
+@dataclass(frozen=True)
+class ListCategorySupervisorsResult:
+    supervisors: list[CategorySupervisorResult]

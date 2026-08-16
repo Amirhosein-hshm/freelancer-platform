@@ -16,20 +16,29 @@ from app.application.category.use_cases.assign_supervisor import AssignSuperviso
 from app.application.category.use_cases.create_category import CreateCategoryUseCase
 from app.application.category.use_cases.delete_category import DeleteCategoryUseCase
 from app.application.category.use_cases.get_categories import GetCategoriesUseCase
+from app.application.category.use_cases.get_category import GetCategoryUseCase as GetCategoryUseCaseCategory
 from app.application.category.use_cases.get_category_projects import GetCategoryProjectsUseCase
+from app.application.category.use_cases.list_category_supervisors import ListCategorySupervisorsUseCase
 from app.application.category.use_cases.remove_supervisor import RemoveSupervisorUseCase
 from app.application.category.use_cases.update_category import UpdateCategoryUseCase
 from app.application.feedback.use_cases.get_freelancer_ratings import GetFreelancerRatingsUseCase
 from app.application.feedback.use_cases.get_project_rating import GetProjectRatingUseCase
 from app.application.feedback.use_cases.submit_rating import SubmitRatingUseCase
 from app.application.feedback.use_cases.submit_review import SubmitReviewUseCase
+from app.application.file.use_cases.get_file_asset import GetFileAssetUseCase
+from app.application.file.use_cases.upload_file import UploadFileUseCase
 from app.application.form.use_cases.add_field import AddFieldUseCase
 from app.application.form.use_cases.add_field_option import AddFieldOptionUseCase
 from app.application.form.use_cases.create_form_template import CreateFormTemplateUseCase
+from app.application.form.use_cases.delete_form_template import DeleteFormTemplateUseCase
 from app.application.form.use_cases.get_form_template import GetFormTemplateUseCase
+from app.application.form.use_cases.get_form_template_by_id import GetFormTemplateByIdUseCase
+from app.application.form.use_cases.list_form_template_versions import ListFormTemplateVersionsUseCase
 from app.application.form.use_cases.publish_form_template import PublishFormTemplateUseCase
 from app.application.form.use_cases.remove_field import RemoveFieldUseCase
+from app.application.form.use_cases.remove_field_option import RemoveFieldOptionUseCase
 from app.application.form.use_cases.update_field import UpdateFieldUseCase
+from app.application.form.use_cases.update_field_option import UpdateFieldOptionUseCase
 from app.application.form.use_cases.update_form_template import UpdateFormTemplateUseCase
 from app.application.freelancer.use_cases.add_portfolio_item import AddPortfolioItemUseCase
 from app.application.freelancer.use_cases.admin_create_freelancer_profile_on_behalf import (
@@ -95,6 +104,7 @@ from app.application.review.use_cases.review_delivery import ReviewDeliveryUseCa
 from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.ports import (
     IClock,
+    IFileAccessPolicy,
     IFileStorageService,
     IIdGenerator,
     INotificationService,
@@ -157,6 +167,9 @@ def get_customer_review_repository() -> ICustomerReviewRepository:
     raise NotImplementedError("must be overridden by bootstrap.container")
 
 def get_file_storage_service() -> IFileStorageService:
+    raise NotImplementedError("must be overridden by bootstrap.container")
+
+def get_file_access_policy() -> IFileAccessPolicy:
     raise NotImplementedError("must be overridden by bootstrap.container")
 
 def get_form_template_repository() -> IFormTemplateRepository:
@@ -298,11 +311,12 @@ def get_add_field_use_case(
 def get_add_portfolio_item_use_case(
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
     portfolio_item_repo: IPortfolioItemRepository = Depends(get_portfolio_item_repository),
+    file_storage: IFileStorageService = Depends(get_file_storage_service),
     id_generator: IIdGenerator = Depends(get_id_generator),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> AddPortfolioItemUseCase:
-    return AddPortfolioItemUseCase(profile_repo, portfolio_item_repo, id_generator, clock, uow)
+    return AddPortfolioItemUseCase(profile_repo, portfolio_item_repo, file_storage, id_generator, clock, uow)
 
 def get_admin_apply_for_project_on_behalf_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
@@ -728,10 +742,11 @@ def get_create_ticket_use_case(
 def get_delete_category_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     category_repo: ICategoryRepository = Depends(get_category_repository),
+    project_repo: IProjectRepository = Depends(get_project_repository),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> DeleteCategoryUseCase:
-    return DeleteCategoryUseCase(authorization_service, category_repo, clock, uow)
+    return DeleteCategoryUseCase(authorization_service, category_repo, project_repo, clock, uow)
 
 def get_delete_portfolio_item_use_case(
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
@@ -758,6 +773,19 @@ def get_get_categories_use_case(
 ) -> GetCategoriesUseCase:
     return GetCategoriesUseCase(category_repo)
 
+def get_get_category_use_case(
+    category_repo: ICategoryRepository = Depends(get_category_repository),
+) -> GetCategoryUseCaseCategory:
+    return GetCategoryUseCaseCategory(category_repo)
+
+def get_list_category_supervisors_use_case(
+    category_repo: ICategoryRepository = Depends(get_category_repository),
+    supervisor_repo: ICategorySupervisorRepository = Depends(
+        get_category_supervisor_repository
+    ),
+) -> ListCategorySupervisorsUseCase:
+    return ListCategorySupervisorsUseCase(category_repo, supervisor_repo)
+
 def get_get_category_projects_use_case(
     category_repo: ICategoryRepository = Depends(get_category_repository),
     project_repo: IProjectRepository = Depends(get_project_repository),
@@ -780,6 +808,40 @@ def get_get_form_template_use_case(
     template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
 ) -> GetFormTemplateUseCase:
     return GetFormTemplateUseCase(template_repo)
+
+def get_get_form_template_by_id_use_case(
+    template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
+) -> GetFormTemplateByIdUseCase:
+    return GetFormTemplateByIdUseCase(template_repo)
+
+def get_list_form_template_versions_use_case(
+    template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
+) -> ListFormTemplateVersionsUseCase:
+    return ListFormTemplateVersionsUseCase(template_repo)
+
+def get_delete_form_template_use_case(
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
+    project_repo: IProjectRepository = Depends(get_project_repository),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
+) -> DeleteFormTemplateUseCase:
+    return DeleteFormTemplateUseCase(
+        authorization_service, template_repo, project_repo, uow
+    )
+
+def get_update_field_option_use_case(
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
+) -> UpdateFieldOptionUseCase:
+    return UpdateFieldOptionUseCase(authorization_service, template_repo, uow)
+
+def get_remove_field_option_use_case(
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
+) -> RemoveFieldOptionUseCase:
+    return RemoveFieldOptionUseCase(authorization_service, template_repo, uow)
 
 def get_get_freelancer_profile_use_case(
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
@@ -1104,11 +1166,12 @@ def get_send_message_use_case(
     ticket_repo: ITicketRepository = Depends(get_ticket_repository),
     message_repo: ITicketMessageRepository = Depends(get_ticket_message_repository),
     participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
+    file_storage: IFileStorageService = Depends(get_file_storage_service),
     id_generator: IIdGenerator = Depends(get_id_generator),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> SendMessageUseCase:
-    return SendMessageUseCase(ticket_repo, message_repo, participant_repo, id_generator, clock, uow)
+    return SendMessageUseCase(ticket_repo, message_repo, participant_repo, file_storage, id_generator, clock, uow)
 
 def get_start_project_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
@@ -1134,6 +1197,7 @@ def get_submit_delivery_use_case(
     status_history_repo: IProjectStatusHistoryRepository = Depends(get_project_status_history_repository),
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
     review_repo: ISupervisorReviewRepository = Depends(get_supervisor_review_repository),
+    file_storage: IFileStorageService = Depends(get_file_storage_service),
     id_generator: IIdGenerator = Depends(get_id_generator),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
@@ -1145,6 +1209,7 @@ def get_submit_delivery_use_case(
         status_history_repo,
         profile_repo,
         review_repo,
+        file_storage,
         id_generator,
         clock,
         uow,
@@ -1227,8 +1292,9 @@ def get_update_freelancer_profile_use_case(
 def get_update_portfolio_item_use_case(
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
     portfolio_item_repo: IPortfolioItemRepository = Depends(get_portfolio_item_repository),
+    file_storage: IFileStorageService = Depends(get_file_storage_service),
 ) -> UpdatePortfolioItemUseCase:
-    return UpdatePortfolioItemUseCase(profile_repo, portfolio_item_repo)
+    return UpdatePortfolioItemUseCase(profile_repo, portfolio_item_repo, file_storage)
 
 def get_update_resume_use_case(
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
@@ -1260,3 +1326,15 @@ def get_withdraw_application_use_case(
     uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> WithdrawApplicationUseCase:
     return WithdrawApplicationUseCase(application_repo, profile_repo, clock, uow)
+
+def get_upload_file_use_case(
+    file_storage: IFileStorageService = Depends(get_file_storage_service),
+    clock: IClock = Depends(get_clock),
+) -> UploadFileUseCase:
+    return UploadFileUseCase(file_storage, clock)
+
+def get_get_file_asset_use_case(
+    file_storage: IFileStorageService = Depends(get_file_storage_service),
+    access_policy: IFileAccessPolicy = Depends(get_file_access_policy),
+) -> GetFileAssetUseCase:
+    return GetFileAssetUseCase(file_storage, access_policy)

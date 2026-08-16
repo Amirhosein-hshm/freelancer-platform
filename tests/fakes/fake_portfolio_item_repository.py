@@ -20,6 +20,12 @@ class FakePortfolioItemRepository(IPortfolioItemRepository):
     async def list_by_profile(self, profile_id: EntityId) -> list[PortfolioItem]:
         return [i for i in self._store.values() if i.freelancer_profile_id == profile_id]
 
+    async def get_by_file_asset_id(self, file_asset_id: EntityId) -> PortfolioItem | None:
+        for item in self._store.values():
+            if item.file_asset_id == file_asset_id:
+                return item
+        return None
+
     async def update(self, item: PortfolioItem) -> None:
         self._store[item.id] = item
 

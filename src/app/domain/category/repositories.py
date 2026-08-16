@@ -20,6 +20,9 @@ class ICategoryRepository(ABC):
     async def list_active(self) -> list[Category]: ...
 
     @abstractmethod
+    async def list_by_parent_id(self, parent_category_id: EntityId) -> list[Category]: ...
+
+    @abstractmethod
     async def update(self, category: Category) -> None: ...
 
 

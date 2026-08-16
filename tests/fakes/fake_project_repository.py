@@ -7,6 +7,13 @@ from app.domain.shared.types import EntityId
 
 _OPEN_STATUSES = (ProjectStatus.PUBLISHED, ProjectStatus.COLLECTING_APPLICATIONS)
 
+_TERMINAL_STATUSES = (
+    ProjectStatus.COMPLETED,
+    ProjectStatus.CANCELLED,
+    ProjectStatus.REJECTED,
+    ProjectStatus.ARCHIVED,
+)
+
 
 class FakeProjectRepository(IProjectRepository):
     def __init__(self) -> None:
@@ -64,3 +71,25 @@ class FakeProjectRepository(IProjectRepository):
             and p.status in _OPEN_STATUSES
             and p.deleted_at is None
         ]
+
+    async def count_active_by_category(self, category_id: EntityId) -> int:
+        return len(
+            [
+                p
+                for p in self._store.values()
+                if p.category_id == category_id
+                and p.deleted_at is None
+                and p.status not in _TERMINAL_STATUSES
+            ]
+        )
+
+    async def count_active_by_form_template(self, form_template_id: EntityId) -> int:
+        return len(
+            [
+                p
+                for p in self._store.values()
+                if p.form_template_id == form_template_id
+                and p.deleted_at is None
+                and p.status not in _TERMINAL_STATUSES
+            ]
+        )

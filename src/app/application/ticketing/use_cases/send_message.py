@@ -1,4 +1,5 @@
-from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
+from app.application.shared.exceptions import ValidationError
+from app.application.shared.ports import IClock, IFileStorageService, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.application.ticketing.access import ensure_participant
 from app.application.ticketing.dto import SendMessageCommand, SendMessageResult
@@ -18,6 +19,7 @@ class SendMessageUseCase(UseCase[SendMessageCommand, SendMessageResult]):
         ticket_repo: ITicketRepository,
         message_repo: ITicketMessageRepository,
         participant_repo: ITicketParticipantRepository,
+        file_storage: IFileStorageService,
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
@@ -25,11 +27,19 @@ class SendMessageUseCase(UseCase[SendMessageCommand, SendMessageResult]):
         self._ticket_repo = ticket_repo
         self._message_repo = message_repo
         self._participant_repo = participant_repo
+        self._file_storage = file_storage
         self._id_generator = id_generator
         self._clock = clock
         self._uow = uow
 
     async def execute(self, request: SendMessageCommand) -> SendMessageResult:
+        for file_asset_id in request.attachment_file_asset_ids:
+            try:
+                await self._file_storage.get_metadata(file_asset_id)
+            except (KeyError, FileNotFoundError) as exc:
+                raise ValidationError(
+                    f"File asset {file_asset_id} does not exist."
+                ) from exc
         ticket = await self._ticket_repo.get_by_id(request.ticket_id)
         if ticket.is_closed():
             raise TicketClosedError(

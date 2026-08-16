@@ -16,3 +16,8 @@ class BusinessRuleViolationError(DomainError):
 
 class UniqueConstraintViolationError(DomainError):
     """Raised when a unique constraint is violated (maps to HTTP 409)."""
+
+
+class ReferencedEntityConflictError(DomainError):
+    """Raised when a destructive operation is blocked because the entity is still
+    referenced by active downstream entities (maps to HTTP 409)."""

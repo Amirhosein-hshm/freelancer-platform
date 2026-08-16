@@ -42,6 +42,12 @@ class IProjectRepository(ABC):
     async def list_by_category(self, category_id: EntityId) -> list[Project]:
         """Return the currently open (published/collecting) projects of a category."""
 
+    @abstractmethod
+    async def count_active_by_category(self, category_id: EntityId) -> int: ...
+
+    @abstractmethod
+    async def count_active_by_form_template(self, form_template_id: EntityId) -> int: ...
+
 
 class IProjectApplicationRepository(ABC):
     @abstractmethod
@@ -79,6 +85,9 @@ class IProjectDeliveryRepository(ABC):
 
     @abstractmethod
     async def list_by_project(self, project_id: EntityId) -> list[ProjectDelivery]: ...
+
+    @abstractmethod
+    async def list_by_file_asset_id(self, file_asset_id: EntityId) -> list[ProjectDelivery]: ...
 
     @abstractmethod
     async def update(self, delivery: ProjectDelivery) -> None: ...

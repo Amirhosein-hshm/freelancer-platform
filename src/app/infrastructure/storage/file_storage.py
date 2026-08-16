@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from threading import Lock
 from uuid import uuid4
 
-from app.application.shared.ports import FileAssetMetadata, IFileStorageService
+from app.application.shared.ports import FileAssetContext, FileAssetMetadata, IFileStorageService
 from app.domain.shared.types import EntityId
 
 
@@ -31,6 +31,7 @@ class InMemoryFileStorageService(IFileStorageService):
         size_bytes: int,
         mime_type: str,
         owner_user_id: EntityId,
+        context: FileAssetContext,
     ) -> EntityId:
         file_asset_id = str(uuid4())
         with self._lock:
@@ -41,5 +42,7 @@ class InMemoryFileStorageService(IFileStorageService):
                 mime_type=mime_type,
                 url=None,
                 uploaded_at=datetime.now(UTC),
+                owner_user_id=owner_user_id,
+                context=context,
             )
         return file_asset_id

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from app.application.shared.ports import FileAssetMetadata, IFileStorageService
+from app.application.shared.ports import FileAssetContext, FileAssetMetadata, IFileStorageService
 from app.domain.shared.types import EntityId
 
 
@@ -23,6 +23,7 @@ class FakeFileStorageService(IFileStorageService):
         size_bytes: int,
         mime_type: str,
         owner_user_id: EntityId,
+        context: FileAssetContext,
     ) -> EntityId:
         asset_id = f"asset-{len(self._store) + 1}"
         metadata = FileAssetMetadata(
@@ -32,6 +33,8 @@ class FakeFileStorageService(IFileStorageService):
             mime_type=mime_type,
             url=None,
             uploaded_at=datetime.now(UTC),
+            owner_user_id=owner_user_id,
+            context=context,
         )
         self._store[asset_id] = metadata
         return asset_id

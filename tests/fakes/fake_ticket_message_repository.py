@@ -15,3 +15,6 @@ class FakeTicketMessageRepository(ITicketMessageRepository):
             (m for m in self._store if m.ticket_id == ticket_id),
             key=lambda m: m.sent_at,
         )
+
+    async def list_by_file_asset_id(self, file_asset_id: EntityId) -> list[TicketMessage]:
+        return [m for m in self._store if file_asset_id in m.attachment_file_asset_ids]

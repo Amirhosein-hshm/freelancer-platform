@@ -137,109 +137,122 @@ Read-only surfacing of the seeded role and permission catalogs. Both require `us
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|
 | 19 | GET | `/categories` | `get_categories` | **public** | `GetCategoriesQuery` → `GetCategoriesUseCase` |
-| 20 | GET | `/categories/{category_id}/projects` | `get_category_projects` | auth | `GetCategoryProjectsQuery` → `GetCategoryProjectsUseCase` |
-| 21 | POST | `/categories` | `create_category` | auth | `CreateCategoryCommand` → `CreateCategoryUseCase` (201) |
-| 22 | PATCH | `/categories/{category_id}` | `update_category` | auth | `UpdateCategoryCommand` → `UpdateCategoryUseCase` |
-| 23 | DELETE | `/categories/{category_id}` | `delete_category` | auth | `DeleteCategoryCommand` → `DeleteCategoryUseCase` |
-| 24 | POST | `/categories/{category_id}/supervisors` | `assign_supervisor` | auth | `AssignSupervisorCommand` → `AssignSupervisorUseCase` |
-| 25 | DELETE | `/categories/{category_id}/supervisors/{supervisor_user_id}` | `remove_supervisor` | auth | `RemoveSupervisorCommand` → `RemoveSupervisorUseCase` |
+| 20 | GET | `/categories/{category_id}` | `get_category` | **public** | `GetCategoryQuery` → `GetCategoryUseCase` |
+| 21 | GET | `/categories/{category_id}/supervisors` | `list_category_supervisors` | **public** | `ListCategorySupervisorsQuery` → `ListCategorySupervisorsUseCase` |
+| 22 | GET | `/categories/{category_id}/projects` | `get_category_projects` | auth | `GetCategoryProjectsQuery` → `GetCategoryProjectsUseCase` |
+| 23 | POST | `/categories` | `create_category` | auth | `CreateCategoryCommand` → `CreateCategoryUseCase` (201) |
+| 24 | PATCH | `/categories/{category_id}` | `update_category` | auth | `UpdateCategoryCommand` → `UpdateCategoryUseCase` |
+| 25 | DELETE | `/categories/{category_id}` | `delete_category` | auth | `DeleteCategoryCommand` → `DeleteCategoryUseCase` |
+| 26 | POST | `/categories/{category_id}/supervisors` | `assign_supervisor` | auth | `AssignSupervisorCommand` → `AssignSupervisorUseCase` |
+| 27 | DELETE | `/categories/{category_id}/supervisors/{supervisor_user_id}` | `remove_supervisor` | auth | `RemoveSupervisorCommand` → `RemoveSupervisorUseCase` |
 
 ### 3.4 Form Engine — `/api/v1/form-templates`
 
 | # | Method | Path | op_id | Auth | Request → Response |
-|---|---|---|---|---|---|
-| 26 | POST | `/form-templates` | `create_form_template` | auth | `CreateFormTemplateCommand` → `CreateFormTemplateUseCase` (201) |
-| 27 | **GET** | `/form-templates/{template_id}` | `get_form_template` | auth | ⚠️ `GetFormTemplateQuery(category_id=template_id)` — **see bug in §7.1** |
-| 28 | PATCH | `/form-templates/{template_id}` | `update_form_template` | auth | `UpdateFormTemplateCommand` → `UpdateFormTemplateUseCase` |
-| 29 | POST | `/form-templates/{template_id}/publish` | `publish_form_template` | auth | `PublishFormTemplateCommand` → `PublishFormTemplateUseCase` |
-| 30 | POST | `/form-templates/{template_id}/fields` | `add_field` | auth | `AddFieldCommand` → `AddFieldUseCase` (201) |
-| 31 | PATCH | `/form-templates/{template_id}/fields/{field_id}` | `update_field` | auth | `UpdateFieldCommand` → `UpdateFieldUseCase` |
-| 32 | DELETE | `/form-templates/{template_id}/fields/{field_id}` | `remove_field` | auth | `RemoveFieldCommand` → `RemoveFieldUseCase` |
-| 33 | POST | `/form-templates/{template_id}/fields/{field_id}/options` | `add_field_option` | auth | `AddFieldOptionCommand` → `AddFieldOptionUseCase` (201) |
+|---|---|---|---|---|---|---|
+| 28 | POST | `/form-templates` | `create_form_template` | auth | `CreateFormTemplateCommand` → `CreateFormTemplateUseCase` (201) |
+| 29 | **GET** | `/form-templates/{template_id}` | `get_form_template` | auth | `GetFormTemplateByIdQuery` → `GetFormTemplateByIdUseCase` |
+| 30 | PATCH | `/form-templates/{template_id}` | `update_form_template` | auth | `UpdateFormTemplateCommand` → `UpdateFormTemplateUseCase` |
+| 31 | POST | `/form-templates/{template_id}/publish` | `publish_form_template` | auth | `PublishFormTemplateCommand` → `PublishFormTemplateUseCase` |
+| 32 | DELETE | `/form-templates/{template_id}` | `delete_form_template` | auth | `DeleteFormTemplateCommand` → `DeleteFormTemplateUseCase` |
+| 33 | GET | `/form-templates/{template_id}/versions` | `list_form_template_versions` | auth | `ListFormTemplateVersionsQuery` → `ListFormTemplateVersionsUseCase` |
+| 34 | POST | `/form-templates/{template_id}/fields` | `add_field` | auth | `AddFieldCommand` → `AddFieldUseCase` (201) |
+| 35 | PATCH | `/form-templates/{template_id}/fields/{field_id}` | `update_field` | auth | `UpdateFieldCommand` → `UpdateFieldUseCase` |
+| 36 | DELETE | `/form-templates/{template_id}/fields/{field_id}` | `remove_field` | auth | `RemoveFieldCommand` → `RemoveFieldUseCase` |
+| 37 | POST | `/form-templates/{template_id}/fields/{field_id}/options` | `add_field_option` | auth | `AddFieldOptionCommand` → `AddFieldOptionUseCase` (201) |
+| 38 | PATCH | `/form-templates/{template_id}/fields/{field_id}/options/{option_id}` | `update_field_option` | auth | `UpdateFieldOptionCommand` → `UpdateFieldOptionUseCase` |
+| 39 | DELETE | `/form-templates/{template_id}/fields/{field_id}/options/{option_id}` | `remove_field_option` | auth | `RemoveFieldOptionCommand` → `RemoveFieldOptionUseCase` |
+
+### 3.4a File Engine — `/api/v1/files`
+
+| # | Method | Path | op_id | Auth | Request → Response |
+|---|---|---|---|---|---|---|
+| 40 | POST | `/files` | `upload_file` | auth | `UploadFileCommand` → `UploadFileUseCase` (201); MIME derived from content, server-generated key |
+| 41 | GET | `/files/{file_asset_id}` | `get_file_asset` | auth | `GetFileAssetQuery` → `GetFileAssetUseCase`; context-aware authorization |
 
 ### 3.5 Freelancer — `/api/v1/freelancers`
 
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|
-| 34 | GET | `/freelancers/{profile_id}` | `get_freelancer_profile` | auth | `GetFreelancerProfileQuery` → `GetFreelancerProfileUseCase` |
-| 35 | POST | `/freelancers` | `create_freelancer_profile` | auth | `CreateFreelancerProfileCommand` → `CreateFreelancerProfileUseCase` (201) |
-| 36 | PATCH | `/freelancers/{profile_id}` | `update_freelancer_profile` | auth | `UpdateFreelancerProfileCommand` → `UpdateFreelancerProfileUseCase` |
-| 37 | POST | `/freelancers/{profile_id}/submit-approval` | `submit_freelancer_approval` | auth | `SubmitFreelancerApprovalCommand` → `SubmitFreelancerApprovalUseCase` |
-| 38 | POST | `/freelancers/{profile_id}/approve` | `approve_freelancer` | auth | `ApproveFreelancerCommand` → `ApproveFreelancerUseCase` |
-| 39 | POST | `/freelancers/{profile_id}/reject` | `reject_freelancer` | auth | `RejectFreelancerCommand` → `RejectFreelancerUseCase` |
-| 40 | POST | `/freelancers/{profile_id}/level` | `assign_freelancer_level` | auth | `AssignFreelancerLevelCommand` → `AssignFreelancerLevelUseCase` |
-| 41 | POST | `/freelancers/{profile_id}/resume` | `upload_resume` | auth | `UploadResumeCommand` → `UploadResumeUseCase` (201) |
-| 42 | PATCH | `/freelancers/{profile_id}/resume` | `update_resume` | auth | `UpdateResumeCommand` → `UpdateResumeUseCase` |
-| 43 | POST | `/freelancers/{profile_id}/portfolio` | `add_portfolio_item` | auth | `AddPortfolioItemCommand` → `AddPortfolioItemUseCase` (201) |
-| 44 | PATCH | `/freelancers/{profile_id}/portfolio/{item_id}` | `update_portfolio_item` | auth | `UpdatePortfolioItemCommand` → `UpdatePortfolioItemUseCase` |
-| 45 | DELETE | `/freelancers/{profile_id}/portfolio/{item_id}` | `delete_portfolio_item` | auth | `DeletePortfolioItemCommand` → `DeletePortfolioItemUseCase` |
+| 42 | GET | `/freelancers/{profile_id}` | `get_freelancer_profile` | auth | `GetFreelancerProfileQuery` → `GetFreelancerProfileUseCase` |
+| 43 | POST | `/freelancers` | `create_freelancer_profile` | auth | `CreateFreelancerProfileCommand` → `CreateFreelancerProfileUseCase` (201) |
+| 44 | PATCH | `/freelancers/{profile_id}` | `update_freelancer_profile` | auth | `UpdateFreelancerProfileCommand` → `UpdateFreelancerProfileUseCase` |
+| 45 | POST | `/freelancers/{profile_id}/submit-approval` | `submit_freelancer_approval` | auth | `SubmitFreelancerApprovalCommand` → `SubmitFreelancerApprovalUseCase` |
+| 46 | POST | `/freelancers/{profile_id}/approve` | `approve_freelancer` | auth | `ApproveFreelancerCommand` → `ApproveFreelancerUseCase` |
+| 47 | POST | `/freelancers/{profile_id}/reject` | `reject_freelancer` | auth | `RejectFreelancerCommand` → `RejectFreelancerUseCase` |
+| 48 | POST | `/freelancers/{profile_id}/level` | `assign_freelancer_level` | auth | `AssignFreelancerLevelCommand` → `AssignFreelancerLevelUseCase` |
+| 49 | POST | `/freelancers/{profile_id}/resume` | `upload_resume` | auth | `UploadResumeCommand` → `UploadResumeUseCase` (201) |
+| 50 | PATCH | `/freelancers/{profile_id}/resume` | `update_resume` | auth | `UpdateResumeCommand` → `UpdateResumeUseCase` |
+| 51 | POST | `/freelancers/{profile_id}/portfolio` | `add_portfolio_item` | auth | `AddPortfolioItemCommand` → `AddPortfolioItemUseCase` (201) |
+| 52 | PATCH | `/freelancers/{profile_id}/portfolio/{item_id}` | `update_portfolio_item` | auth | `UpdatePortfolioItemCommand` → `UpdatePortfolioItemUseCase` |
+| 53 | DELETE | `/freelancers/{profile_id}/portfolio/{item_id}` | `delete_portfolio_item` | auth | `DeletePortfolioItemCommand` → `DeletePortfolioItemUseCase` |
 
 ### 3.6 Project (core) — `/api/v1/projects`
 
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|
-| 46 | POST | `/projects` | `create_project` | auth | self OR on-behalf (`CreateProjectOnBehalfCommand` when `customer_user_id`) → `CreateProjectUseCase` / `AdminCreateProjectOnBehalfUseCase` (201) |
-| 47 | GET | `/projects` | `get_available_projects` | auth (freelancer) | `GetAvailableProjectsQuery` → `GetAvailableProjectsUseCase` `total_pages` meta built from returned list length |
-| 48 | GET | `/projects/my` | `get_my_projects` | auth | `GetMyProjectsQuery` → `GetMyProjectsUseCase` |
-| 49 | GET | `/projects/{project_id}` | `get_project_details` | auth | `GetProjectDetailsQuery` → `GetProjectDetailsUseCase` |
-| 50 | POST | `/projects/{project_id}/publish` | `publish_project` | auth | `PublishProjectCommand` → `PublishProjectUseCase` |
-| 51 | POST | `/projects/{project_id}/cancel` | `cancel_project` | auth | `CancelProjectCommand` → `CancelProjectUseCase` |
-| 52 | POST | `/projects/{project_id}/complete` | `complete_project` | auth | `CompleteProjectCommand` → `CompleteProjectUseCase` |
-| 53 | POST | `/projects/{project_id}/applications` | `apply_for_project` | auth | self OR on-behalf (`AdminApplyForProjectOnBehalfCommand`) (201) |
-| 54 | GET | `/projects/{project_id}/applications` | `view_applications` | auth | `ViewApplicationsQuery` → `ViewApplicationsUseCase` |
-| 55 | POST | `/projects/{project_id}/applications/{application_id}/accept` | `accept_freelancer` | auth | `AcceptFreelancerCommand` → `AcceptFreelancerUseCase` |
-| 56 | POST | `/projects/{project_id}/applications/{application_id}/reject` | `reject_freelancer_application` | auth | `RejectFreelancerCommand` → `RejectFreelancerUseCase` |
-| 57 | POST | `/projects/{project_id}/applications/{application_id}/withdraw` | `withdraw_application` | auth | `WithdrawApplicationCommand` → `WithdrawApplicationUseCase` |
-| 58 | POST | `/projects/{project_id}/start` | `start_project` | auth | `StartProjectCommand` → `StartProjectUseCase` |
-| 59 | POST | `/projects/{project_id}/deliveries` | `submit_delivery` | auth | `SubmitDeliveryCommand` → `SubmitDeliveryUseCase` (201) |
-| 60 | POST | `/projects/{project_id}/revisions` | `request_revision` | auth | `RequestRevisionCommand` → `RequestRevisionUseCase` |
+| 54 | POST | `/projects` | `create_project` | auth | self OR on-behalf (`CreateProjectOnBehalfCommand` when `customer_user_id`) → `CreateProjectUseCase` / `AdminCreateProjectOnBehalfUseCase` (201) |
+| 55 | GET | `/projects` | `get_available_projects` | auth (freelancer) | `GetAvailableProjectsQuery` → `GetAvailableProjectsUseCase` `total_pages` meta built from returned list length |
+| 56 | GET | `/projects/my` | `get_my_projects` | auth | `GetMyProjectsQuery` → `GetMyProjectsUseCase` |
+| 57 | GET | `/projects/{project_id}` | `get_project_details` | auth | `GetProjectDetailsQuery` → `GetProjectDetailsUseCase` |
+| 58 | POST | `/projects/{project_id}/publish` | `publish_project` | auth | `PublishProjectCommand` → `PublishProjectUseCase` |
+| 59 | POST | `/projects/{project_id}/cancel` | `cancel_project` | auth | `CancelProjectCommand` → `CancelProjectUseCase` |
+| 60 | POST | `/projects/{project_id}/complete` | `complete_project` | auth | `CompleteProjectCommand` → `CompleteProjectUseCase` |
+| 61 | POST | `/projects/{project_id}/applications` | `apply_for_project` | auth | self OR on-behalf (`AdminApplyForProjectOnBehalfCommand`) (201) |
+| 62 | GET | `/projects/{project_id}/applications` | `view_applications` | auth | `ViewApplicationsQuery` → `ViewApplicationsUseCase` |
+| 63 | POST | `/projects/{project_id}/applications/{application_id}/accept` | `accept_freelancer` | auth | `AcceptFreelancerCommand` → `AcceptFreelancerUseCase` |
+| 64 | POST | `/projects/{project_id}/applications/{application_id}/reject` | `reject_freelancer_application` | auth | `RejectFreelancerCommand` → `RejectFreelancerUseCase` |
+| 65 | POST | `/projects/{project_id}/applications/{application_id}/withdraw` | `withdraw_application` | auth | `WithdrawApplicationCommand` → `WithdrawApplicationUseCase` |
+| 66 | POST | `/projects/{project_id}/start` | `start_project` | auth | `StartProjectCommand` → `StartProjectUseCase` |
+| 67 | POST | `/projects/{project_id}/deliveries` | `submit_delivery` | auth | `SubmitDeliveryCommand` → `SubmitDeliveryUseCase` (201) |
+| 68 | POST | `/projects/{project_id}/revisions` | `request_revision` | auth | `RequestRevisionCommand` → `RequestRevisionUseCase` |
 
 ### 3.7 Review — `/api/v1/reviews` + `/api/v1/deliveries`
 
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|
-| 62 | GET | `/reviews/pending` | `get_pending_reviews` | auth (supervisor) | `GetPendingReviewsQuery` → `GetPendingReviewsUseCase` |
-| 63 | GET | `/reviews/supervisor/projects` | `get_supervisor_projects` | auth | `GetSupervisorProjectsQuery` → `GetSupervisorProjectsUseCase` |
-| 64 | POST | `/deliveries/{delivery_id}/review` | `review_delivery` | auth | `ReviewDeliveryCommand` → `ReviewDeliveryUseCase` |
-| 65 | POST | `/deliveries/{delivery_id}/approve` | `approve_delivery` | auth | `ApproveDeliveryCommand` → `ApproveDeliveryUseCase` |
-| 66 | POST | `/deliveries/{delivery_id}/reject` | `reject_delivery` | auth | `RejectDeliveryCommand` → `RejectDeliveryUseCase` |
+| 70 | GET | `/reviews/pending` | `get_pending_reviews` | auth (supervisor) | `GetPendingReviewsQuery` → `GetPendingReviewsUseCase` |
+| 71 | GET | `/reviews/supervisor/projects` | `get_supervisor_projects` | auth | `GetSupervisorProjectsQuery` → `GetSupervisorProjectsUseCase` |
+| 72 | POST | `/deliveries/{delivery_id}/review` | `review_delivery` | auth | `ReviewDeliveryCommand` → `ReviewDeliveryUseCase` |
+| 73 | POST | `/deliveries/{delivery_id}/approve` | `approve_delivery` | auth | `ApproveDeliveryCommand` → `ApproveDeliveryUseCase` |
+| 74 | POST | `/deliveries/{delivery_id}/reject` | `reject_delivery` | auth | `RejectDeliveryCommand` → `RejectDeliveryUseCase` |
 
 ### 3.8 Feedback — `/api/v1/feedback`
 
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|
-| 67 | POST | `/feedback/reviews` | `submit_review` | auth | `SubmitReviewCommand` → `SubmitReviewUseCase` (201) |
-| 68 | POST | `/feedback/ratings` | `submit_rating` | auth | `SubmitRatingCommand` → `SubmitRatingUseCase` (201) |
-| 69 | GET | `/feedback/projects/{project_id}/rating` | `get_project_rating` | auth | `GetProjectRatingQuery` → `GetProjectRatingUseCase` |
-| 70 | GET | `/feedback/freelancers/{freelancer_profile_id}/ratings` | `get_freelancer_ratings` | auth | `GetFreelancerRatingsQuery` → `GetFreelancerRatingsUseCase` |
+| 75 | POST | `/feedback/reviews` | `submit_review` | auth | `SubmitReviewCommand` → `SubmitReviewUseCase` (201) |
+| 76 | POST | `/feedback/ratings` | `submit_rating` | auth | `SubmitRatingCommand` → `SubmitRatingUseCase` (201) |
+| 77 | GET | `/feedback/projects/{project_id}/rating` | `get_project_rating` | auth | `GetProjectRatingQuery` → `GetProjectRatingUseCase` |
+| 78 | GET | `/feedback/freelancers/{freelancer_profile_id}/ratings` | `get_freelancer_ratings` | auth | `GetFreelancerRatingsQuery` → `GetFreelancerRatingsUseCase` |
 
 ### 3.9 Ticketing — `/api/v1/tickets`
 
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|
-| 71 | POST | `/tickets` | `create_ticket` | auth | `CreateTicketCommand` → `CreateTicketUseCase` (201) |
-| 72 | GET | `/tickets` | `get_user_tickets` | auth | `GetUserTicketsQuery` → `GetUserTicketsUseCase` |
-| 73 | GET | `/tickets/{ticket_id}/messages` | `get_ticket_messages` | auth | `GetTicketMessagesQuery` → `GetTicketMessagesUseCase` |
-| 74 | POST | `/tickets/{ticket_id}/messages` | `send_message` | auth | `SendMessageCommand` → `SendMessageUseCase` (201) |
-| 75 | POST | `/tickets/{ticket_id}/assign` | `assign_ticket` | auth | `AssignTicketCommand` → `AssignTicketUseCase` |
-| 76 | POST | `/tickets/{ticket_id}/close` | `close_ticket` | auth | `CloseTicketCommand` → `CloseTicketUseCase` |
+| 79 | POST | `/tickets` | `create_ticket` | auth | `CreateTicketCommand` → `CreateTicketUseCase` (201) |
+| 80 | GET | `/tickets` | `get_user_tickets` | auth | `GetUserTicketsQuery` → `GetUserTicketsUseCase` |
+| 81 | GET | `/tickets/{ticket_id}/messages` | `get_ticket_messages` | auth | `GetTicketMessagesQuery` → `GetTicketMessagesUseCase` |
+| 82 | POST | `/tickets/{ticket_id}/messages` | `send_message` | auth | `SendMessageCommand` → `SendMessageUseCase` (201) |
+| 83 | POST | `/tickets/{ticket_id}/assign` | `assign_ticket` | auth | `AssignTicketCommand` → `AssignTicketUseCase` |
+| 84 | POST | `/tickets/{ticket_id}/close` | `close_ticket` | auth | `CloseTicketCommand` → `CloseTicketUseCase` |
 
 ### 3.10 Reporting — `/api/v1/reporting`
 
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|
-| 77 | GET | `/reporting/dashboard` | `get_dashboard_statistics` | auth | `ReportingQuery` → `GetDashboardStatisticsUseCase` |
-| 78 | GET | `/reporting/users` | `get_user_statistics` | auth | `ReportingQuery` → `GetUserStatisticsUseCase` |
-| 79 | GET | `/reporting/projects` | `get_project_statistics` | auth | `ReportingQuery` → `GetProjectStatisticsUseCase` |
-| 80 | GET | `/reporting/freelancers` | `get_freelancer_statistics` | auth | `ReportingQuery` → `GetFreelancerStatisticsUseCase` |
-| 81 | GET | `/reporting/customers` | `get_customer_statistics` | auth | `ReportingQuery` → `GetCustomerStatisticsUseCase` |
-| 82 | GET | `/reporting/system-analytics` | `get_system_analytics` | auth (admin) | `ReportingQuery` → `GetSystemAnalyticsUseCase` |
+| 85 | GET | `/reporting/dashboard` | `get_dashboard_statistics` | auth | `ReportingQuery` → `GetDashboardStatisticsUseCase` |
+| 86 | GET | `/reporting/users` | `get_user_statistics` | auth | `ReportingQuery` → `GetUserStatisticsUseCase` |
+| 87 | GET | `/reporting/projects` | `get_project_statistics` | auth | `ReportingQuery` → `GetProjectStatisticsUseCase` |
+| 88 | GET | `/reporting/freelancers` | `get_freelancer_statistics` | auth | `ReportingQuery` → `GetFreelancerStatisticsUseCase` |
+| 89 | GET | `/reporting/customers` | `get_customer_statistics` | auth | `ReportingQuery` → `GetCustomerStatisticsUseCase` |
+| 90 | GET | `/reporting/system-analytics` | `get_system_analytics` | auth (admin) | `ReportingQuery` → `GetSystemAnalyticsUseCase` |
 
 ### 3.11 WebSocket — `/ws/notifications` (NOT under `/api/v1`)
 
 | # | Type | Path | Auth | Notes |
 |---|---|---|---|---|
-| 83 | WS | `/ws/notifications` | token via **query param** `?token=` | `decode_access_token` → `manager.connect` → echo loop → disconnect; **errors are not handled** (see §7) |
+| 91 | WS | `/ws/notifications` | token via **query param** `?token=` | `decode_access_token` → `manager.connect` → echo loop → disconnect; **errors are not handled** (see §7) |
 
 ---
 
@@ -329,13 +342,9 @@ documented design deviation (see §7).
 
 ## 7. Critical Gaps & Inconsistencies
 
-1. **BUG (§ 3.4 / `form/router.py:135`)**: `GET /form-templates/{template_id}` calls
-   `GetFormTemplateQuery(category_id=template_id)` — the path var `template_id` is passed
-   as a **category_id**; the `GetFormTemplateUseCase` then looks up the *published template
-   for a category*. So the endpoint actually returns the template for the **category**
-   whose ID was supplied, not a template by its own ID, and a request for a real template
-   ID will raise `EntityNotFoundError` (404). Route path, schema, and op_id all say
-   "template_id" — this is a latent bug.
+1. ✅ **Resolved in Part 2 — `GET /form-templates/{template_id}` contract**
+   (`form/router.py:~146`): now uses `GetFormTemplateByIdQuery(template_id=template_id)`
+   and `GetFormTemplateByIdUseCase`. The old path var misinterpretation is fixed.
 2. **Pagination is fictional**: `PageQuery` paginates only the *client-side* length
    (`projects/_pagination_meta` computed from `len(projects)`, no `.offset/.limit` passed
    to any `Query`/repo). `GET /projects`, `/projects/my`, `/reviews/pending`,
@@ -372,9 +381,9 @@ documented design deviation (see §7).
 | Dimension | Assessment |
 |---|---|
 | Architecture compliance | **Strong** — layering, dependency direction, DI-override seam, envelope/error mapping all respected. |
-| API surface coverage | **Strong** — 81 HTTP endpoints + 1 WebSocket covering all 9 contexts. |
+| API surface coverage | **Strong** — 83 HTTP endpoints + 1 WebSocket covering all 9 contexts + file upload. |
 | Consistency (bytes/rules) | **Good but leaky** — 2 stale README claims, 401 global exception, WS unguarded, duplicated mappers. |
-| Correctness risk | **1 confirmed latent bug** (form-template path variable misuse at §7.1), fake pagination, WS close. |
+| Correctness risk | **0 confirmed latent bugs**. Remaining: fake pagination, WS close handling. File-attachment existence checks now enforced. |
 | Production readiness | **Not yet** — no auth/refresh storage solution verified here, error envelope deviation on 401s, no WS error handling. |
 
 **Readiness to enter public alpha:** the surface area is real and well-formed (Phase-1

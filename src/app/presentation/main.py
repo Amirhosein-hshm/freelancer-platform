@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.presentation.api.v1.auth.router import router as auth_router
 from app.presentation.api.v1.category.router import router as category_router
 from app.presentation.api.v1.feedback.router import router as feedback_router
+from app.presentation.api.v1.file.router import router as file_router
 from app.presentation.api.v1.form.router import router as form_router
 from app.presentation.api.v1.freelancer.router import router as freelancer_router
 from app.presentation.api.v1.iam.catalog_router import router as iam_catalog_router
@@ -44,6 +45,7 @@ def create_app(cors_origins: Sequence[str] | None = None) -> FastAPI:
         iam_catalog_router,
         freelancer_router,
         category_router,
+        file_router,
         form_router,
         project_router,
         review_router,

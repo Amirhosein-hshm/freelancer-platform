@@ -9,15 +9,18 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 
+from app.domain.file.enums import FileAssetContext
 from app.domain.shared.events import DomainEvent, IEventPublisher
 from app.domain.shared.types import EntityId
 
 __all__ = [
     "AccessTokenPayload",
     "DomainEvent",
+    "FileAssetContext",
     "FileAssetMetadata",
     "IClock",
     "IEventPublisher",
+    "IFileAccessPolicy",
     "IFileStorageService",
     "IIdGenerator",
     "INotificationService",
@@ -45,6 +48,8 @@ class FileAssetMetadata:
     mime_type: str | None
     url: str | None
     uploaded_at: datetime
+    owner_user_id: EntityId
+    context: FileAssetContext
 
 
 class IPasswordHasher(ABC):
@@ -142,7 +147,20 @@ class IFileStorageService(ABC):
         size_bytes: int,
         mime_type: str,
         owner_user_id: EntityId,
+        context: FileAssetContext,
     ) -> EntityId: ...
+
+
+class IFileAccessPolicy(ABC):
+    """Decides whether a user is allowed to read a file asset.
+
+    The policy is context-aware: a file attached to a resume, portfolio, project
+    delivery, or ticket message may be accessible to users beyond the original
+    uploader (e.g. project stakeholders or ticket participants).
+    """
+
+    @abstractmethod
+    async def can_access(self, actor_id: EntityId, file_asset_id: EntityId) -> bool: ...
 
 
 class IProjectCodeGenerator(ABC):

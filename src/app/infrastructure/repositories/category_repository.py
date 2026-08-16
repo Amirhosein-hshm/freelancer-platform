@@ -54,6 +54,17 @@ class SqlAlchemyCategoryRepository(ICategoryRepository):
         )
         return [to_domain_category(row) for row in result.scalars().all()]
 
+    async def list_by_parent_id(self, parent_category_id: EntityId) -> list[Category]:
+        result = await self._session.execute(
+            select(CategoryModel)
+            .where(
+                CategoryModel.parent_category_id == parent_category_id,
+                CategoryModel.deleted_at.is_(None),
+            )
+            .order_by(CategoryModel.sort_order.asc())
+        )
+        return [to_domain_category(row) for row in result.scalars().all()]
+
     async def update(self, category: Category) -> None:
         row = await self._session.get(CategoryModel, category.id)
         if row is None:

@@ -13,6 +13,8 @@ from datetime import UTC, datetime
 import pytest
 from fastapi.testclient import TestClient
 
+from app.application.file.use_cases.get_file_asset import GetFileAssetUseCase
+from app.application.file.use_cases.upload_file import UploadFileUseCase
 from app.presentation.core import providers
 from app.presentation.main import create_app
 from tests.fakes.fake_authorization_service import FakeAuthorizationService
@@ -20,6 +22,7 @@ from tests.fakes.fake_category_repository import FakeCategoryRepository
 from tests.fakes.fake_category_supervisor_repository import FakeCategorySupervisorRepository
 from tests.fakes.fake_clock import FakeClock
 from tests.fakes.fake_customer_review_repository import FakeCustomerReviewRepository
+from tests.fakes.fake_file_access_policy import FakeFileAccessPolicy
 from tests.fakes.fake_file_storage import FakeFileStorageService
 from tests.fakes.fake_form_template_repository import FakeFormTemplateRepository
 from tests.fakes.fake_freelancer_level_history_repository import (
@@ -78,13 +81,19 @@ def _make_overrides() -> dict[object, object]:
     user_role_repo = FakeUserRoleRepository(role_repo)
     role_permission_repo = FakeRolePermissionRepository(permission_repo)
 
+    file_storage = FakeFileStorageService()
+    clock = FakeClock(fixed_now=NOW)
+    file_access_policy = FakeFileAccessPolicy(file_storage)
     overrides: dict[object, object] = {
         providers.get_authorization_service: FakeAuthorizationService(),
         providers.get_category_repository: FakeCategoryRepository(),
         providers.get_category_supervisor_repository: FakeCategorySupervisorRepository(),
-        providers.get_clock: FakeClock(fixed_now=NOW),
+        providers.get_clock: clock,
         providers.get_customer_review_repository: FakeCustomerReviewRepository(),
-        providers.get_file_storage_service: FakeFileStorageService(),
+        providers.get_file_storage_service: file_storage,
+        providers.get_file_access_policy: file_access_policy,
+        providers.get_upload_file_use_case: lambda: UploadFileUseCase(file_storage, clock),
+        providers.get_get_file_asset_use_case: lambda: GetFileAssetUseCase(file_storage, file_access_policy),
         providers.get_form_template_repository: FakeFormTemplateRepository(),
         providers.get_freelancer_level_history_repository: FakeFreelancerLevelHistoryRepository(),
         providers.get_freelancer_level_repository: FakeFreelancerLevelRepository(),
@@ -128,8 +137,16 @@ def overrides() -> dict[object, object]:
 @pytest.fixture
 def client(overrides: dict[object, object]) -> TestClient:
     app = create_app()
+
+    def _wrap(instance: object) -> object:
+        # If the override is already a callable dependency factory, use it as-is;
+        # otherwise wrap the instance in a zero-arg callable for FastAPI.
+        if callable(instance):
+            return instance
+        return lambda fake=instance: fake  # type: ignore[return-value]
+
     app.dependency_overrides.update(
-        {provider: (lambda fake=instance: fake) for provider, instance in overrides.items()}
+        {provider: _wrap(instance) for provider, instance in overrides.items()}
     )
     with TestClient(app) as test_client:
         yield test_client

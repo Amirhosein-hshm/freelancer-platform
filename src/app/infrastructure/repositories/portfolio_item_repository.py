@@ -42,6 +42,15 @@ class SqlAlchemyPortfolioItemRepository(IPortfolioItemRepository):
         )
         return [to_domain_portfolio_item(row) for row in result.scalars().all()]
 
+    async def get_by_file_asset_id(self, file_asset_id: EntityId) -> PortfolioItem | None:
+        result = await self._session.execute(
+            select(PortfolioItemModel)
+            .where(PortfolioItemModel.file_asset_id == file_asset_id)
+            .limit(1)
+        )
+        row = result.scalar_one_or_none()
+        return to_domain_portfolio_item(row) if row is not None else None
+
     async def update(self, item: PortfolioItem) -> None:
         row = await self._session.get(PortfolioItemModel, item.id)
         if row is None:

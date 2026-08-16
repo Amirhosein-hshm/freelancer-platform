@@ -1321,16 +1321,76 @@ Location: `src/app/domain/category/`, `src/app/application/category/`.
 
 ### 5.3 Repository interfaces
 
-`ICategoryRepository` (`add`, `get_by_id`, `get_by_slug`, `list_active`, `update`),
+`ICategoryRepository` (`add`, `get_by_id`, `get_by_slug`, `list_active`,
+`list_by_parent_id`, `update`),
 `ICategorySupervisorRepository` (`add`, `list_active_supervisors`,
 `list_categories_for_supervisor`, `is_supervisor_of`, `update`).
 
 ### 5.4 Domain exceptions
 
 `CategoryNotFoundError`, `DuplicateCategorySlugError`, `SupervisorAlreadyAssignedError`,
-`SupervisorAssignmentNotFoundError` (code addition).
+`SupervisorAssignmentNotFoundError` (code addition),
+`CategoryHasActiveReferencesError` (raised by `DeleteCategoryUseCase` when the category
+still has child categories or active projects).
 
 ### 5.5 Use cases
+
+---
+
+## GetCategory
+
+### Purpose
+Returns a single category by ID.
+
+### Actor
+Anyone (public read).
+
+### Input (`GetCategoryQuery`)
+- `category_id`
+
+### Output (`GetCategoryResult`)
+`CategoryResult`.
+
+### Dependencies
+`ICategoryRepository`.
+
+### Flow
+`get_by_id` → map to result.
+
+### Errors
+`CategoryNotFoundError`.
+
+### Side effects
+None.
+
+---
+
+## ListCategorySupervisors
+
+### Purpose
+Lists the active supervisors assigned to a category.
+
+### Actor
+Anyone (public read).
+
+### Input (`ListCategorySupervisorsQuery`)
+- `category_id`
+
+### Output (`ListCategorySupervisorsResult`)
+`supervisors: list[CategorySupervisorResult]`.
+
+### Dependencies
+`ICategoryRepository`, `ICategorySupervisorRepository`.
+
+### Flow
+1. Verify the category exists (`get_by_id`).
+2. `list_active_supervisors(category_id)` → map.
+
+### Errors
+`CategoryNotFoundError`.
+
+### Side effects
+None.
 
 ---
 
@@ -1424,20 +1484,25 @@ Admin (requires `category.manage`).
 `category_id`.
 
 ### Dependencies
-`IAuthorizationService`, `ICategoryRepository`, `IClock`, `IUnitOfWork`.
+`IAuthorizationService`, `ICategoryRepository`, `IProjectRepository`, `IClock`, `IUnitOfWork`.
 
 ### Flow
 1. `require_permission(actor_id, "category.manage")`.
-2. `get_by_id` → `category.soft_delete(now)` → `update` → commit.
+2. `get_by_id`.
+3. Check for child categories via `list_by_parent_id(category_id)`. Count active
+   (non-terminal, non-deleted) projects via `count_active_by_category(category_id)`.
+4. If any child or active project exists, raise `CategoryHasActiveReferencesError`
+   with `children_count` and `active_projects_count` in the exception details.
+5. `category.soft_delete(now)` → `update` → commit.
 
 ### Errors
-`PermissionDeniedError`, `CategoryNotFoundError`.
+`PermissionDeniedError`, `CategoryNotFoundError`, `CategoryHasActiveReferencesError`.
 
 ### Side effects
 `deleted_at` set, `is_active=False`.
 
-> **Gap:** no protection against deleting a category that has child categories or projects;
-> no idempotency guard (repeat delete just re-stamps `deleted_at`).
+> **Resolved:** deletion is now blocked when the category has child categories or active
+> projects. Repeat delete still re-stamps `deleted_at`.
 
 ---
 
@@ -1622,6 +1687,9 @@ Location: `src/app/domain/form/`, `src/app/application/form/`.
   - `change_type(new_type)` — switches type; **wipes `options` if the new type is not
     select-like** (silent).
   - `get_option(option_key)`.
+  - `update_option(option_id, ...)` — updates label/value/sort_order/is_active of an
+    existing option; raises `OptionNotFoundError`.
+  - `remove_option(option_id)` — removes an option; raises `OptionNotFoundError`.
 
 #### FormFieldOption (Entity)
 
@@ -1630,13 +1698,14 @@ Location: `src/app/domain/form/`, `src/app/application/form/`.
 ### 6.4 Repository interface
 
 `IFormTemplateRepository`: `add`, `get_by_id`, `get_published_for_category` (raises
-`FormTemplateNotFoundError`), `update`, `list_versions` (unused by any use case).
+`FormTemplateNotFoundError`), `update`, `delete`, `list_versions`.
 
 ### 6.5 Domain exceptions
 
-`FormTemplateNotFoundError`, `FieldNotFoundError`, `DuplicateFieldKeyError`,
-`DuplicateOptionKeyError`, `FormTemplateAlreadyPublishedError`, `FormTemplateHasNoFieldsError`,
-`InvalidFieldOptionError`.
+`FormTemplateNotFoundError`, `FieldNotFoundError`, `OptionNotFoundError`,
+`DuplicateFieldKeyError`, `DuplicateOptionKeyError`, `FormTemplateAlreadyPublishedError`,
+`FormTemplateHasNoFieldsError`, `InvalidFieldOptionError`,
+`FormTemplateHasActiveReferencesError`.
 
 ### 6.6 Use cases
 
@@ -1899,6 +1968,163 @@ Anyone.
 
 ### Errors
 `FormTemplateNotFoundError`.
+
+---
+
+## GetFormTemplateById
+
+### Purpose
+Returns a form template by its own template ID (fixes the previous route bug where
+`GET /form-templates/{template_id}` was interpreted as a `category_id`).
+
+### Actor
+Anyone with a valid token (auth required).
+
+### Input (`GetFormTemplateByIdQuery`)
+- `template_id`
+
+### Output (`FormTemplateResult`)
+
+### Dependencies
+`IFormTemplateRepository`.
+
+### Flow
+`get_by_id(template_id)` → map.
+
+### Errors
+`FormTemplateNotFoundError`.
+
+### Side effects
+None.
+
+---
+
+## ListFormTemplateVersions
+
+### Purpose
+Lists all versions of a form template (same `category_id` + `template_key`),
+ordered by version number descending.
+
+### Actor
+Anyone with a valid token.
+
+### Input (`ListFormTemplateVersionsQuery`)
+- `template_id`
+
+### Output (`ListFormTemplateVersionsResult`)
+`versions: list[FormTemplateResult]`.
+
+### Dependencies
+`IFormTemplateRepository`.
+
+### Flow
+1. `get_by_id(template_id)` to read `category_id` and `template_key`.
+2. `list_versions(category_id, template_key)` → map.
+
+### Errors
+`FormTemplateNotFoundError`.
+
+### Side effects
+None.
+
+---
+
+## DeleteFormTemplate
+
+### Purpose
+Deletes a DRAFT form template only when it has never been published and is not
+referenced by any active project.
+
+### Actor
+Admin/ops (requires `form.manage`).
+
+### Input (`DeleteFormTemplateCommand`)
+- `actor_id`, `template_id`
+
+### Output (`DeleteFormTemplateResult`)
+`template_id`.
+
+### Dependencies
+`IAuthorizationService`, `IFormTemplateRepository`, `IProjectRepository`, `IUnitOfWork`.
+
+### Flow
+1. `require_permission(actor_id, "form.manage")`.
+2. `get_by_id(template_id)`.
+3. Reject if `status != DRAFT` (`FormTemplateHasActiveReferencesError`).
+4. `count_active_by_form_template(template_id)`; reject if > 0
+   (`FormTemplateHasActiveReferencesError`).
+5. In UoW: `delete(template)` → commit.
+
+### Errors
+`PermissionDeniedError`, `FormTemplateNotFoundError`,
+`FormTemplateHasActiveReferencesError`.
+
+### Side effects
+Template removed from the repository.
+
+---
+
+## UpdateFieldOption
+
+### Purpose
+Updates a SELECT/MULTI_SELECT field option on a DRAFT template.
+
+### Actor
+Admin/ops (requires `form.manage`).
+
+### Input (`UpdateFieldOptionCommand`)
+- `actor_id`, `template_id`, `field_id`, `option_id`
+- optional: `label`, `value`, `sort_order`, `is_active`
+
+### Output (`UpdateFieldOptionResult`)
+`option_id`.
+
+### Dependencies
+`IAuthorizationService`, `IFormTemplateRepository`, `IUnitOfWork`.
+
+### Flow
+1. `require_permission(actor_id, "form.manage")`.
+2. `request.validate()`.
+3. `get_by_id`; `template.require_draft("update field options")`; `get_field(field_id)`.
+4. `field.update_option(option_id, ...)`; `update`; commit.
+
+### Errors
+`PermissionDeniedError`, `ValidationError`, `FormTemplateNotFoundError`,
+`InvalidStateTransitionError`, `FieldNotFoundError`, `OptionNotFoundError`.
+
+### Side effects
+Option updated.
+
+---
+
+## RemoveFieldOption
+
+### Purpose
+Removes a SELECT/MULTI_SELECT field option from a DRAFT template.
+
+### Actor
+Admin/ops (requires `form.manage`).
+
+### Input (`RemoveFieldOptionCommand`)
+- `actor_id`, `template_id`, `field_id`, `option_id`
+
+### Output (`RemoveFieldOptionResult`)
+`option_id`.
+
+### Dependencies
+`IAuthorizationService`, `IFormTemplateRepository`, `IUnitOfWork`.
+
+### Flow
+1. `require_permission(actor_id, "form.manage")`.
+2. `get_by_id`; `template.require_draft("remove field options")`; `get_field(field_id)`.
+3. `field.remove_option(option_id)`; `update`; commit.
+
+### Errors
+`PermissionDeniedError`, `FormTemplateNotFoundError`,
+`InvalidStateTransitionError`, `FieldNotFoundError`, `OptionNotFoundError`.
+
+### Side effects
+Option removed.
 
 ---
 
@@ -3450,6 +3676,8 @@ The remaining current deviations follow:
 | ListRoles | `/roles` | GET | `list_roles` |
 | ListPermissions | `/permissions` | GET | `list_permissions` |
 | GetCategories | `/categories` | GET | `get_categories` |
+| GetCategory | `/categories/{category_id}` | GET | `get_category` |
+| ListCategorySupervisors | `/categories/{category_id}/supervisors` | GET | `list_category_supervisors` |
 | GetCategoryProjects | `/categories/{category_id}/projects` | GET | `get_category_projects` |
 | CreateCategory | `/categories` | POST | `create_category` |
 | UpdateCategory | `/categories/{category_id}` | PATCH | `update_category` |
@@ -3457,13 +3685,19 @@ The remaining current deviations follow:
 | AssignSupervisor | `/categories/{category_id}/supervisors` | POST | `assign_supervisor` |
 | RemoveSupervisor | `/categories/{category_id}/supervisors/{supervisor_user_id}` | DELETE | `remove_supervisor` |
 | CreateFormTemplate | `/form-templates` | POST | `create_form_template` |
-| GetFormTemplate | ⚠️ `/form-templates/{template_id}` | GET | `get_form_template` |
+| GetFormTemplateById | `/form-templates/{template_id}` | GET | `get_form_template` |
 | UpdateFormTemplate | `/form-templates/{template_id}` | PATCH | `update_form_template` |
 | PublishFormTemplate | `/form-templates/{template_id}/publish` | POST | `publish_form_template` |
+| DeleteFormTemplate | `/form-templates/{template_id}` | DELETE | `delete_form_template` |
+| ListFormTemplateVersions | `/form-templates/{template_id}/versions` | GET | `list_form_template_versions` |
 | AddField | `/form-templates/{template_id}/fields` | POST | `add_field` |
 | UpdateField | `/form-templates/{template_id}/fields/{field_id}` | PATCH | `update_field` |
 | RemoveField | `/form-templates/{template_id}/fields/{field_id}` | DELETE | `remove_field` |
 | AddFieldOption | `/form-templates/{template_id}/fields/{field_id}/options` | POST | `add_field_option` |
+| UpdateFieldOption | `/form-templates/{template_id}/fields/{field_id}/options/{option_id}` | PATCH | `update_field_option` |
+| RemoveFieldOption | `/form-templates/{template_id}/fields/{field_id}/options/{option_id}` | DELETE | `remove_field_option` |
+| UploadFile | `/files` | POST | `upload_file` |
+| GetFileAsset | `/files/{file_asset_id}` | GET | `get_file_asset` |
 | GetFreelancerProfile | `/freelancers/{profile_id}` | GET | `get_freelancer_profile` |
 | CreateFreelancerProfile | `/freelancers` | POST | `create_freelancer_profile` |
 | UpdateFreelancerProfile | `/freelancers/{profile_id}` | PATCH | `update_freelancer_profile` |
@@ -3515,10 +3749,11 @@ The remaining current deviations follow:
 
 ### 13.2 Presentation-layer deviations found (summary)
 
-1. ⚠️ **`GetFormTemplate` route contract bug** — `GET /form-templates/{template_id}`
-   passes the path var as `category_id` into `GetFormTemplateQuery`; the use case
-   `get_published_for_category()` therefore fetches the template for a *category*, not a
-   template by its own ID (see `presentation-analysis.md` §7.1).
+1. ✅ **`GetFormTemplate` route contract bug resolved** — `GET /form-templates/{template_id}`
+   now correctly reads the template by its own ID via `GetFormTemplateByIdUseCase`. The
+   category-scoped published lookup (`get_published_for_category`) is no longer exposed on
+   this path; if needed it can be added as a separate `/categories/{category_id}/published-form`
+   endpoint later.
 2. ⚠️ **Pagination is client-side only** — `PageQuery` never reaches any repository
    `Query`; `meta.total_items` equals the returned page length, not the DB total.
    **Partial fix:** `GET /users` (`admin_list_users`) is the exception — it passes real
@@ -3531,6 +3766,11 @@ The remaining current deviations follow:
 
 ### 13.3 Changelog
 
+- **2026-08-16 — File upload subsystem (Part 3).** Added `UploadFileUseCase` / `GetFileAssetUseCase`,
+  `POST /files` with content-derived MIME validation (via `filetype`), server-generated asset IDs, and
+  `GET /files/{file_asset_id}` with context-aware authorization (`IFileAccessPolicy`). Consumers now
+  validate file existence before attachment: `AddPortfolioItemUseCase`, `UpdatePortfolioItemUseCase`,
+  `SubmitDeliveryUseCase`, and `SendMessageUseCase`. New `file.upload`/`file.read_any` permissions seeded.
 - **2026-08-15 — Read-only IAM catalog endpoints added.** `ListRolesUseCase` / `ListPermissionsUseCase`
   exposed as `GET /roles` and `GET /permissions`, requiring `user.read`. Added `IPermissionRepository.list_all()`
   and documented the seed-only `Role`/`Permission` entity CRUD constraint in §12.5.

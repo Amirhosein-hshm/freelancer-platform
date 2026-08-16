@@ -17,6 +17,7 @@ dependencies = [
     "pyjwt",
     "argon2-cffi",
     "python-multipart",
+    "filetype",
 ]
 
 [project.optional-dependencies]
@@ -69,6 +70,10 @@ files = [
 module = ["app.infrastructure.*", "app.presentation.*", "app.bootstrap.*"]
 strict = false
 disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = ["filetype"]
+ignore_missing_imports = true
 
 [tool.ruff]
 target-version = "py312"

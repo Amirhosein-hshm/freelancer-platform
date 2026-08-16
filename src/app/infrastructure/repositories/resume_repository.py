@@ -53,3 +53,10 @@ class SqlAlchemyResumeRepository(IResumeRepository):
         )
         row = result.scalar_one_or_none()
         return to_domain_resume(row) if row is not None else None
+
+    async def get_by_file_asset_id(self, file_asset_id: EntityId) -> Resume | None:
+        result = await self._session.execute(
+            select(ResumeModel).where(ResumeModel.file_asset_id == file_asset_id).limit(1)
+        )
+        row = result.scalar_one_or_none()
+        return to_domain_resume(row) if row is not None else None

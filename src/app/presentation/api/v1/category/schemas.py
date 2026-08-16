@@ -46,3 +46,15 @@ class RemoveSupervisorResponse(BaseModel):
     category_id: str
     supervisor_user_id: str
     revoked_at: str
+
+
+class CategorySupervisorResponse(BaseModel):
+    link_id: str
+    category_id: str
+    supervisor_user_id: str
+    is_primary: bool
+    assigned_at: str
+
+
+class ListCategorySupervisorsResponse(BaseModel):
+    supervisors: list[CategorySupervisorResponse]

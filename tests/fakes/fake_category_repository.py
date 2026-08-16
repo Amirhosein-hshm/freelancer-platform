@@ -28,6 +28,13 @@ class FakeCategoryRepository(ICategoryRepository):
     async def list_active(self) -> list[Category]:
         return [c for c in self._store.values() if c.is_active and c.deleted_at is None]
 
+    async def list_by_parent_id(self, parent_category_id: EntityId) -> list[Category]:
+        return [
+            c
+            for c in self._store.values()
+            if c.parent_category_id == parent_category_id and c.deleted_at is None
+        ]
+
     async def update(self, category: Category) -> None:
         old = self._store.get(category.id)
         if old is not None and old.slug != category.slug:

@@ -35,5 +35,14 @@ class FakeFormTemplateRepository(IFormTemplateRepository):
     async def update(self, template: FormTemplate) -> None:
         self._store[template.id] = template
 
-    async def list_versions(self, category_id: EntityId) -> list[FormTemplate]:
-        return [t for t in self._store.values() if t.category_id == category_id]
+    async def delete(self, template_id: EntityId) -> None:
+        self._store.pop(template_id, None)
+
+    async def list_versions(
+        self, category_id: EntityId, template_key: str
+    ) -> list[FormTemplate]:
+        return [
+            t
+            for t in self._store.values()
+            if t.category_id == category_id and t.template_key == template_key
+        ]

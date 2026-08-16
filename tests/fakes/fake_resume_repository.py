@@ -25,3 +25,9 @@ class FakeResumeRepository(IResumeRepository):
             if r.freelancer_profile_id == profile_id and r.is_current:
                 return r
         return None
+
+    async def get_by_file_asset_id(self, file_asset_id: EntityId) -> Resume | None:
+        for r in self._store:
+            if r.file_asset_id == file_asset_id:
+                return r
+        return None

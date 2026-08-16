@@ -67,6 +67,9 @@ class IResumeRepository(ABC):
     @abstractmethod
     async def get_current(self, profile_id: EntityId) -> Resume | None: ...
 
+    @abstractmethod
+    async def get_by_file_asset_id(self, file_asset_id: EntityId) -> Resume | None: ...
+
 
 class IPortfolioItemRepository(ABC):
     @abstractmethod
@@ -78,6 +81,9 @@ class IPortfolioItemRepository(ABC):
 
     @abstractmethod
     async def list_by_profile(self, profile_id: EntityId) -> list[PortfolioItem]: ...
+
+    @abstractmethod
+    async def get_by_file_asset_id(self, file_asset_id: EntityId) -> PortfolioItem | None: ...
 
     @abstractmethod
     async def update(self, item: PortfolioItem) -> None: ...

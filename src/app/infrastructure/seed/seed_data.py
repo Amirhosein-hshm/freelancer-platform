@@ -58,6 +58,9 @@ _PERMISSIONS = [
     ("ticket.close_any", "ticket", "close_any"),
     # Reporting
     ("reporting.read", "reporting", "read"),
+    # File
+    ("file.upload", "file", "upload"),
+    ("file.read_any", "file", "read_any"),
 ]
 
 PERMISSIONS = [

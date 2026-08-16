@@ -9,6 +9,7 @@ from app.domain.shared.exceptions import (
     BusinessRuleViolationError,
     EntityNotFoundError,
     InvalidStateTransitionError,
+    ReferencedEntityConflictError,
     UniqueConstraintViolationError,
 )
 from app.presentation.core.envelope import ErrorDetail, ErrorEnvelope
@@ -52,6 +53,14 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def _unique_constraint(_: Request, exc: Exception) -> JSONResponse:
         return _envelope(exc, 409)
 
+    async def _referenced_entity_conflict(_: Request, exc: Exception) -> JSONResponse:
+        details: dict[str, int] = {}
+        if hasattr(exc, "children_count"):
+            details["children_count"] = exc.children_count
+        if hasattr(exc, "active_projects_count"):
+            details["active_projects_count"] = exc.active_projects_count
+        return _envelope(exc, 409, details=details or None)
+
     async def _permission_denied(_: Request, exc: Exception) -> JSONResponse:
         return _envelope(exc, 403)
 
@@ -69,6 +78,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(InvalidStateTransitionError, _invalid_state)
     app.add_exception_handler(BusinessRuleViolationError, _business_rule)
     app.add_exception_handler(UniqueConstraintViolationError, _unique_constraint)
+    app.add_exception_handler(ReferencedEntityConflictError, _referenced_entity_conflict)
     app.add_exception_handler(PermissionDeniedError, _permission_denied)
     app.add_exception_handler(ValidationError, _validation)
     app.add_exception_handler(ExternalServiceError, _external_service)

@@ -74,6 +74,7 @@ def build_submit(
     status_history_repo,
     profile_repo,
     review_repo,
+    file_storage,
     id_generator,
     clock,
     uow,
@@ -85,6 +86,7 @@ def build_submit(
         status_history_repo=status_history_repo,
         profile_repo=profile_repo,
         review_repo=review_repo,
+        file_storage=file_storage,
         id_generator=id_generator,
         clock=clock,
         uow=uow,
@@ -100,6 +102,7 @@ class TestSubmitDeliveryUseCase:
         status_history_repo,
         profile_repo,
         review_repo,
+        file_storage,
         id_generator,
         clock,
         uow,
@@ -116,6 +119,7 @@ class TestSubmitDeliveryUseCase:
             status_history_repo,
             profile_repo,
             review_repo,
+            file_storage,
             id_generator,
             clock,
             uow,
@@ -142,6 +146,7 @@ class TestSubmitDeliveryUseCase:
         status_history_repo,
         profile_repo,
         review_repo,
+        file_storage,
         id_generator,
         clock,
         uow,
@@ -163,6 +168,7 @@ class TestSubmitDeliveryUseCase:
             status_history_repo,
             profile_repo,
             review_repo,
+            file_storage,
             id_generator,
             clock,
             uow,
@@ -183,6 +189,7 @@ class TestSubmitDeliveryUseCase:
         status_history_repo,
         profile_repo,
         review_repo,
+        file_storage,
         id_generator,
         clock,
         uow,
@@ -204,6 +211,7 @@ class TestSubmitDeliveryUseCase:
             status_history_repo,
             profile_repo,
             review_repo,
+            file_storage,
             id_generator,
             clock,
             uow,
@@ -227,6 +235,7 @@ class TestSubmitDeliveryUseCase:
         status_history_repo,
         profile_repo,
         review_repo,
+        file_storage,
         id_generator,
         clock,
         uow,
@@ -243,6 +252,7 @@ class TestSubmitDeliveryUseCase:
             status_history_repo,
             profile_repo,
             review_repo,
+            file_storage,
             id_generator,
             clock,
             uow,
@@ -251,6 +261,47 @@ class TestSubmitDeliveryUseCase:
         with pytest.raises(PermissionDeniedError):
             await use_case.execute(
                 SubmitDeliveryCommand(actor_id="other-user", project_id="project-1")
+            )
+
+    async def test_missing_attachment_file_raises(
+        self,
+        project_repo,
+        application_repo,
+        delivery_repo,
+        status_history_repo,
+        profile_repo,
+        review_repo,
+        file_storage,
+        id_generator,
+        clock,
+        uow,
+        make_project,
+        make_profile,
+    ):
+        await make_project(project_id="project-1", status=ProjectStatus.IN_PROGRESS, selected_application_id="app-1")
+        await make_profile(profile_id="profile-1", user_id="freelancer-1")
+        await add_application(application_repo, now=await clock.now())
+        use_case = build_submit(
+            project_repo,
+            application_repo,
+            delivery_repo,
+            status_history_repo,
+            profile_repo,
+            review_repo,
+            file_storage,
+            id_generator,
+            clock,
+            uow,
+        )
+
+        from app.application.shared.exceptions import ValidationError
+        with pytest.raises(ValidationError):
+            await use_case.execute(
+                SubmitDeliveryCommand(
+                    actor_id="freelancer-1",
+                    project_id="project-1",
+                    file_asset_ids=["missing-asset"],
+                )
             )
 
 

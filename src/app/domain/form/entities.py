@@ -10,6 +10,7 @@ from app.domain.form.exceptions import (
     FormTemplateAlreadyPublishedError,
     FormTemplateHasNoFieldsError,
     InvalidFieldOptionError,
+    OptionNotFoundError,
 )
 from app.domain.shared.entity import AggregateRoot, Entity
 from app.domain.shared.exceptions import InvalidStateTransitionError
@@ -60,6 +61,37 @@ class FormField(Entity):
 
     def get_option(self, option_key: str) -> FormFieldOption | None:
         return next((o for o in self.options if o.option_key == option_key), None)
+
+    def _find_option_index(self, option_id: EntityId) -> int:
+        for i, option in enumerate(self.options):
+            if option.id == option_id:
+                return i
+        raise OptionNotFoundError(
+            f"Option {option_id} not found on field {self.field_key}."
+        )
+
+    def update_option(
+        self,
+        option_id: EntityId,
+        label: str | None = None,
+        value: str | None = None,
+        sort_order: int | None = None,
+        is_active: bool | None = None,
+    ) -> None:
+        index = self._find_option_index(option_id)
+        option = self.options[index]
+        if label is not None:
+            option.label = label
+        if value is not None:
+            option.value = value
+        if sort_order is not None:
+            option.sort_order = sort_order
+        if is_active is not None:
+            option.is_active = is_active
+
+    def remove_option(self, option_id: EntityId) -> None:
+        index = self._find_option_index(option_id)
+        self.options.pop(index)
 
 
 @dataclass(eq=False)

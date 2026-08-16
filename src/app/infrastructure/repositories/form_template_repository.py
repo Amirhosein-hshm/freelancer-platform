@@ -75,10 +75,20 @@ class SqlAlchemyFormTemplateRepository(IFormTemplateRepository):
         row.deleted_at = template.deleted_at
         row.fields = [self._to_field_model(field) for field in template.fields]
 
-    async def list_versions(self, category_id: EntityId) -> list[FormTemplate]:
+    async def delete(self, template_id: EntityId) -> None:
+        row = await self._session.get(FormTemplateModel, template_id)
+        if row is not None:
+            await self._session.delete(row)
+
+    async def list_versions(
+        self, category_id: EntityId, template_key: str
+    ) -> list[FormTemplate]:
         result = await self._session.execute(
             select(FormTemplateModel)
-            .where(FormTemplateModel.category_id == category_id)
+            .where(
+                FormTemplateModel.category_id == category_id,
+                FormTemplateModel.template_key == template_key,
+            )
             .options(
                 selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options)
             )

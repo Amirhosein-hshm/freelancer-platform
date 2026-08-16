@@ -36,3 +36,11 @@ class SqlAlchemyTicketMessageRepository(ITicketMessageRepository):
             .order_by(TicketMessageModel.sent_at.asc())
         )
         return [to_domain_ticket_message(row) for row in result.scalars().all()]
+
+    async def list_by_file_asset_id(self, file_asset_id: EntityId) -> list[TicketMessage]:
+        result = await self._session.execute(
+            select(TicketMessageModel).where(
+                TicketMessageModel.attachment_file_asset_ids.contains([file_asset_id])
+            )
+        )
+        return [to_domain_ticket_message(row) for row in result.scalars().all()]

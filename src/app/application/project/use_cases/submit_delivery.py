@@ -3,8 +3,8 @@ from app.application.project.dto import (
     SubmitDeliveryResult,
 )
 from app.application.project.status_history import record_status_history
-from app.application.shared.exceptions import PermissionDeniedError
-from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
+from app.application.shared.exceptions import PermissionDeniedError, ValidationError
+from app.application.shared.ports import IClock, IFileStorageService, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.freelancer.repositories import IFreelancerProfileRepository
 from app.domain.project.entities import ProjectDelivery
@@ -29,6 +29,7 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
         status_history_repo: IProjectStatusHistoryRepository,
         profile_repo: IFreelancerProfileRepository,
         review_repo: ISupervisorReviewRepository,
+        file_storage: IFileStorageService,
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
@@ -39,11 +40,19 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
         self._status_history_repo = status_history_repo
         self._profile_repo = profile_repo
         self._review_repo = review_repo
+        self._file_storage = file_storage
         self._id_generator = id_generator
         self._clock = clock
         self._uow = uow
 
     async def execute(self, request: SubmitDeliveryCommand) -> SubmitDeliveryResult:
+        for file_asset_id in request.file_asset_ids:
+            try:
+                await self._file_storage.get_metadata(file_asset_id)
+            except (KeyError, FileNotFoundError) as exc:
+                raise ValidationError(
+                    f"File asset {file_asset_id} does not exist."
+                ) from exc
         project = await self._project_repo.get_by_id(request.project_id)
         if project.selected_application_id is None:
             raise PermissionDeniedError(

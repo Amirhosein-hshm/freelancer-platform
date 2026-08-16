@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.project.entities import Project
@@ -14,6 +14,13 @@ from app.infrastructure.repositories.project_mapping import to_domain_project
 _OPEN_STATUSES = (
     ProjectStatus.PUBLISHED.value,
     ProjectStatus.COLLECTING_APPLICATIONS.value,
+)
+
+_TERMINAL_STATUSES = (
+    ProjectStatus.COMPLETED.value,
+    ProjectStatus.CANCELLED.value,
+    ProjectStatus.REJECTED.value,
+    ProjectStatus.ARCHIVED.value,
 )
 
 
@@ -144,3 +151,27 @@ class SqlAlchemyProjectRepository(IProjectRepository):
             .order_by(ProjectModel.created_at.desc())
         )
         return [to_domain_project(row) for row in result.scalars().all()]
+
+    async def count_active_by_category(self, category_id: EntityId) -> int:
+        result = await self._session.execute(
+            select(func.count())
+            .select_from(ProjectModel)
+            .where(
+                ProjectModel.category_id == category_id,
+                ProjectModel.deleted_at.is_(None),
+                ProjectModel.status.not_in(_TERMINAL_STATUSES),
+            )
+        )
+        return result.scalar_one()
+
+    async def count_active_by_form_template(self, form_template_id: EntityId) -> int:
+        result = await self._session.execute(
+            select(func.count())
+            .select_from(ProjectModel)
+            .where(
+                ProjectModel.form_template_id == form_template_id,
+                ProjectModel.deleted_at.is_(None),
+                ProjectModel.status.not_in(_TERMINAL_STATUSES),
+            )
+        )
+        return result.scalar_one()

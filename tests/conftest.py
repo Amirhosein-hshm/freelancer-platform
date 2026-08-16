@@ -5,6 +5,7 @@ import pytest
 from tests.fakes.fake_authorization_service import FakeAuthorizationService
 from tests.fakes.fake_clock import FakeClock
 from tests.fakes.fake_event_publisher import FakeEventPublisher
+from tests.fakes.fake_file_storage import FakeFileStorageService
 from tests.fakes.fake_id_generator import FakeIdGenerator
 from tests.fakes.fake_notification_service import FakeNotificationService
 from tests.fakes.fake_password_hasher import FakePasswordHasher
@@ -51,6 +52,11 @@ def event_publisher():
 @pytest.fixture
 def notification_service():
     return FakeNotificationService()
+
+
+@pytest.fixture
+def file_storage():
+    return FakeFileStorageService()
 
 
 @pytest.fixture
