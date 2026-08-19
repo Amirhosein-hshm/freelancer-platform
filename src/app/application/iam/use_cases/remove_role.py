@@ -2,12 +2,14 @@ from app.application.iam.dto import RemoveRoleCommand, RemoveRoleResult
 from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.ports import IClock, IUnitOfWork
 from app.application.shared.use_case import UseCase
-from app.domain.iam.exceptions import SystemRoleImmutableError, UserRoleNotFoundError
+from app.domain.iam.exceptions import LastAdminRoleRemovalError, UserRoleNotFoundError
 from app.domain.iam.repositories import (
     IRoleRepository,
     IUserRepository,
     IUserRoleRepository,
 )
+
+ADMIN_ROLE_KEY = "admin"
 
 
 class RemoveRoleUseCase(UseCase[RemoveRoleCommand, RemoveRoleResult]):
@@ -31,11 +33,15 @@ class RemoveRoleUseCase(UseCase[RemoveRoleCommand, RemoveRoleResult]):
         await self._authorization_service.require_permission(request.actor_id, "user.remove_role")
         user = await self._user_repo.get_by_id(request.target_user_id)
         role = await self._role_repo.get_by_key(request.role_key)
-        if role.is_system:
-            raise SystemRoleImmutableError(f"System role '{role.role_key}' cannot be removed.")
         user_role = await self._user_role_repo.find_active(user.id, role.id)
         if user_role is None:
             raise UserRoleNotFoundError(f"No active role '{role.role_key}' for user {user.id}.")
+        if role.role_key == ADMIN_ROLE_KEY:
+            active_admins = await self._user_role_repo.list_active_user_ids_for_role(role.id)
+            if len(active_admins) <= 1:
+                raise LastAdminRoleRemovalError(
+                    f"Cannot remove role 'admin' from user {user.id}: it is the last active admin."
+                )
         now = await self._clock.now()
         async with self._uow:
             user_role.revoke(now)

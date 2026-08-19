@@ -399,11 +399,11 @@ documented design deviation (see §7).
   imports `presentation.websocket.connection_manager` (allowed per ARCHITECTURE.md —
   connection state is transport-coupled).
 - **Two-tier provider wiring** (`core/providers.py` + `bootstrap/container.py`):
-  - The 36 **leaf providers** (repositories, ports: `get_<repo>`, `get_token_service`,
+  - The 37 **leaf providers** (repositories, ports: `get_<repo>`, `get_token_service`,
     `get_authorization_service`, etc.) are stubs that raise `NotImplementedError`; the
     container overrides each with a real implementation via `app.dependency_overrides`
-    (36 overrides in `container.py`, 1:1 with the stubs).
-  - The ~80 **use-case providers** (`get_<use_case>_use_case`) are **not stubbed and not
+    (37 overrides in `container.py`, 1:1 with the stubs).
+  - The 129 **use-case providers** (`get_<use_case>_use_case`) are **not stubbed and not
     overridden** — they are self-wiring factories: each takes the leaf providers as
     `Depends(...)` default args and constructs the real `XxxUseCase(...)` on every call
     (e.g. `providers.py:218-235`). Because the leaves are overridden, a use-case provider
@@ -469,7 +469,7 @@ documented design deviation (see §7).
 | Dimension | Assessment |
 |---|---|
 | Architecture compliance | **Strong** — layering, dependency direction, DI-override seam, envelope/error mapping all respected. |
-| API surface coverage | **Strong** — 83 HTTP endpoints + 1 WebSocket covering all 9 contexts + file upload. |
+| API surface coverage | **Strong** — 130 HTTP endpoints + 1 WebSocket covering all 9 contexts + file upload. |
 | Consistency (bytes/rules) | **Good but leaky** — 2 stale README claims, 401 global exception, WS unguarded. |
 | Correctness risk | **0 confirmed latent bugs**. Remaining: DB-backed pagination, WS close handling. File-attachment existence checks now enforced. |
 | Production readiness | **Not yet** — no auth/refresh storage solution verified here, error envelope deviation on 401s, no WS error handling. |

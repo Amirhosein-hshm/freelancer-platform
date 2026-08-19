@@ -146,3 +146,13 @@ green (tests passing), not just "code written".
   - Shared `paginate()` helper + `PageQuery` on all 18 bare-list endpoints (project,
     freelancer, category, review, ticketing); removed duplicated `_pagination_meta`
     helpers. Verified: 130/130 operations have `summary` and a documented 400 response.
+- [x] **Part 6** — IAM RBAC fix: `RemoveRole`/`RevokePermission` no longer gate link mutation
+      on `is_system`. Because every seeded role has `is_system = True`, that guard rejected
+      **every** call, so no role could be removed from a user and no permission revoked from a
+      role. Replaced in `RemoveRole` with the real rule — the last active `admin` assignment
+      cannot be removed (`LastAdminRoleRemovalError(InvalidStateTransitionError)` → HTTP 409);
+      `RevokePermission` is now unrestricted (relationship configuration only).
+      `SystemRoleImmutableError` retained but unraised, reserved for future catalog-entity
+      (rename/delete) guards. Audited every other `is_system` read: `AssignRole` and
+      `GrantPermission` correctly do not check it. Catalog-vs-link distinction documented in
+      `docs/domain-usecases-documentation.md` §12.5.1.

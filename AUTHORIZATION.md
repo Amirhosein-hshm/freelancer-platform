@@ -119,9 +119,17 @@ review record identifies who decided it).
 - Permission key strings are declared as module-level constants near the top of each use
   case module (e.g. `PERMISSION_PROJECT_MANAGE_OWN = "project.manage_own"`), following
   the existing `DEFAULT_LEVEL_KEY` style.
-- The four system roles are immutable for removal/revocation: `RemoveRoleUseCase` and
-  `RevokePermissionUseCase` raise `SystemRoleImmutableError` when the target role has
-  `is_system=True`.
+- **Catalog-entity protection vs. link mutation — keep these separate.** `is_system` on
+  `Role`/`Permission` protects the **catalog row** (create/rename/delete), which is seed-only
+  and has no use case. It must never gate `UserRole`/`RolePermission` **link** operations:
+  since all four seeded roles have `is_system=True`, such a check rejects every call (this was
+  a real bug in `RemoveRoleUseCase`/`RevokePermissionUseCase`). `SystemRoleImmutableError`
+  stays reserved for a future catalog-mutation guard and is currently raised by nothing.
+  `AssignRole`, `RemoveRole`, `GrantPermission`, and `RevokePermission` are all supported on
+  every role, including `admin`; the single exception is the **last-admin rule** —
+  `RemoveRoleUseCase` raises `LastAdminRoleRemovalError` (HTTP 409) when removing the last
+  active `admin` assignment would leave the system with no admin. See
+  `docs/domain-usecases-documentation.md` §12.5.
 
 ## 5. Hide-vs-Deny Policy
 

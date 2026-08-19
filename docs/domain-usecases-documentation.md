@@ -158,11 +158,12 @@ All external/cross-cutting dependencies are ports implemented in Phase 2
 Value objects in ports: `AccessTokenPayload(user_id, roles, expires_at)`,
 `FileAssetMetadata(file_asset_id, file_name, size_bytes, mime_type, url, uploaded_at)`.
 
-Permission keys follow `"<resource>.<action>"` (e.g. `project.create`, `form.manage`,
+Permission keys follow `"<resource>.<action>"` (e.g. `project.create_own`, `form.manage`,
 `reporting.read`) and are declared as module-level `PERMISSION_*` constants. Owned resources
 use the two-tier pair `<resource>.<action>_own` / `<resource>.<action>_any` via
 `authorize_owned_action`; the four system roles (`admin`, `customer`, `freelancer`,
-`supervisor`) are protected from removal/revocation by `SystemRoleImmutableError` (see
+`supervisor`) are seed-only **catalog entities** — they can never be created, renamed, or
+deleted — but their `UserRole`/`RolePermission` links remain fully mutable (see §12.5 and
 AUTHORIZATION.md).
 
 ### 2.3 Shared exceptions
@@ -224,7 +225,9 @@ Location: `src/app/domain/iam/`, `src/app/application/iam/`.
 
 - `role_key` (immutable business key), `name`, `description`, `is_system`.
 - `rename(name)` — renames a role (key never changes). **No use case calls `rename`.**
-- `is_system` roles are conceptually protected from deletion (no delete use case exists).
+- `is_system` marks a seed-owned **catalog entity**: it protects the Role/Permission record
+  itself from rename/delete (no such use case exists today). It must **not** gate
+  `UserRole`/`RolePermission` link operations — see §12.5.
 
 #### Permission (Entity)
 
@@ -272,11 +275,16 @@ pagination metadata).
 `UserAlreadyBlockedError`, `UserNotActiveError`, `InvalidRefreshTokenError`,
 `RefreshTokenNotFoundError`, `RoleNotFoundError`, `PermissionNotFoundError`,
 `UserRoleNotFoundError`, `RoleAlreadyAssignedError`, `SystemRoleImmutableError`,
-`PermissionAlreadyGrantedError`, `InvalidEmailError`, `InvalidPhoneNumberError`.
+`LastAdminRoleRemovalError`, `PermissionAlreadyGrantedError`, `InvalidEmailError`,
+`InvalidPhoneNumberError`, `CannotDeleteSelfError`, `LastAdminCannotBeDeletedError`.
 
-> **Dead code:** `RoleNotFoundError` and `PermissionNotFoundError` are raised only by (future)
-> repository implementations. `SystemRoleImmutableError` (previously unused) is **now raised**
-> by `RemoveRoleUseCase` and `RevokePermissionUseCase` for `is_system` roles.
+> **Dead code:** `RoleNotFoundError` and `PermissionNotFoundError` are raised only by
+> repository implementations. `SystemRoleImmutableError` is **deliberately unraised** — it is
+> reserved for a future Role/Permission **catalog-entity** mutation guard (rename/delete). It
+> must never be reused for `UserRole`/`RolePermission` link operations; doing so previously
+> broke `RemoveRole`/`RevokePermission` entirely (see §12.5).
+> `LastAdminRoleRemovalError(InvalidStateTransitionError)` → HTTP 409 is raised by
+> `RemoveRoleUseCase` when the removal would leave the system with zero active admins.
 
 ### 3.7 Use cases
 
@@ -607,7 +615,9 @@ User with permission `user.assign_role`.
 ### Side effects
 New active `UserRole` row.
 
-> **Gaps:** no check that the target user is active; no `is_system` protection.
+> **Gaps:** no check that the target user is active. The absence of an `is_system` check is
+> **intentional, not a gap** — assigning an existing role to a user mutates the `UserRole`
+> link, never the Role catalog entity (see §12.5).
 
 ---
 
@@ -631,20 +641,27 @@ User with permission `user.remove_role`.
 
 ### Flow
 1. `require_permission(actor_id, "user.remove_role")`.
-2. Load user (`get_by_id`) and role (`get_by_key`); if `role.is_system` →
-   `SystemRoleImmutableError`.
+2. Load user (`get_by_id`) and role (`get_by_key`).
 3. `find_active` → `UserRoleNotFoundError` if none.
-4. `user_role.revoke(now)`; update; commit.
+4. **Last-admin guard:** if `role.role_key == "admin"`, count active assignments via
+   `user_role_repo.list_active_user_ids_for_role(role.id)`; if `len(...) <= 1` →
+   `LastAdminRoleRemovalError` (HTTP 409). This prevents total lockout (a system with zero
+   admins) and also blocks the last admin removing their own `admin` role.
+5. `user_role.revoke(now)`; update; commit.
 
 ### Errors
 `PermissionDeniedError`, `UserNotFoundError`, `RoleNotFoundError`, `UserRoleNotFoundError`,
-`SystemRoleImmutableError`.
+`LastAdminRoleRemovalError`.
 
 ### Side effects
 User-role link set `is_active=False`, `revoked_at=now`.
 
-> **Updated:** system roles can no longer be removed (`SystemRoleImmutableError`); previously
-> this use case performed no authorization and had no system-role guard.
+> **Fixed (security-relevant):** this use case previously raised `SystemRoleImmutableError`
+> whenever `role.is_system` was true. Because every seeded role (`admin`, `customer`,
+> `freelancer`, `supervisor`) has `is_system = True`, that guard rejected **every** call — no
+> role could be removed from any user. The `is_system` flag protects the Role **catalog
+> entity** (rename/delete), not the `UserRole` **link** this use case mutates; the two concerns
+> are now separated (see §12.5). The only removal restriction is the last-admin rule above.
 
 ---
 
@@ -705,19 +722,25 @@ User with permission `user.revoke_permission`.
 
 ### Flow
 1. `require_permission(actor_id, "user.revoke_permission")`.
-2. `role_repo.get_by_id`; if `role.is_system` → `SystemRoleImmutableError`.
+2. `role_repo.get_by_id` (existence).
 3. `permission_repo.get_by_id` (existence).
 4. `role_permission_repo.remove(role_id, permission_id)`; commit.
 
 ### Errors
-`PermissionDeniedError`, `RoleNotFoundError`, `PermissionNotFoundError`,
-`SystemRoleImmutableError`.
+`PermissionDeniedError`, `RoleNotFoundError`, `PermissionNotFoundError`.
 
 ### Side effects
 Hard delete of the `RolePermission` row.
 
-> **Updated:** `RevokePermissionUseCase` now verifies the role exists, guards system roles, and
-> verifies the permission exists (previously only the permission key was required).
+> **Fixed (security-relevant):** this use case previously raised `SystemRoleImmutableError`
+> whenever `role.is_system` was true, which — since every seeded role has `is_system = True` —
+> rejected **every** call, making permissions unrevokable from any role. Revoking a permission
+> from any role (including `admin`) is legitimate RBAC configuration: it unlinks two
+> already-seeded entities and never mutates the Role/Permission catalog itself (see §12.5).
+> No last-admin-style guard applies here — no specific permission is documented as
+> permanently required on the `admin` role, and admin lockout is already prevented by
+> `RemoveRole`'s last-admin rule and `AdminDeleteUser`'s `LastAdminCannotBeDeletedError`.
+> The use case still verifies that both the role and the permission exist.
 
 ---
 
@@ -787,6 +810,163 @@ lookup / N+1), plus `total_items`, `page`, `page_size`.
 None (read-only). **This endpoint is the first admin-IAM route with real DB offset/limit
 pagination** — a partial fix of the client-side-only pagination gap tracked in
 `docs/presentation-analysis.md` §7 item 2, scoped to this endpoint only.
+
+---
+
+## AdminCreateUser
+
+### Purpose
+Admin creates a user directly (ACTIVE) with a known email/password — used instead of the
+public register flow.
+
+### Actor
+Admin with permission `user.create`.
+
+### Input (`AdminCreateUserCommand`)
+- `actor_id`, `email`, `password`, `first_name`, `last_name` (required)
+
+### Output (`AdminCreateUserResult`)
+`user_id`, `email`, `status`, `created_at`.
+
+### Dependencies
+`IAuthorizationService`, `IUserRepository`, `IPasswordHasher`, `IIdGenerator`, `IClock`,
+`IUnitOfWork`.
+
+### Flow
+1. `require_permission(actor_id, "user.create")`.
+2. `request.validate()`.
+3. `exists_by_email` → `DuplicateEmailError`; else hash password into `PasswordHash`.
+4. Build `User(status=ACTIVE)`; `add`; commit.
+
+### Errors
+`PermissionDeniedError`, `ValidationError`, `DuplicateEmailError`.
+
+### Side effects
+New ACTIVE user; no roles assigned (role assignment is a separate call).
+
+---
+
+## AdminUpdateUser
+
+### Purpose
+Admin updates a user's `first_name`, `last_name`, and/or `phone`.
+
+### Actor
+Admin with permission `user.update_any`.
+
+### Input (`AdminUpdateUserCommand`)
+- `actor_id`, `target_user_id` (required); optional `first_name`, `last_name`, `phone`
+
+### Output (`AdminUpdateUserResult`)
+`user_id`, `first_name`, `last_name`.
+
+### Dependencies
+`IAuthorizationService`, `IUserRepository`, `IUnitOfWork`.
+
+### Flow
+1. `require_permission(actor_id, "user.update_any")`.
+2. `request.validate()`.
+3. `get_by_id(target_user_id)`; apply each provided field (phone wrapped in `PhoneNumber`).
+4. `update`; commit.
+
+### Errors
+`PermissionDeniedError`, `ValidationError`, `UserNotFoundError`.
+
+### Side effects
+Updated profile fields.
+
+---
+
+## AdminDeleteUser
+
+### Purpose
+Soft-deletes a target user (never the actor themselves, never the last active admin).
+
+### Actor
+Admin with permission `user.delete`.
+
+### Input (`AdminDeleteUserCommand`)
+- `actor_id`, `target_user_id` (required)
+
+### Output (`AdminDeleteUserResult`)
+`user_id`, `deleted_at`.
+
+### Dependencies
+`IAuthorizationService`, `IUserRepository`, `IUserRoleRepository`, `IRoleRepository`, `IClock`,
+`IUnitOfWork`.
+
+### Flow
+1. `require_permission(actor_id, "user.delete")`.
+2. `actor_id == target_user_id` → `CannotDeleteSelfError`.
+3. `get_by_id(target_user_id)`; if the target holds the `admin` role and is the last active
+   admin → `LastAdminCannotBeDeletedError`.
+4. `user.soft_delete(now)`; `update`; commit.
+
+### Errors
+`PermissionDeniedError`, `CannotDeleteSelfError`, `UserNotFoundError`,
+`LastAdminCannotBeDeletedError`.
+
+### Side effects
+Soft-deleted user (still soft-unique in email).
+
+---
+
+## ListRoles
+
+### Purpose
+Lists all roles (`RoleSummary`: `role_id`, `role_key`, `name`, `description`, `is_system`).
+
+### Actor
+User with permission `user.read`.
+
+### Input (`ListRolesQuery`)
+- `actor_id`
+
+### Output (`ListRolesResult`)
+`roles: list[RoleSummary]`.
+
+### Dependencies
+`IAuthorizationService`, `IRoleRepository`.
+
+### Flow
+1. `require_permission(actor_id, "user.read")`.
+2. `list_all`; map to summaries.
+
+### Errors
+`PermissionDeniedError`.
+
+### Side effects
+None (read-only).
+
+---
+
+## ListPermissions
+
+### Purpose
+Lists permissions, optionally filtered by `module` (`PermissionSummary`: `permission_id`,
+`permission_key`, `module`, `action`, `description`, `is_system`).
+
+### Actor
+User with permission `user.read`.
+
+### Input (`ListPermissionsQuery`)
+- `actor_id`, optional `module: str | None`
+
+### Output (`ListPermissionsResult`)
+`permissions: list[PermissionSummary]`.
+
+### Dependencies
+`IAuthorizationService`, `IPermissionRepository`.
+
+### Flow
+1. `require_permission(actor_id, "user.read")`.
+2. `module` given → `list_by_module(module)`; else `list_all()`; map to summaries.
+
+### Errors
+`PermissionDeniedError`.
+
+### Side effects
+None (read-only).
 
 ---
 
@@ -892,7 +1072,7 @@ Location: `src/app/domain/freelancer/`, `src/app/application/freelancer/`.
 Creates a freelancer profile (PENDING) for a user.
 
 ### Actor
-Freelancer (self-service).
+Freelancer holding `freelancer.create_own` (self-service).
 
 ### Input (`CreateFreelancerProfileCommand`)
 - `user_id`, `display_name` (required)
@@ -902,17 +1082,19 @@ Freelancer (self-service).
 `profile_id`.
 
 ### Dependencies
-`IFreelancerProfileRepository`, `IIdGenerator`, `IClock`, `IUnitOfWork`.
+`IAuthorizationService`, `IFreelancerProfileRepository`, `IIdGenerator`, `IClock`, `IUnitOfWork`.
 
 ### Flow
-1. `request.validate()` (non-blank `display_name`).
-2. `get_by_user_id` — if a profile exists → `DuplicateFreelancerProfileError`;
+1. `require_permission(user_id, "freelancer.create_own")`.
+2. `request.validate()` (non-blank `display_name`).
+3. `get_by_user_id` — if a profile exists → `DuplicateFreelancerProfileError`;
    `FreelancerProfileNotFoundError` is swallowed.
-3. Build `FreelancerProfile(approval_status=PENDING, current_level_id=None, is_available=True)`.
-4. `add`; commit.
+4. Build `FreelancerProfile(approval_status=PENDING, current_level_id=None, is_available=True)`.
+5. `add`; commit.
 
 ### Errors
-`ValidationError`, `DuplicateFreelancerProfileError`, `FreelancerProfileNotFoundError` (repo).
+`PermissionDeniedError`, `ValidationError`, `DuplicateFreelancerProfileError`,
+`FreelancerProfileNotFoundError` (repo).
 
 ### Side effects
 New profile in `PENDING`.
@@ -1279,6 +1461,455 @@ Anyone (no authorization/visibility filtering).
 
 ### Errors
 `FreelancerProfileNotFoundError`.
+
+---
+
+## AdminCreateFreelancerProfileOnBehalf
+
+### Purpose
+Creates a freelancer profile on behalf of a target user (Pattern B, admin-only).
+
+### Actor
+Admin holding `freelancer.create_on_behalf`.
+
+### Input (`CreateFreelancerProfileOnBehalfCommand`)
+- `actor_id`, `target_user_id`, `display_name`, plus optional `headline`, `bio`,
+  `country_code`, `city`, `timezone`; `validate()` requires non-empty `display_name`.
+
+### Output (`CreateFreelancerProfileResult`)
+`profile_id`.
+
+### Dependencies
+`IAuthorizationService`, `IUserRepository`, `IFreelancerProfileRepository`,
+`IIdGenerator`, `IClock`, `IUnitOfWork`.
+
+### Flow
+`require_permission(freelancer.create_on_behalf)` → verify target user exists
+(`IUserRepository.get_by_id`) → `validate()` → shared `_create_freelancer_profile` helper.
+
+### Errors
+`PermissionDeniedError`, `UserNotFoundError`, `ValidationError`.
+
+### Side effects
+Creates the profile (and an owned first level-history entry) in a unit of work.
+
+---
+
+## ListFreelancerProfilesByApprovalStatus
+
+### Purpose
+Lists freelancer profiles filtered by approval status (admin/QA screen).
+
+### Actor
+Admin holding `freelancer.read_any`.
+
+### Input (`ListFreelancerProfilesByApprovalStatusQuery`)
+- `actor_id`, `status: FreelancerApprovalStatus`
+
+### Output
+`list[FreelancerProfileResult]`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerProfileRepository`.
+
+### Flow
+`require_permission(freelancer.read_any)` → `list_by_approval_status(status)` → map.
+
+### Errors
+`PermissionDeniedError`.
+
+---
+
+## SoftDeleteFreelancerProfile
+
+### Purpose
+Soft-deletes a freelancer profile (admin).
+
+### Actor
+Admin holding `freelancer.delete_any`.
+
+### Input (`SoftDeleteFreelancerProfileCommand`)
+- `actor_id`, `profile_id`
+
+### Output (`SoftDeleteFreelancerProfileResult`)
+`profile_id`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerProfileRepository`, `IClock`.
+
+### Flow
+`require_permission(freelancer.delete_any)` → `get_by_id` → `profile.soft_delete(now)` →
+`update`.
+
+### Errors
+`PermissionDeniedError`, `FreelancerProfileNotFoundError`.
+
+---
+
+## GetCurrentResume
+
+### Purpose
+Returns the current resume of a freelancer profile.
+
+### Actor
+Profile owner (`freelancer.read_own`) or admin (`freelancer.read_any`).
+
+### Input (`GetCurrentResumeQuery`)
+- `actor_id`, `profile_id`
+
+### Output (`ResumeResult`)
+`resume_id`, `freelancer_profile_id`, `file_asset_id`, `version_no`, `summary`, `is_current`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerProfileRepository`, `IResumeRepository`.
+
+### Flow
+`get_by_id(profile)` → `authorize_owned_action(read_own, read_any)` → `get_current(profile_id)`
+→ raise `ResumeNotFoundError` if none → map.
+
+### Errors
+`FreelancerProfileNotFoundError`, `PermissionDeniedError`, `ResumeNotFoundError`.
+
+---
+
+## GetResume
+
+### Purpose
+Returns a single resume version by ID.
+
+### Actor
+Profile owner (`freelancer.read_own`) or admin (`freelancer.read_any`).
+
+### Input (`GetResumeQuery`)
+- `actor_id`, `resume_id`
+
+### Output (`ResumeResult`)
+As `GetCurrentResume`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerProfileRepository`, `IResumeRepository`.
+
+### Flow
+`get_by_id(resume)` → `get_by_id(profile)` → `authorize_owned_action(read_own, read_any)` → map.
+
+### Errors
+`ResumeNotFoundError`, `FreelancerProfileNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## ListResumeVersions
+
+### Purpose
+Lists all resume versions of a profile, ordered by `version_no`.
+
+### Actor
+Profile owner (`freelancer.read_own`) or admin (`freelancer.read_any`).
+
+### Input (`ListResumeVersionsQuery`)
+- `actor_id`, `profile_id`
+
+### Output
+`list[ResumeResult]`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerProfileRepository`, `IResumeRepository`.
+
+### Flow
+`get_by_id(profile)` → `authorize_owned_action(read_own, read_any)` →
+`list_by_profile(profile_id)` → map (sorted by `version_no`).
+
+### Errors
+`FreelancerProfileNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## SetCurrentResume
+
+### Purpose
+Marks a resume version as current (rollback); unmarks the previously-current version.
+
+### Actor
+Profile owner (`freelancer.read_own`) or admin (`freelancer.read_any`).
+
+### Input (`SetCurrentResumeCommand`)
+- `actor_id`, `profile_id`, `resume_id`
+
+### Output (`SetCurrentResumeResult`)
+`resume_id`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerProfileRepository`, `IResumeRepository`.
+
+### Flow
+`get_by_id(profile)` → `authorize_owned_action(read_own, read_any)` →
+`list_by_profile` → unset current flags, set target → `ResumeNotFoundError` if absent →
+persist.
+
+### Errors
+`FreelancerProfileNotFoundError`, `PermissionDeniedError`, `ResumeNotFoundError`.
+
+---
+
+## DeleteResume
+
+### Purpose
+Deletes a resume version; if the current version is deleted, the latest remaining version
+is promoted to current.
+
+### Actor
+Profile owner (`freelancer.read_own`) or admin (`freelancer.read_any`).
+
+### Input (`DeleteResumeCommand`)
+- `actor_id`, `profile_id`, `resume_id`
+
+### Output (`DeleteResumeResult`)
+`resume_id`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerProfileRepository`, `IResumeRepository`.
+
+### Flow
+`get_by_id(profile)` → `authorize_owned_action(read_own, read_any)` →
+find target (else `ResumeNotFoundError`) → `delete` → if it was current, promote latest
+remaining version.
+
+### Errors
+`FreelancerProfileNotFoundError`, `PermissionDeniedError`, `ResumeNotFoundError`.
+
+---
+
+## ListPortfolioItems
+
+### Purpose
+Lists a profile's portfolio items, ordered by `display_order`.
+
+### Actor
+Profile owner (`freelancer.read_own`) or admin (`freelancer.read_any`).
+
+### Input (`ListPortfolioItemsQuery`)
+- `actor_id`, `profile_id`
+
+### Output
+`list[PortfolioItemResult]`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerProfileRepository`, `IPortfolioItemRepository`.
+
+### Flow
+`get_by_id(profile)` → `authorize_owned_action(read_own, read_any)` →
+`list_by_profile(profile_id)` → map.
+
+### Errors
+`FreelancerProfileNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## GetPortfolioItem
+
+### Purpose
+Returns a single portfolio item by ID.
+
+### Actor
+Profile owner (`freelancer.read_own`) or admin (`freelancer.read_any`).
+
+### Input (`GetPortfolioItemQuery`)
+- `actor_id`, `item_id`
+
+### Output (`PortfolioItemResult`)
+`item_id`, `freelancer_profile_id`, `title`, `description`, `external_url`,
+`file_asset_id`, `display_order`, `is_featured`, `deleted_at`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerProfileRepository`, `IPortfolioItemRepository`.
+
+### Flow
+`get_by_id(item)` → `get_by_id(profile)` → `authorize_owned_action(read_own, read_any)` → map.
+
+### Errors
+`PortfolioItemNotFoundError`, `FreelancerProfileNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## ListFreelancerLevels
+
+### Purpose
+Lists all freelancer levels.
+
+### Actor
+Admin holding `freelancer.manage_levels`.
+
+### Input (`ListFreelancerLevelsQuery`)
+- `actor_id`
+
+### Output
+`list[FreelancerLevelResult]`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerLevelRepository`.
+
+### Flow
+`require_permission(freelancer.manage_levels)` → `list_all()` → map.
+
+### Errors
+`PermissionDeniedError`.
+
+---
+
+## CreateFreelancerLevel
+
+### Purpose
+Creates a new freelancer level (admin).
+
+### Actor
+Admin holding `freelancer.manage_levels`.
+
+### Input (`CreateFreelancerLevelCommand`)
+- `actor_id`, `level_key`, `name`, `rank_order`, `access_type`, `min_completed_projects`,
+  plus optional `min_rating`, `max_active_applications`, `can_apply_public_projects`,
+  `can_apply_private_projects`; `validate()` requires non-empty `level_key`/`name`.
+
+### Output (`CreateFreelancerLevelResult`)
+`level_id`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerLevelRepository`, `IIdGenerator`, `IClock`.
+
+### Flow
+`require_permission(freelancer.manage_levels)` → `validate()` → build `FreelancerLevel`
+(active by default) → `add`.
+
+### Errors
+`PermissionDeniedError`, `ValidationError`.
+
+---
+
+## UpdateFreelancerLevel
+
+### Purpose
+Updates editable fields of a freelancer level (admin).
+
+### Actor
+Admin holding `freelancer.manage_levels`.
+
+### Input (`UpdateFreelancerLevelCommand`)
+- `actor_id`, `level_id`, plus optional `name`, `rank_order`, `access_type`,
+  `min_completed_projects`, `min_rating`, `max_active_applications`,
+  `can_apply_public_projects`, `can_apply_private_projects`.
+
+### Output (`UpdateFreelancerLevelResult`)
+`level_id`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerLevelRepository`.
+
+### Flow
+`require_permission(freelancer.manage_levels)` → `get_by_id` → apply non-None fields →
+`update`.
+
+### Errors
+`PermissionDeniedError`, `FreelancerLevelNotFoundError`.
+
+---
+
+## DeleteFreelancerLevel
+
+### Purpose
+Deletes a freelancer level (admin).
+
+### Actor
+Admin holding `freelancer.manage_levels`.
+
+### Input (`DeleteFreelancerLevelCommand`)
+- `actor_id`, `level_id`
+
+### Output (`DeleteFreelancerLevelResult`)
+`level_id`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerLevelRepository`.
+
+### Flow
+`require_permission(freelancer.manage_levels)` → `get_by_id` (existence probe) → `delete`.
+
+### Errors
+`PermissionDeniedError`, `FreelancerLevelNotFoundError`.
+
+---
+
+## ActivateFreelancerLevel
+
+### Purpose
+Activates a freelancer level (admin).
+
+### Actor
+Admin holding `freelancer.manage_levels`.
+
+### Input (`ActivateFreelancerLevelCommand`)
+- `actor_id`, `level_id`
+
+### Output (`ActivateFreelancerLevelResult`)
+`level_id`, `is_active`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerLevelRepository`.
+
+### Flow
+`require_permission(freelancer.manage_levels)` → `get_by_id` → `level.activate()` → `update`.
+
+### Errors
+`PermissionDeniedError`, `FreelancerLevelNotFoundError`.
+
+---
+
+## DeactivateFreelancerLevel
+
+### Purpose
+Deactivates a freelancer level (admin).
+
+### Actor
+Admin holding `freelancer.manage_levels`.
+
+### Input (`DeactivateFreelancerLevelCommand`)
+- `actor_id`, `level_id`
+
+### Output (`DeactivateFreelancerLevelResult`)
+`level_id`, `is_active`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerLevelRepository`.
+
+### Flow
+`require_permission(freelancer.manage_levels)` → `get_by_id` → `level.deactivate()` → `update`.
+
+### Errors
+`PermissionDeniedError`, `FreelancerLevelNotFoundError`.
+
+---
+
+## ListFreelancerLevelHistory
+
+### Purpose
+Lists the level-assignment history of a freelancer profile.
+
+### Actor
+Profile owner (`freelancer.read_own`) or admin (`freelancer.read_any`).
+
+### Input (`ListFreelancerLevelHistoryQuery`)
+- `actor_id`, `profile_id`
+
+### Output
+`list[FreelancerLevelHistoryResult]`.
+
+### Dependencies
+`IAuthorizationService`, `IFreelancerProfileRepository`,
+`IFreelancerLevelHistoryRepository`.
+
+### Flow
+`get_by_id(profile)` → `authorize_owned_action(read_own, read_any)` →
+`list_by_profile(profile_id)` → map.
+
+### Errors
+`FreelancerProfileNotFoundError`, `PermissionDeniedError`.
 
 ---
 
@@ -2295,10 +2926,10 @@ Generated by `IProjectCodeGenerator` (e.g. `PRJ-2026-001`).
 Creates a project in `DRAFT` after validating the dynamic form for the category.
 
 ### Actor
-Customer.
+Customer (`project.create_own`).
 
 ### Input (`CreateProjectCommand`)
-- `actor_id`, `customer_user_id`, `category_id`, `title`, `description`, `visibility`,
+- `actor_id`, `category_id`, `title`, `description`, `visibility`,
   `budget_type`, `currency_code`
 - optional: `fixed_budget`, `budget_min`, `budget_max`, `priority` (default `NORMAL`),
   `application_deadline`, `form_values: list[FormValueInput]` (`field_id`, `value`)
@@ -2312,7 +2943,7 @@ Customer.
 `IIdGenerator`, `IClock`, `IUnitOfWork`.
 
 ### Flow
-1. `require_permission(actor_id, "project.create")`.
+1. `require_permission(actor_id, "project.create_own")`.
 2. `request.validate()`.
 3. `category_repo.get_by_id(category_id)` → `CategoryNotFoundError`.
 4. `form_template_repo.get_published_for_category(category.id)`.
@@ -2328,6 +2959,42 @@ Customer.
 ### Side effects
 New DRAFT project + status-history row. **No supervisor is auto-assigned** — `assigned_supervisor_user_id`
 starts `None`.
+
+---
+
+## AdminCreateProjectOnBehalf
+
+### Purpose
+Creates a project on behalf of a target customer (Pattern B, admin-only).
+
+### Actor
+Admin holding `project.create_on_behalf`.
+
+### Input (`CreateProjectOnBehalfCommand`)
+- `actor_id`, `target_customer_user_id`, `category_id`, `title`, `description`,
+  `visibility`, `budget_type`, `currency_code`
+- optional: `fixed_budget`, `budget_min`, `budget_max`, `priority`,
+  `application_deadline`, `form_values`
+
+### Output (`CreateProjectResult`)
+`project_id`, `project_code`, `status` (=DRAFT).
+
+### Dependencies
+`IAuthorizationService`, `IUserRepository`, `IProjectRepository`, `ICategoryRepository`,
+`IFormTemplateRepository`, `IProjectStatusHistoryRepository`, `IProjectCodeGenerator`,
+`IIdGenerator`, `IClock`, `IUnitOfWork`.
+
+### Flow
+`require_permission(actor_id, "project.create_on_behalf")` → verify the target customer
+exists (`IUserRepository.get_by_id`) → `validate()` → shared `_create_project` helper
+(`created_by_user_id` = the admin).
+
+### Errors
+`PermissionDeniedError`, `UserNotFoundError`, `ValidationError`, `CategoryNotFoundError`,
+`FormTemplateNotFoundError`, `FormValidationError`, `InvalidBudgetError`.
+
+### Side effects
+As `CreateProject` (DRAFT project + status-history row).
 
 ---
 
@@ -2438,6 +3105,42 @@ Approved freelancer (requires `project.apply`).
 New application (records `submitted_by_user_id`).
 
 > **Gap (unchanged):** nothing prevents the project's own customer from applying.
+
+---
+
+## AdminApplyForProjectOnBehalf
+
+### Purpose
+An admin submits an application on behalf of a specific freelancer profile (Pattern B).
+
+### Actor
+Admin holding `project.apply_on_behalf`.
+
+### Input (`AdminApplyForProjectOnBehalfCommand`)
+- `actor_id`, `target_freelancer_profile_id`, `project_id`
+- optional: `cover_letter`, `proposed_amount`, `proposed_days`
+
+### Output (`ApplyForProjectResult`)
+`application_id`, `status` (=APPLIED).
+
+### Dependencies
+`IAuthorizationService`, `IProjectRepository`, `IProjectApplicationRepository`,
+`IFreelancerProfileRepository`, `IFreelancerLevelRepository`, `IIdGenerator`, `IClock`,
+`IUnitOfWork`.
+
+### Flow
+`require_permission(actor_id, "project.apply_on_behalf")` → verify the target profile exists
+(`IFreelancerProfileRepository.get_by_id`) → shared `_apply_for_project` helper. The
+application belongs to the target profile's owner; the admin is recorded as
+`submitted_by_user_id`.
+
+### Errors
+`PermissionDeniedError`, `FreelancerProfileNotFoundError`, `ProjectNotFoundError`,
+`FreelancerNotEligibleError`, `ApplicationDeadlineExpiredError`,
+`DuplicateApplicationError`, `FreelancerLevelNotFoundError`.
+
+### Side effects
+New application with `submitted_by_user_id` = the admin.
 
 ---
 
@@ -3165,6 +3868,38 @@ Supervisor.
 
 ---
 
+## GetSupervisorReview
+
+### Purpose
+Returns the supervisor review attached to a delivery.
+
+### Actor
+Category supervisor (`review.decide_own`), project owner/admin
+(`project.manage_own`/`project.manage_any`).
+
+### Input (`GetSupervisorReviewQuery`)
+- `actor_id`, `project_delivery_id`
+
+### Output (`GetSupervisorReviewResult`)
+`review: ReviewResult` (`review_id`, `project_delivery_id`, `project_id`,
+`supervisor_user_id`, `decision`, `reject_reason`, `notes`, `reviewed_at`).
+
+### Dependencies
+`IProjectDeliveryRepository`, `IProjectRepository`, `ISupervisorReviewRepository`,
+`ICategorySupervisorRepository`, `IAuthorizationService`.
+
+### Flow
+`get_by_id(delivery)` → `get_by_id(project)` → `get_by_delivery(delivery_id)` → if the
+actor is a supervisor of the project's category require `review.decide_own`, else
+`authorize_owned_action(project.manage_own, project.manage_any)` against the customer →
+map.
+
+### Errors
+`DeliveryNotFoundError`, `ProjectNotFoundError`, `SupervisorReviewNotFoundError`,
+`PermissionDeniedError`.
+
+---
+
 ## GetSupervisorProjects
 
 ### Purpose
@@ -3308,20 +4043,22 @@ Permissions: `feedback.manage_own` (owner) / `feedback.manage_any` (admin).
 3. `rating_repo.find_by_project` → `RatingAlreadyExistsError` if present.
 4. Require `selected_application_id` (else `ValidationError`); load the accepted application
    (→ freelancer). If none selected → `ValidationError`.
-5. `customer_review_repo.find_by_project` → `ValidationError` if no review yet.
+5. `customer_review_repo.list_by_project` — must include at least one `APPROVED` review,
+   else `ValidationError` (none) / `CustomerReviewNotApprovedError`; attach to the latest
+   approved review.
 6. Build `Rating(customer_review_id, freelancer_profile_id=..., score, ...)` — score validated
    in `__post_init__`; `add`; commit.
 
 ### Errors
 `ProjectNotFoundError`, `PermissionDeniedError`, `ProjectNotCompletedError`,
-`RatingAlreadyExistsError`, `ValidationError`, `InvalidRatingScoreError`,
-`ApplicationNotFoundError`.
+`RatingAlreadyExistsError`, `ValidationError`, `CustomerReviewNotApprovedError`,
+`InvalidRatingScoreError`, `ApplicationNotFoundError`.
 
 ### Side effects
 New rating (one per project, enforced at app level).
 
-> **Gap:** the referenced customer review is **not required to be `APPROVED`** and, with only a
-> `find_by_project` interface, could reference an older REJECTED review from a previous round.
+> **Resolved (2026-08-16):** the rating now requires an `APPROVED` customer review and attaches
+> to the latest approved one — it can no longer reference an older REJECTED review.
 
 ---
 
@@ -3366,6 +4103,164 @@ Anyone.
 
 ### Flow
 `find_by_project` → map (or `None`).
+
+---
+
+## GetCustomerReview
+
+### Purpose
+Returns a single customer review by ID.
+
+### Actor
+Project owner (`feedback.manage_own`) or admin (`feedback.manage_any`).
+
+### Input (`GetCustomerReviewQuery`)
+- `actor_id`, `review_id`
+
+### Output (`GetCustomerReviewResult`)
+`review: CustomerReviewResult` (`review_id`, `project_id`, `project_delivery_id`,
+`customer_user_id`, `decision`, `comment`, `reviewed_at`).
+
+### Dependencies
+`IProjectRepository`, `ICustomerReviewRepository`, `IAuthorizationService`.
+
+### Flow
+`get_by_id(review)` → `get_by_id(project)` → `authorize_owned_action(feedback.manage_own,
+feedback.manage_any)` against the customer → map.
+
+### Errors
+`CustomerReviewNotFoundError`, `ProjectNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## ListCustomerReviews
+
+### Purpose
+Lists a project's customer reviews.
+
+### Actor
+Project owner (`feedback.manage_own`) or admin (`feedback.manage_any`).
+
+### Input (`ListCustomerReviewsQuery`)
+- `actor_id`, `project_id`
+
+### Output (`ListCustomerReviewsResult`)
+`project_id`, `reviews: list[CustomerReviewResult]`.
+
+### Dependencies
+`IProjectRepository`, `ICustomerReviewRepository`, `IAuthorizationService`.
+
+### Flow
+`get_by_id(project)` → `authorize_owned_action(feedback.manage_own, feedback.manage_any)`
+→ `list_by_project(project_id)` → map.
+
+### Errors
+`ProjectNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## UpdateCustomerReview
+
+### Purpose
+Updates the comment of a customer review.
+
+### Actor
+Project owner (`feedback.manage_own`) or admin (`feedback.manage_any`).
+
+### Input (`UpdateCustomerReviewCommand`)
+- `actor_id`, `review_id`, `comment` (optional)
+
+### Output (`UpdateCustomerReviewResult`)
+`review_id`.
+
+### Dependencies
+`IProjectRepository`, `ICustomerReviewRepository`, `IAuthorizationService`, `IUnitOfWork`.
+
+### Flow
+`get_by_id(review)` → `get_by_id(project)` → `authorize_owned_action(feedback.manage_own,
+feedback.manage_any)` → `review.update_comment(comment)` → `update` + commit.
+
+### Errors
+`CustomerReviewNotFoundError`, `ProjectNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## DeleteCustomerReview
+
+### Purpose
+Deletes a customer review.
+
+### Actor
+Project owner (`feedback.manage_own`) or admin (`feedback.manage_any`).
+
+### Input (`DeleteCustomerReviewCommand`)
+- `actor_id`, `review_id`
+
+### Output (`DeleteCustomerReviewResult`)
+`review_id`.
+
+### Dependencies
+`IProjectRepository`, `ICustomerReviewRepository`, `IAuthorizationService`, `IUnitOfWork`.
+
+### Flow
+`get_by_id(review)` → `get_by_id(project)` → `authorize_owned_action(feedback.manage_own,
+feedback.manage_any)` → `delete` + commit.
+
+### Errors
+`CustomerReviewNotFoundError`, `ProjectNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## UpdateRating
+
+### Purpose
+Updates a rating's score, comment, and public flag.
+
+### Actor
+Project owner (`feedback.manage_own`) or admin (`feedback.manage_any`).
+
+### Input (`UpdateRatingCommand`)
+- `actor_id`, `rating_id`, `score`, `comment` (optional), `is_public`
+
+### Output (`UpdateRatingResult`)
+`rating_id`.
+
+### Dependencies
+`IProjectRepository`, `IRatingRepository`, `IAuthorizationService`, `IUnitOfWork`.
+
+### Flow
+`get_by_id(rating)` → `get_by_id(project)` → `authorize_owned_action(feedback.manage_own,
+feedback.manage_any)` → `rating.update_details(score, comment, is_public)` → `update` +
+commit.
+
+### Errors
+`RatingNotFoundError`, `ProjectNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## DeleteRating
+
+### Purpose
+Deletes a rating.
+
+### Actor
+Project owner (`feedback.manage_own`) or admin (`feedback.manage_any`).
+
+### Input (`DeleteRatingCommand`)
+- `actor_id`, `rating_id`
+
+### Output (`DeleteRatingResult`)
+`rating_id`.
+
+### Dependencies
+`IProjectRepository`, `IRatingRepository`, `IAuthorizationService`, `IUnitOfWork`.
+
+### Flow
+`get_by_id(rating)` → `get_by_id(project)` → `authorize_owned_action(feedback.manage_own,
+feedback.manage_any)` → `delete` + commit.
+
+### Errors
+`RatingNotFoundError`, `ProjectNotFoundError`, `PermissionDeniedError`.
 
 ---
 
@@ -3473,6 +4368,39 @@ Ticket + requester participant.
 
 > **Gaps:** empty `subject` allowed; `actor_id` not verified to exist; no duplicate-code check
 > (delegated to repository).
+
+---
+
+## AdminCreateTicketOnBehalf
+
+### Purpose
+Creates a ticket on behalf of a target user (Pattern B, admin-only).
+
+### Actor
+Admin holding `ticket.create_on_behalf`.
+
+### Input (`CreateTicketOnBehalfCommand`)
+- `actor_id`, `target_user_id`, `subject`
+- optional: `related_project_id`, `related_category_id`, `priority`
+
+### Output (`CreateTicketResult`)
+`ticket_id`, `ticket_code`, `status`.
+
+### Dependencies
+`IAuthorizationService`, `IUserRepository`, `ITicketRepository`,
+`ITicketParticipantRepository`, `ITicketCodeGenerator`, `IIdGenerator`, `IClock`,
+`IUnitOfWork`.
+
+### Flow
+`require_permission(actor_id, "ticket.create_on_behalf")` → verify the target user exists
+(`IUserRepository.get_by_id`) → shared `_create_ticket` helper (`requester_user_id` = the
+target user, `submitted_by_user_id` = the admin).
+
+### Errors
+`PermissionDeniedError`, `UserNotFoundError`.
+
+### Side effects
+Ticket + requester participant for the target user.
 
 ---
 
@@ -3641,6 +4569,141 @@ The user themselves (`ticket.read_own`) or an admin (`ticket.read_any`).
 
 ---
 
+## GetTicket
+
+### Purpose
+Returns a single ticket by ID.
+
+### Actor
+A participant of the ticket, or anyone holding `ticket.read_any`.
+
+### Input (`GetTicketQuery`)
+- `actor_id`, `ticket_id`
+
+### Output (`GetTicketResult`)
+`ticket: TicketResult`.
+
+### Dependencies
+`ITicketRepository`, `ITicketParticipantRepository`, `IAuthorizationService`.
+
+### Flow
+`get_by_id(ticket)` → unless the actor holds `ticket.read_any`, require participant
+(`ensure_participant`) → map.
+
+### Errors
+`TicketNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## UpdateTicket
+
+### Purpose
+Updates a ticket's subject, priority, and/or status (owner/admin).
+
+### Actor
+Ticket owner (`ticket.manage_own`) or admin (`ticket.manage_any`).
+
+### Input (`UpdateTicketCommand`)
+- `actor_id`, `ticket_id`, plus optional `subject`, `priority`, `status`
+
+### Output (`UpdateTicketResult`)
+`ticket_id`, `status`.
+
+### Dependencies
+`ITicketRepository`, `IAuthorizationService`, `IClock`, `IUnitOfWork`.
+
+### Flow
+`get_by_id(ticket)` → `authorize_owned_action(ticket.manage_own, ticket.manage_any)`
+against `created_by_user_id` → apply `update_subject`/`set_priority` and status transitions
+(`close`, `archive`, `reopen`, `transition_to`) → `update` + commit.
+
+### Errors
+`TicketNotFoundError`, `PermissionDeniedError`, `InvalidStateTransitionError`.
+
+---
+
+## ListTicketParticipants
+
+### Purpose
+Lists the participants of a ticket.
+
+### Actor
+A participant of the ticket, or anyone holding `ticket.read_any`.
+
+### Input (`ListTicketParticipantsQuery`)
+- `actor_id`, `ticket_id`
+
+### Output (`ListTicketParticipantsResult`)
+`participants: list[TicketParticipantResult]`.
+
+### Dependencies
+`ITicketRepository`, `ITicketParticipantRepository`, `IAuthorizationService`.
+
+### Flow
+`get_by_id(ticket)` → unless the actor holds `ticket.read_any`, require participant →
+`list_by_ticket(ticket_id)` → map.
+
+### Errors
+`TicketNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## UpdateTicketMessage
+
+### Purpose
+Edits a ticket message body (sender or admin).
+
+### Actor
+The message sender, or anyone holding `ticket.manage_any`.
+
+### Input (`UpdateTicketMessageCommand`)
+- `actor_id`, `ticket_id`, `message_id`, `body`
+
+### Output (`UpdateTicketMessageResult`)
+`message_id`.
+
+### Dependencies
+`ITicketRepository`, `ITicketMessageRepository`, `ITicketParticipantRepository`,
+`IAuthorizationService`, `IClock`, `IUnitOfWork`.
+
+### Flow
+`get_by_id(ticket)` → `get_by_id(message)` → `PermissionDeniedError` if the message belongs
+to another ticket → unless `ticket.manage_any`, require participant and sender match →
+`message.edit(body, now)` → `update` + commit.
+
+### Errors
+`TicketNotFoundError`, `TicketMessageNotFoundError`, `PermissionDeniedError`.
+
+---
+
+## DeleteTicketMessage
+
+### Purpose
+Soft-deletes a ticket message (sender or admin).
+
+### Actor
+The message sender, or anyone holding `ticket.manage_any`.
+
+### Input (`DeleteTicketMessageCommand`)
+- `actor_id`, `ticket_id`, `message_id`
+
+### Output (`DeleteTicketMessageResult`)
+`message_id`.
+
+### Dependencies
+`ITicketRepository`, `ITicketMessageRepository`, `ITicketParticipantRepository`,
+`IAuthorizationService`, `IClock`, `IUnitOfWork`.
+
+### Flow
+`get_by_id(ticket)` → `get_by_id(message)` → `PermissionDeniedError` if the message belongs
+to another ticket → unless `ticket.manage_any`, require participant and sender match →
+`message.soft_delete(now)` → `update` + commit.
+
+### Errors
+`TicketNotFoundError`, `TicketMessageNotFoundError`, `PermissionDeniedError`.
+
+---
+
 ## 11. Reporting & Analytics
 
 Location: `src/app/domain/reporting/`, `src/app/application/reporting/`. **Read-only.**
@@ -3698,6 +4761,76 @@ None (read-only).
 
 ---
 
+## File Upload Subsystem (file)
+
+Location: `src/app/domain/file/`, `src/app/application/file/`. A cross-cutting utility
+context: assets are stored in a pluggable `IFileStorageService` backend
+(`LocalDiskFileStorageService` default, `S3FileStorageService` configurable) and are attached
+to other entities (portfolio items, deliveries, ticket messages) via their `file_asset_id`.
+No dedicated repository — metadata lives inside the storage service.
+
+## UploadFile
+
+### Purpose
+Streams an upload to storage, deriving the MIME type from file content (not the client).
+
+### Actor
+Authenticated user (`customer`/`freelancer` — `file.upload` permission; note: **not enforced**
+in this use case, but seeded/granted).
+
+### Input (`UploadFileCommand`)
+- `actor_id`, `file_name` (required), `context` (optional free-form string), `content`
+  (async iterable of bytes)
+
+### Output (`UploadFileResult`)
+`file_asset_id`, `file_name`, `size_bytes`, `mime_type`, `uploaded_at`, `context`.
+
+### Dependencies
+`IFileStorageService`, `IClock`.
+
+### Flow
+1. `file_name` non-blank else `ValidationError`.
+2. Buffer up to 8 KiB to sniff content with `filetype.guess` — undetectable → `InvalidFileContentError`; empty → `ValidationError`.
+3. `register_uploaded_file` (replays the buffered prefix + remaining stream); return metadata.
+
+### Errors
+`ValidationError`, `InvalidFileContentError`.
+
+### Side effects
+New file asset (server-generated ID).
+
+## GetFileAsset
+
+### Purpose
+Reads a stored asset's metadata and byte content, context-aware authorized.
+
+### Actor
+Authenticated user passing `IFileAccessPolicy.can_access(actor_id, file_asset_id)`
+(`file.read_any` for admins; owners/context-linked users for non-admin).
+
+### Input (`GetFileAssetQuery`)
+- `actor_id`, `file_asset_id`
+
+### Output (`GetFileAssetResult`)
+`file_asset_id`, `file_name`, `size_bytes`, `mime_type`, `uploaded_at`, `owner_user_id`,
+`context`, `content` (bytes).
+
+### Dependencies
+`IFileStorageService`, `IFileAccessPolicy`.
+
+### Flow
+1. `get_metadata` — `KeyError`/`FileNotFoundError` → `FileAssetNotFoundError`.
+2. `access_policy.can_access` else `PermissionDeniedError`.
+3. Return metadata + `get_content`.
+
+### Errors
+`FileAssetNotFoundError`, `PermissionDeniedError`.
+
+### Side effects
+None (read-only).
+
+---
+
 ## 12. Cross-Cutting Analysis
 
 ### 12.1 Permission-key inventory (code-truth)
@@ -3710,34 +4843,49 @@ code-verified inventory:
 
 | Permission key | Where enforced |
 |---|---|
-| `user.assign_role` | `iam.assign_role` |
-| `user.remove_role` | `iam.remove_role` (also guards `SystemRoleImmutableError`) |
-| `user.grant_permission` | `iam.grant_permission` |
-| `user.revoke_permission` | `iam.revoke_permission` (also guards `SystemRoleImmutableError`) |
+| `user.create` | `iam.admin_create_user` |
+| `user.read` | `iam.admin_get_user`, `iam.admin_list_users`, `iam.list_roles`, `iam.list_permissions` |
+| `user.update_any` | `iam.admin_update_user` |
+| `user.delete` | `iam.admin_delete_user` |
 | `user.activate` | `iam.activate_user` |
 | `user.block` | `iam.block_user` |
-| `user.read` | `iam.admin_get_user`, `iam.admin_list_users` |
-| `freelancer.approve` | `freelancer.approve_freelancer`, `freelancer.reject_freelancer` |
-| `freelancer.assign_level` | `freelancer.assign_freelancer_level` |
+| `user.assign_role` | `iam.assign_role` |
+| `user.remove_role` | `iam.remove_role` (also guards the last active admin: `LastAdminRoleRemovalError`) |
+| `user.grant_permission` | `iam.grant_permission` |
+| `user.revoke_permission` | `iam.revoke_permission` |
 | `category.manage` | `category.create_category`, `category.update_category`, `category.delete_category` |
 | `category.assign_supervisor` | `category.assign_supervisor` |
 | `category.remove_supervisor` | `category.remove_supervisor` |
-| `form.manage` | all 7 form use cases (create/update/publish template, add/update/remove field, add option) |
-| `project.create` | `project.create_project` |
-| `project.apply` | `project.apply_for_project` |
-| `project.manage_own` / `project.manage_any` | `project.publish/cancel/start/complete`, `accept_freelancer`, `reject_freelancer`, `request_revision`, `view_applications` |
-| `review.decide_own` / `review.decide_any` | `review.review_delivery`, `review.approve_delivery`, `review.reject_delivery` |
-| `feedback.manage_own` / `feedback.manage_any` | `feedback.submit_review`, `feedback.submit_rating` |
+| `freelancer.create_own` | `freelancer.create_freelancer_profile` |
+| `freelancer.create_on_behalf` | `freelancer.admin_create_freelancer_profile_on_behalf` |
+| `freelancer.approve` | `freelancer.approve_freelancer`, `freelancer.reject_freelancer` |
+| `freelancer.assign_level` | `freelancer.assign_freelancer_level` |
+| `freelancer.read_own` / `freelancer.read_any` | resume reads/mutations (`get_current_resume`, `get_resume`, `list_resume_versions`, `set_current_resume`, `delete_resume`), portfolio reads (`get_portfolio_item`, `list_portfolio_items`), `list_freelancer_level_history` |
+| `freelancer.read_any` | `freelancer.list_freelancer_profiles_by_approval_status` |
+| `freelancer.delete_any` | `freelancer.soft_delete_freelancer_profile` |
+| `freelancer.manage_levels` | `FreelancerLevel` CRUD (list/create/update/delete/activate/deactivate) |
+| `form.manage` | all 9 form-mutating use cases (create/update/publish/delete template, add/update/remove field, add/update/remove option) |
+| `project.create_own` | `project.create_project` |
+| `project.create_on_behalf` | `project.admin_create_project_on_behalf` |
+| `project.apply` | `project.apply_for_project`; also the applicant tier of `get_project_application` |
+| `project.apply_on_behalf` | `project.admin_apply_for_project_on_behalf` |
+| `project.manage_own` / `project.manage_any` | `publish/cancel/start/complete_project`, `accept_freelancer`, `reject_freelancer`, `request_revision`, `view_applications`, and the project-scoped read use cases (`get_project_application` owner tier, `list_project_deliveries`, `get_project_delivery`, `list_project_revision_requests`, `get_project_revision_request`, `close_project_revision_request`, `list_project_status_history`) |
+| `review.decide_own` / `review.decide_any` | `review.review_delivery`, `review.approve_delivery`, `review.reject_delivery` (via `decide_delivery_review`); `get_supervisor_review` checks `decide_own` for a category supervisor, else the `project.manage_own`/`manage_any` pair |
+| `feedback.manage_own` / `feedback.manage_any` | `submit_review`, `submit_rating`, `get_customer_review`, `list_customer_reviews`, `update_customer_review`, `delete_customer_review`, `update_rating`, `delete_rating` |
+| `ticket.create_on_behalf` | `ticketing.admin_create_ticket_on_behalf` |
 | `ticket.assign` | `ticketing.assign_ticket` |
-| `ticket.read_own` / `ticket.read_any` | `ticketing.get_user_tickets` |
+| `ticket.read_own` / `ticket.read_any` | `get_user_tickets` (`read_own`/`read_any`); `get_ticket`, `list_ticket_participants` (`read_any` or participant check) |
 | `ticket.close_own` / `ticket.close_any` | `ticketing.close_ticket` |
+| `ticket.manage_own` / `ticket.manage_any` | `update_ticket` (owner/admin); `update_ticket_message`, `delete_ticket_message` (`manage_any` or sender-only) |
 | `reporting.read` | all 6 reporting use cases |
+| `file.upload` | seeded and granted to `customer`/`freelancer`; upload is authenticated but **not** gated by `require_permission` in `UploadFileUseCase` |
+| `file.read_any` | `DomainFileAccessPolicy.can_access` (admin override in `application/shared/file_access_policy.py`) |
 
-Owned-resource use cases (`project.*`, `review.*`, `feedback.*`) use the `_own`/`_any` pair via
-`authorize_owned_action`: the resource owner holds the `_own` permission; any other actor
-(an admin) must hold `_any`. `GetProjectDetails`, `GetMyProjects`, `GetAvailableProjects`,
-`GetCategories`, `GetCategoryProjects`, `GetFormTemplate`, and the read queries have **no**
-permission gate in Phase 1.
+Owned-resource use cases (`project.*`, `review.*`, `feedback.*`, `ticketing.*`,
+`freelancer.read_own`) use the `_own`/`_any` pair via `authorize_owned_action`: the resource
+owner holds the `_own` permission; any other actor (an admin) must hold `_any`. `GetProjectDetails`,
+`GetMyProjects`, `GetAvailableProjects`, `GetCategories`, `GetCategoryProjects`,
+`GetFormTemplate`/`GetFormTemplateById`, and the read queries have **no** permission gate.
 
 ### 12.2 Code vs. design docs — deviations
 
@@ -3754,7 +4902,11 @@ following previously-flagged gaps were **resolved** in code:
 - **`Project.cancel`** now sets `locked_at`.
 - **`GrantPermission`** now rejects duplicates (`PermissionAlreadyGrantedError`).
 - **`GetUserTickets`** is now authorized (`ticket.read_own`/`ticket.read_any`).
-- **`RemoveRole` / `RevokePermission`** now guard `is_system` roles (`SystemRoleImmutableError`).
+- **`RemoveRole` / `RevokePermission`** no longer conflate catalog protection with link
+  mutation: the blanket `is_system` guard (which rejected **every** call, since all seeded
+  roles have `is_system = True`) was removed. `RemoveRole` now enforces the rule the system
+  actually needs — the last active `admin` assignment cannot be removed
+  (`LastAdminRoleRemovalError`, HTTP 409). See §12.5.
 - **Reliable supervisor removal**: `RemoveSupervisorUseCase` promotes the next active supervisor.
 - **`CreateProject`/`Register`** default-role & ownership checks unchanged.
 
@@ -3782,8 +4934,10 @@ The remaining current deviations follow:
    *original* `supervisor_user_id`; the deciding admin on the `_any` path does not re-stamp it.
    Authorization is also checked **after** loading the project (not as the first step), and the
    `is_supervisor_of` probe is bypassed entirely by the `_any` tier.
-3. **`SubmitRating`** does not require the referenced customer review to be `APPROVED` — with
-   only a `find_by_project` interface it may reference an older REJECTED review.
+3. ~~**`SubmitRating`** does not require the referenced customer review to be `APPROVED` — with
+   only a `find_by_project` interface it may reference an older REJECTED review.~~ ✅ **Resolved
+   (2026-08-16)** — `SubmitRatingUseCase` now requires at least one `APPROVED` review
+   (`CustomerReviewNotApprovedError` otherwise) and attaches to the latest approved review.
 4. **Reporting queries are unparameterized** (no date range, scope, filter, or pagination) and
    `average_rating: None` semantics are unclear.
 5. **Form section reorder** (`ReorderSectionsUseCase`) likely uses sequential positions with no
@@ -3823,9 +4977,35 @@ The remaining current deviations follow:
     `RemoveRoleUseCase`).
   - Granting or revoking an **existing** permission on an **existing** role
     (`GrantPermissionUseCase` / `RevokePermissionUseCase`). These mutate only the
-    `RolePermission` link table and are guarded by `SystemRoleImmutableError` for system
-    roles.
+    `RolePermission` link table.
 - A future audit should not re-list "missing Role/Permission CRUD" as a gap.
+
+#### 12.5.1 Catalog-entity protection vs. link mutation (do not re-conflate)
+
+These are **two different concerns**. Conflating them was a real, security-relevant bug in
+this codebase (both `RemoveRole` and `RevokePermission` rejected 100% of calls); do not
+reintroduce it.
+
+| Concern | What it protects | Mechanism | Status |
+|---|---|---|---|
+| **Role/Permission catalog entity** | The `roles` / `permissions` rows themselves — creating, renaming, deleting a role or permission | Seed-only by design; **no use case exists**. `is_system` marks these rows; `SystemRoleImmutableError` is reserved for such a guard if catalog mutation is ever added | Immutable, seed-only |
+| **`UserRole` / `RolePermission` link** | Which user holds which role; which role holds which permission | `AssignRole`, `RemoveRole`, `GrantPermission`, `RevokePermission`, each gated only by its own `user.*` permission | **Fully supported** |
+
+Binding rules:
+
+1. **Never read `is_system` in a link-mutating use case.** `is_system` describes the catalog
+   row, and since *every* seeded role has `is_system = True`, any such check degenerates into
+   "reject everything".
+2. `SystemRoleImmutableError` stays **reserved** for real catalog-entity mutation attempts
+   (rename/delete). It is currently raised by nothing. Do not repurpose it for link removal.
+3. The **only** business restriction on link mutation is the last-admin rule in
+   `RemoveRoleUseCase`: the last active `admin` assignment in the system cannot be removed
+   (`LastAdminRoleRemovalError` → HTTP 409), mirroring `AdminDeleteUserUseCase`'s
+   `LastAdminCannotBeDeletedError`. Both exist to prevent total admin lockout.
+4. `AssignRole`, `GrantPermission`, and `RevokePermission` intentionally have **no**
+   `is_system` and no last-admin guard. Adding permissions/roles can never cause lockout, and
+   no specific permission is documented as permanently required on the `admin` role. If that
+   ever changes, add a narrowly-scoped, separately-named exception — never `SystemRoleImmutableError`.
 
 ---
 
@@ -3904,7 +5084,6 @@ The remaining current deviations follow:
 | SetCurrentResume | `/freelancers/{profile_id}/resume/versions/{resume_id}/set-current` | POST | `set_current_resume` |
 | DeleteResume | `/freelancers/{profile_id}/resume/versions/{resume_id}` | DELETE | `delete_resume` |
 | ListFreelancerLevelHistory | `/freelancers/{profile_id}/level-history` | GET | `list_freelancer_level_history` |
-| AdminCreateFreelancerProfileOnBehalf | `/admin/freelancers` | POST | `admin_create_freelancer_profile` |
 | ListFreelancerProfilesByApprovalStatus | `/admin/freelancers` | GET | `list_freelancer_profiles_by_approval_status` |
 | SoftDeleteFreelancerProfile | `/admin/freelancers/{profile_id}` | DELETE | `soft_delete_freelancer_profile` |
 | ListFreelancerLevels | `/admin/freelancer-levels` | GET | `list_freelancer_levels` |
@@ -3953,10 +5132,6 @@ The remaining current deviations follow:
 | ReviewDelivery | `/deliveries/{delivery_id}/review` | POST | `review_delivery` |
 | ApproveDelivery | `/deliveries/{delivery_id}/approve` | POST | `approve_delivery` |
 | RejectDelivery | `/deliveries/{delivery_id}/reject` | POST | `reject_delivery` |
-| SubmitReview | `/feedback/reviews` | POST | `submit_review` |
-| SubmitRating | `/feedback/ratings` | POST | `submit_rating` |
-| GetProjectRating | `/feedback/projects/{project_id}/rating` | GET | `get_project_rating` |
-| GetFreelancerRatings | `/feedback/freelancers/{freelancer_profile_id}/ratings` | GET | `get_freelancer_ratings` |
 | CreateTicket | `/tickets` | POST | `create_ticket` |
 | AdminCreateTicketOnBehalf | `/admin/tickets` | POST | `admin_create_ticket` |
 | GetUserTickets | `/tickets` | GET | `get_user_tickets` |
@@ -3983,11 +5158,14 @@ The remaining current deviations follow:
    category-scoped published lookup (`get_published_for_category`) is no longer exposed on
    this path; if needed it can be added as a separate `/categories/{category_id}/published-form`
    endpoint later.
-2. ⚠️ **Pagination is client-side only** — `PageQuery` never reaches any repository
-   `Query`; `meta.total_items` equals the returned page length, not the DB total.
+2. ⚠️ **Pagination is client-side, not DB-backed** — all 18 bare-list endpoints slice an
+   in-memory list via the shared `paginate()` helper (`presentation/core/pagination.py`),
+   which reports a true `total_items`/`total_pages` from the full list length and clamps
+   out-of-range pages to the last page; `PageQuery` never reaches a repository `Query`.
    **Partial fix:** `GET /users` (`admin_list_users`) is the exception — it passes real
    `limit`/`offset` to `IUserRepository.list_all`/`list_by_status` and reports a true
-   `count_all` total. The other paginated list endpoints (projects, reviews) remain affected.
+   `count_all` total. The other paginated list endpoints (projects, reviews) remain
+   client-side only.
 3. ⚠️ **401 responses bypass the envelope** — `get_current_user` raises raw
    `HTTPException(401)`.
 4. ⚠️ **WebSocket `/ws/notifications` is unguarded** — token decode failures abort the
@@ -3995,6 +5173,18 @@ The remaining current deviations follow:
 
 ### 13.3 Changelog
 
+- **2026-08-18 — Doc sync with current code.** Rewrote the §12.1 permission-key inventory to the
+  code-truth (added the `user.*` create/update/delete, `freelancer.*` create/read/delete/manage-levels,
+  `project.create_own`/`create_on_behalf`/`apply_on_behalf`, `ticket.create_on_behalf`/`manage_*`,
+  `file.*` keys; fixed `project.create` → `project.create_own`). Marked the `SubmitRating` gap in
+  §12.3 resolved (approved-review requirement). Removed duplicate rows from the §13.1 endpoint map.
+  Added full use-case sections for the previously undocumented on-behalf variants
+  (`AdminCreateProjectOnBehalf`, `AdminApplyForProjectOnBehalf`, `AdminCreateFreelancerProfileOnBehalf`,
+  `AdminCreateTicketOnBehalf`), freelancer admin/read use cases (level CRUD, approval-status listing,
+  soft-delete, resume/portfolio reads, level history), `GetSupervisorReview`, the feedback review/rating
+  CRUD, and the ticketing read/update/message-mutation use cases. Updated §13.2 item 2 to describe the
+  shared `paginate()` helper (true `total_items`/clamping) instead of page-length meta. Cross-checked
+  every use-case name and op_id against `src/app/application/` and the routers.
 - **2026-08-16 — File upload subsystem (Part 3).** Added `UploadFileUseCase` / `GetFileAssetUseCase`,
   `POST /files` with content-derived MIME validation (via `filetype`), server-generated asset IDs, and
   `GET /files/{file_asset_id}` with context-aware authorization (`IFileAccessPolicy`). Consumers now

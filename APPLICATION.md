@@ -228,9 +228,11 @@ Requires `authorization_service.require_permission(actor_id, "user.block")` /
 `AssignRoleUseCase(actor_id, target_user_id, role_key)`: `require_permission("user.assign_role")`
 → role = `role_repo.get_by_key` → if `user_role_repo.find_active` exists →
 `RoleAlreadyAssignedError` → new `UserRole` → `add`.
-`RemoveRoleUseCase`: `require_permission("user.remove_role")` → role = `get_by_key` → if
-`role.is_system` → `SystemRoleImmutableError` → if no active link →
-`UserRoleNotFoundError`.
+`RemoveRoleUseCase`: `require_permission("user.remove_role")` → role = `get_by_key` → if no
+active link → `UserRoleNotFoundError` → if `role.role_key == "admin"` and
+`list_active_user_ids_for_role(role.id)` has `<= 1` entry → `LastAdminRoleRemovalError`
+(prevents zero-admin lockout) → `user_role.revoke(now)`. It does **not** check `is_system`:
+that flag protects the Role catalog entity, not the `UserRole` link.
 
 ### GrantPermission / RevokePermission
 
@@ -239,8 +241,10 @@ Requires `authorization_service.require_permission(actor_id, "user.block")` /
 (`list_permissions_for_role`) → `PermissionAlreadyGrantedError` → new `RolePermission` →
 `add`.
 `RevokePermissionUseCase`: `require_permission("user.revoke_permission")` → role =
-`role_repo.get_by_id`; if `role.is_system` → `SystemRoleImmutableError` →
-`permission_repo.get_by_id` (existence check) → `role_permission_repo.remove`.
+`role_repo.get_by_id` (existence check) → `permission_repo.get_by_id` (existence check) →
+`role_permission_repo.remove`. Like `RemoveRole`, it does **not** check `is_system` —
+revoking a permission from any role (including `admin`) only unlinks two already-seeded
+entities and never mutates the catalog.
 
 ### Admin User CRUD
 

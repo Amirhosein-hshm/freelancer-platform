@@ -203,8 +203,11 @@ See `PRESENTATION.md`, `INFRASTRUCTURE.md`, `DOCKER.md` for full detail. Summary
   (`AUTHORIZATION.md`); creation-of-entity-for-another-user use cases follow the Self vs.
   On-Behalf Pattern B split (thin self-service + thin on-behalf use case sharing a private
   helper); admin IAM CRUD use cases (`AdminCreateUser`, `AdminUpdateUser`, `AdminDeleteUser`)
-  were added; the four system roles are immutable for removal/revocation
-  (`SystemRoleImmutableError`).
+  were added. Role/Permission **catalog entities** are seed-only and immutable
+  (`SystemRoleImmutableError` is reserved for that, currently unraised), while
+  `UserRole`/`RolePermission` **links** stay fully mutable — the only restriction is
+  `RemoveRoleUseCase`'s last-admin rule (`LastAdminRoleRemovalError`, HTTP 409). These two
+  concerns must not be conflated (`AUTHORIZATION.md` §4).
 - **Reporting read models**: statistics read models use `Decimal` for `total_revenue` and
   `average_rating`; a composite `SystemAnalytics` read model was added for
   `GetSystemAnalyticsUseCase` (not in the original `DOMAIN.md`).
