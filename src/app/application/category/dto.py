@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.application.shared.exceptions import ValidationError
+from app.application.shared.pagination import DEFAULT_PAGE_SIZE
 from app.domain.shared.types import EntityId
 
 
@@ -87,12 +88,16 @@ class RemoveSupervisorResult:
 
 @dataclass(frozen=True)
 class GetCategoriesQuery:
-    pass
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True)
 class GetCategoriesResult:
     categories: list[CategoryResult]
+    total_items: int
+    page: int
+    page_size: int
 
 
 @dataclass(frozen=True)

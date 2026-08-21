@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.freelancer.entities import Resume
@@ -34,13 +34,29 @@ class SqlAlchemyResumeRepository(IResumeRepository):
         row.summary = resume.summary
         row.is_current = resume.is_current
 
-    async def list_by_profile(self, profile_id: EntityId) -> list[Resume]:
-        result = await self._session.execute(
+    async def list_by_profile(
+        self,
+        profile_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[Resume]:
+        stmt = (
             select(ResumeModel)
             .where(ResumeModel.freelancer_profile_id == profile_id)
-            .order_by(ResumeModel.version_no.desc())
+            .order_by(ResumeModel.version_no.asc())
         )
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
         return [to_domain_resume(row) for row in result.scalars().all()]
+
+    async def count_by_profile(self, profile_id: EntityId) -> int:
+        result = await self._session.execute(
+            select(func.count(ResumeModel.id)).where(
+                ResumeModel.freelancer_profile_id == profile_id,
+            )
+        )
+        return int(result.scalar_one())
 
     async def get_current(self, profile_id: EntityId) -> Resume | None:
         result = await self._session.execute(

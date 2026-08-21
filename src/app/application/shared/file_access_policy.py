@@ -13,7 +13,6 @@ from app.domain.project.repositories import (
 from app.domain.shared.types import EntityId
 from app.domain.ticketing.repositories import (
     ITicketMessageRepository,
-    ITicketParticipantRepository,
     ITicketRepository,
 )
 
@@ -28,8 +27,8 @@ class DomainFileAccessPolicy(IFileAccessPolicy):
     - The file is referenced by the actor's own resume or portfolio item.
     - The file is referenced by a project delivery and the actor is the project
       customer, the selected freelancer, or the assigned supervisor.
-    - The file is referenced by a ticket message and the actor is a current
-      participant of that ticket (including the requester and assignee).
+    - The file is referenced by a ticket message and the actor is a party of that
+      two-party ticket (creator or target).
     """
 
     def __init__(
@@ -43,7 +42,6 @@ class DomainFileAccessPolicy(IFileAccessPolicy):
         project_application_repo: IProjectApplicationRepository,
         project_delivery_repo: IProjectDeliveryRepository,
         ticket_repo: ITicketRepository,
-        ticket_participant_repo: ITicketParticipantRepository,
         ticket_message_repo: ITicketMessageRepository,
     ) -> None:
         self._file_storage = file_storage
@@ -55,7 +53,6 @@ class DomainFileAccessPolicy(IFileAccessPolicy):
         self._project_application_repo = project_application_repo
         self._project_delivery_repo = project_delivery_repo
         self._ticket_repo = ticket_repo
-        self._ticket_participant_repo = ticket_participant_repo
         self._ticket_message_repo = ticket_message_repo
 
     async def can_access(self, actor_id: EntityId, file_asset_id: EntityId) -> bool:
@@ -76,7 +73,7 @@ class DomainFileAccessPolicy(IFileAccessPolicy):
         if await self._is_project_stakeholder(actor_id, file_asset_id):
             return True
 
-        return await self._is_ticket_participant(actor_id, file_asset_id)
+        return await self._is_ticket_party(actor_id, file_asset_id)
 
     async def _is_resume_or_portfolio_owner(self, actor_id: EntityId, file_asset_id: EntityId) -> bool:
         try:
@@ -115,14 +112,10 @@ class DomainFileAccessPolicy(IFileAccessPolicy):
                     pass
         return False
 
-    async def _is_ticket_participant(self, actor_id: EntityId, file_asset_id: EntityId) -> bool:
+    async def _is_ticket_party(self, actor_id: EntityId, file_asset_id: EntityId) -> bool:
         messages = await self._ticket_message_repo.list_by_file_asset_id(file_asset_id)
         for message in messages:
             ticket = await self._ticket_repo.get_by_id(message.ticket_id)
-            if ticket.created_by_user_id == actor_id:
-                return True
-            if ticket.assigned_to_user_id == actor_id:
-                return True
-            if await self._ticket_participant_repo.is_participant(ticket.id, actor_id):
+            if ticket.is_party(actor_id):
                 return True
         return False

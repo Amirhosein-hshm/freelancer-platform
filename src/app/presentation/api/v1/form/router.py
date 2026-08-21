@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.application.form.dto import (
     AddFieldCommand,
@@ -24,12 +24,18 @@ from app.application.form.use_cases.list_form_template_versions import (
     ListFormTemplateVersionsQuery,
     ListFormTemplateVersionsUseCase,
 )
+from app.application.form.use_cases.list_form_templates import (
+    ListFormTemplatesQuery,
+    ListFormTemplatesUseCase,
+)
 from app.application.form.use_cases.publish_form_template import PublishFormTemplateUseCase
 from app.application.form.use_cases.remove_field import RemoveFieldUseCase
 from app.application.form.use_cases.remove_field_option import RemoveFieldOptionUseCase
 from app.application.form.use_cases.update_field import UpdateFieldUseCase
 from app.application.form.use_cases.update_field_option import UpdateFieldOptionUseCase
 from app.application.form.use_cases.update_form_template import UpdateFormTemplateUseCase
+from app.application.shared.pagination import total_pages
+from app.domain.form.enums import FormTemplateStatus
 from app.presentation.api.v1.form.schemas import (
     AddFieldOptionRequest,
     AddFieldOptionResponse,
@@ -41,6 +47,7 @@ from app.presentation.api.v1.form.schemas import (
     FormFieldOptionResponse,
     FormFieldResponse,
     FormTemplateResponse,
+    ListFormTemplatesResponse,
     ListFormTemplateVersionsResponse,
     PublishFormTemplateResponse,
     RemoveFieldOptionResponse,
@@ -52,7 +59,8 @@ from app.presentation.api.v1.form.schemas import (
     UpdateFormTemplateRequest,
     UpdateFormTemplateResponse,
 )
-from app.presentation.core.envelope import SuccessEnvelope
+from app.presentation.core.envelope import PaginationMeta, SuccessEnvelope
+from app.presentation.core.pagination import PageQuery
 from app.presentation.core.providers import (
     get_add_field_option_use_case,
     get_add_field_use_case,
@@ -60,6 +68,7 @@ from app.presentation.core.providers import (
     get_delete_form_template_use_case,
     get_get_form_template_by_id_use_case,
     get_list_form_template_versions_use_case,
+    get_list_form_templates_use_case,
     get_publish_form_template_use_case,
     get_remove_field_option_use_case,
     get_remove_field_use_case,
@@ -207,6 +216,40 @@ async def publish_form_template(
             template_id=result.template_id,
             status=result.status.value,
             published_at=result.published_at.isoformat(),
+        ),
+    )
+
+
+@router.get(
+    "",
+    response_model=SuccessEnvelope[ListFormTemplatesResponse],
+    operation_id="list_form_templates",
+)
+async def list_form_templates(
+    current_user=Depends(get_current_user),
+    pagination: PageQuery = Depends(),
+    category_id: str | None = Query(default=None, description="Filter templates by category."),
+    status: FormTemplateStatus | None = Query(default=None, description="Filter by template status."),
+    search: str | None = Query(default=None, description="Case-insensitive substring match on name."),
+    use_case: ListFormTemplatesUseCase = Depends(get_list_form_templates_use_case),
+) -> SuccessEnvelope[ListFormTemplatesResponse]:
+    result = await use_case.execute(
+        ListFormTemplatesQuery(
+            category_id=category_id,
+            status=status,
+            search=search,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
+    return SuccessEnvelope(
+        message="Form templates listed.",
+        data=ListFormTemplatesResponse(templates=[_template_response(t) for t in result.templates]),
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
         ),
     )
 

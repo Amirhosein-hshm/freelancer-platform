@@ -24,6 +24,7 @@ from app.application.category.use_cases.list_category_supervisors import (
 )
 from app.application.category.use_cases.remove_supervisor import RemoveSupervisorUseCase
 from app.application.category.use_cases.update_category import UpdateCategoryUseCase
+from app.application.shared.pagination import total_pages
 from app.presentation.api.v1.category.schemas import (
     AssignSupervisorRequest,
     AssignSupervisorResponse,
@@ -36,8 +37,8 @@ from app.presentation.api.v1.category.schemas import (
     UpdateCategoryRequest,
 )
 from app.presentation.api.v1.project.schemas import ProjectResponse
-from app.presentation.core.envelope import SuccessEnvelope
-from app.presentation.core.pagination import PageQuery, paginate
+from app.presentation.core.envelope import PaginationMeta, SuccessEnvelope
+from app.presentation.core.pagination import PageQuery
 from app.presentation.core.providers import (
     get_assign_supervisor_use_case,
     get_create_category_use_case,
@@ -97,13 +98,19 @@ async def get_categories(
     pagination: PageQuery = Depends(),
     use_case: GetCategoriesUseCase = Depends(get_get_categories_use_case),
 ) -> SuccessEnvelope[list[CategoryResponse]]:
-    result = await use_case.execute(GetCategoriesQuery())
+    result = await use_case.execute(
+        GetCategoriesQuery(page=pagination.page, page_size=pagination.page_size)
+    )
     categories = [_category_response(c) for c in result.categories]
-    page_categories, meta = paginate(categories, pagination)
     return SuccessEnvelope(
         message="Categories.",
-        data=page_categories,
-        meta=meta,
+        data=categories,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )
 
 
@@ -161,13 +168,23 @@ async def get_category_projects(
     pagination: PageQuery = Depends(),
     use_case: GetCategoryProjectsUseCase = Depends(get_get_category_projects_use_case),
 ) -> SuccessEnvelope[list[ProjectResponse]]:
-    result = await use_case.execute(GetCategoryProjectsQuery(category_id=category_id))
+    result = await use_case.execute(
+        GetCategoryProjectsQuery(
+            category_id=category_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
     projects = [_project_response(p) for p in result.projects]
-    page_projects, meta = paginate(projects, pagination)
     return SuccessEnvelope(
         message="Category projects.",
-        data=page_projects,
-        meta=meta,
+        data=projects,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )
 
 

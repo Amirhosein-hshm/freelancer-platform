@@ -8,6 +8,7 @@ from app.application.project.permissions import (
     PERMISSION_PROJECT_MANAGE_OWN,
 )
 from app.application.shared.authorization import IAuthorizationService, authorize_owned_action
+from app.application.shared.pagination import limit_offset
 from app.application.shared.use_case import UseCase
 from app.domain.project.repositories import (
     IProjectDeliveryRepository,
@@ -35,7 +36,13 @@ class ListProjectDeliveriesUseCase(UseCase[ListProjectDeliveriesQuery, ListProje
             PERMISSION_PROJECT_MANAGE_OWN,
             PERMISSION_PROJECT_MANAGE_ANY,
         )
-        deliveries = await self._delivery_repo.list_by_project(request.project_id)
+        limit, offset = limit_offset(request.page, request.page_size)
+        deliveries = await self._delivery_repo.list_by_project(
+            request.project_id,
+            limit=limit,
+            offset=offset,
+        )
+        total_items = await self._delivery_repo.count_by_project(request.project_id)
         return ListProjectDeliveriesResult(
             deliveries=[
                 DeliveryResult(
@@ -50,5 +57,8 @@ class ListProjectDeliveriesUseCase(UseCase[ListProjectDeliveriesQuery, ListProje
                     file_asset_ids=list(d.file_asset_ids),
                 )
                 for d in deliveries
-            ]
+            ],
+            total_items=total_items,
+            page=request.page,
+            page_size=request.page_size,
         )

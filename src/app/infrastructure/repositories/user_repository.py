@@ -41,17 +41,28 @@ class SqlAlchemyUserRepository(IUserRepository):
         return user
 
     async def find_by_id(self, user_id: EntityId) -> User | None:
-        row = await self._session.get(UserModel, user_id)
+        result = await self._session.execute(
+            select(UserModel).where(UserModel.id == user_id, UserModel.deleted_at.is_(None))
+        )
+        row = result.scalar_one_or_none()
         return to_domain_user(row) if row is not None else None
 
     async def get_by_email(self, email: Email) -> User:
-        result = await self._session.execute(select(UserModel).where(UserModel.email == email.value))
+        result = await self._session.execute(
+            select(UserModel).where(UserModel.email == email.value, UserModel.deleted_at.is_(None))
+        )
         row = result.scalar_one_or_none()
         if row is None:
             raise UserNotFoundError(f"User with email {email.value} not found.")
         return to_domain_user(row)
 
     async def exists_by_email(self, email: Email) -> bool:
+        result = await self._session.execute(
+            select(UserModel.id).where(UserModel.email == email.value, UserModel.deleted_at.is_(None)).limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def email_exists_including_deleted(self, email: Email) -> bool:
         result = await self._session.execute(select(UserModel.id).where(UserModel.email == email.value).limit(1))
         return result.scalar_one_or_none() is not None
 
@@ -74,7 +85,7 @@ class SqlAlchemyUserRepository(IUserRepository):
     async def list_by_status(self, status: UserStatus, limit: int, offset: int) -> list[User]:
         result = await self._session.execute(
             select(UserModel)
-            .where(UserModel.status == status.value)
+            .where(UserModel.status == status.value, UserModel.deleted_at.is_(None))
             .order_by(UserModel.created_at.desc())
             .limit(limit)
             .offset(offset)
@@ -83,12 +94,16 @@ class SqlAlchemyUserRepository(IUserRepository):
 
     async def list_all(self, limit: int, offset: int) -> list[User]:
         result = await self._session.execute(
-            select(UserModel).order_by(UserModel.created_at.desc()).limit(limit).offset(offset)
+            select(UserModel)
+            .where(UserModel.deleted_at.is_(None))
+            .order_by(UserModel.created_at.desc())
+            .limit(limit)
+            .offset(offset)
         )
         return [to_domain_user(row) for row in result.scalars().all()]
 
     async def count_all(self, status: UserStatus | None = None) -> int:
-        stmt = select(func.count()).select_from(UserModel)
+        stmt = select(func.count()).select_from(UserModel).where(UserModel.deleted_at.is_(None))
         if status is not None:
             stmt = stmt.where(UserModel.status == status.value)
         return int((await self._session.execute(stmt)).scalar_one())

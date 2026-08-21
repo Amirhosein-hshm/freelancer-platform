@@ -133,5 +133,9 @@ class DeleteFormTemplateResponse(BaseModel):
     template_id: str
 
 
+class ListFormTemplatesResponse(BaseModel):
+    templates: list[FormTemplateResponse]
+
+
 class ListFormTemplateVersionsResponse(BaseModel):
     versions: list[FormTemplateResponse]

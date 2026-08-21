@@ -47,8 +47,6 @@ class UpdateTicketUseCase(UseCase[UpdateTicketCommand, UpdateTicketResult]):
                 ticket.archive(request.actor_id, now)
             elif request.status == TicketStatus.OPEN and ticket.status == TicketStatus.CLOSED:
                 ticket.reopen()
-            else:
-                ticket.transition_to(request.status)
         async with self._uow:
             await self._ticket_repo.update(ticket)
             await self._uow.commit()

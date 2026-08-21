@@ -16,7 +16,15 @@ class ISupervisorReviewRepository(ABC):
     async def find_by_delivery(self, project_delivery_id: EntityId) -> SupervisorReview | None: ...
 
     @abstractmethod
-    async def list_pending_for_supervisor(self, supervisor_user_id: EntityId) -> list[SupervisorReview]: ...
+    async def list_pending_for_supervisor(
+        self,
+        supervisor_user_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[SupervisorReview]: ...
+
+    @abstractmethod
+    async def count_pending_for_supervisor(self, supervisor_user_id: EntityId) -> int: ...
 
     @abstractmethod
     async def update(self, review: SupervisorReview) -> None: ...

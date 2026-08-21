@@ -1,5 +1,6 @@
 from app.application.iam.dto import AdminListUsersQuery, AdminListUsersResult, AdminUserSummary
 from app.application.shared.authorization import IAuthorizationService
+from app.application.shared.pagination import limit_offset
 from app.application.shared.use_case import UseCase
 from app.domain.iam.repositories import IUserRepository
 
@@ -15,11 +16,11 @@ class AdminListUsersUseCase(UseCase[AdminListUsersQuery, AdminListUsersResult]):
 
     async def execute(self, request: AdminListUsersQuery) -> AdminListUsersResult:
         await self._authorization_service.require_permission(request.actor_id, "user.read")
-        offset = (request.page - 1) * request.page_size
+        limit, offset = limit_offset(request.page, request.page_size)
         if request.status is not None:
-            users = await self._user_repo.list_by_status(request.status, request.page_size, offset)
+            users = await self._user_repo.list_by_status(request.status, limit, offset)
         else:
-            users = await self._user_repo.list_all(request.page_size, offset)
+            users = await self._user_repo.list_all(limit, offset)
         total_items = await self._user_repo.count_all(request.status)
         return AdminListUsersResult(
             users=[

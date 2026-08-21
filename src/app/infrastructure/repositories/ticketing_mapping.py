@@ -1,7 +1,6 @@
-from app.domain.ticketing.entities import Ticket, TicketMessage, TicketParticipant
+from app.domain.ticketing.entities import Ticket, TicketMessage
 from app.domain.ticketing.enums import (
     TicketMessageType,
-    TicketParticipantRole,
     TicketPriority,
     TicketStatus,
 )
@@ -13,7 +12,7 @@ def to_domain_ticket(row: object) -> Ticket:
         created_at=row.created_at,
         ticket_code=row.ticket_code,
         created_by_user_id=row.created_by_user_id,
-        assigned_to_user_id=row.assigned_to_user_id,
+        target_user_id=row.target_user_id,
         related_project_id=row.related_project_id,
         related_category_id=row.related_category_id,
         subject=row.subject,
@@ -24,18 +23,6 @@ def to_domain_ticket(row: object) -> Ticket:
         last_message_at=row.last_message_at,
         deleted_at=row.deleted_at,
         submitted_by_user_id=row.submitted_by_user_id,
-    )
-
-
-def to_domain_ticket_participant(row: object) -> TicketParticipant:
-    return TicketParticipant(
-        id=row.id,
-        created_at=row.created_at,
-        ticket_id=row.ticket_id,
-        user_id=row.user_id,
-        participant_role=TicketParticipantRole(row.participant_role),
-        joined_at=row.joined_at,
-        left_at=row.left_at,
     )
 
 

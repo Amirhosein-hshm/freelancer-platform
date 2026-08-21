@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.application.project.dto import ProjectResult
+from app.application.shared.pagination import DEFAULT_PAGE_SIZE
 from app.domain.project.enums import ProjectStatus
 from app.domain.review.enums import ReviewStatus
 from app.domain.shared.types import EntityId
@@ -10,16 +11,23 @@ from app.domain.shared.types import EntityId
 @dataclass(frozen=True)
 class GetSupervisorProjectsQuery:
     supervisor_user_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True)
 class GetSupervisorProjectsResult:
     projects: list[ProjectResult]
+    total_items: int
+    page: int
+    page_size: int
 
 
 @dataclass(frozen=True)
 class GetPendingReviewsQuery:
     supervisor_user_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True)
@@ -37,6 +45,9 @@ class ReviewResult:
 @dataclass(frozen=True)
 class GetPendingReviewsResult:
     reviews: list[ReviewResult]
+    total_items: int
+    page: int
+    page_size: int
 
 
 @dataclass(frozen=True)

@@ -12,8 +12,12 @@ class TicketClosedError(BusinessRuleViolationError):
     """Raised when a closed/archived ticket should not accept new messages."""
 
 
-class NotTicketParticipantError(BusinessRuleViolationError):
-    """Raised when a user who is not a ticket participant performs an action."""
+class NotTicketPartyError(BusinessRuleViolationError):
+    """Raised when a user who is not a party of a two-party ticket acts on it."""
+
+
+class TicketRelationshipError(BusinessRuleViolationError):
+    """Raised when two users have no eligible relationship to open a ticket."""
 
 
 class TicketMessageNotFoundError(EntityNotFoundError):

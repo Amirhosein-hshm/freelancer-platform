@@ -1,4 +1,4 @@
-from app.domain.freelancer.entities import FreelancerLevel
+from app.domain.freelancer.enums import FreelancerLevelEnum
 from app.domain.project.entities import Project, ProjectRevisionRequest
 from app.domain.project.enums import ProjectVisibility
 from app.domain.project.exceptions import MaxRevisionsExceededError
@@ -22,22 +22,30 @@ class RevisionPolicy:
 
 
 class FreelancerEligibilityPolicy:
-    """Whether a freelancer (at ``level``) is allowed to apply to ``project``."""
+    """Whether a freelancer (at ``current_level``) is allowed to apply to ``project``.
+
+    Level comparison is hierarchical: ``current_level.rank() >= project.required_level.rank()``
+    (SENIOR may apply to a JUNIOR-required project). ``current_level`` of ``None`` is
+    ineligible whenever a ``required_level`` is set; a project with no ``required_level`` is
+    open to everyone, including level-less freelancers. INVITE_ONLY projects are never
+    self-applicable. ``MAX_ACTIVE_APPLICATIONS`` is a single global cap (the per-level
+    ``max_active_applications`` knob was removed with the level table).
+    """
+
+    MAX_ACTIVE_APPLICATIONS = 10
 
     @staticmethod
     def is_eligible_to_apply(
-        level: FreelancerLevel,
+        current_level: FreelancerLevelEnum | None,
         project: Project,
         active_application_count: int,
     ) -> bool:
-        if not level.is_active:
-            return False
-        if project.visibility == ProjectVisibility.PUBLIC and not level.can_apply_public_projects:
-            return False
-        if project.visibility == ProjectVisibility.PRIVATE and not level.can_apply_private_projects:
-            return False
         if project.visibility == ProjectVisibility.INVITE_ONLY:
             return False
-        return not (
-            level.max_active_applications is not None and active_application_count >= level.max_active_applications
-        )
+        if active_application_count >= FreelancerEligibilityPolicy.MAX_ACTIVE_APPLICATIONS:
+            return False
+        if project.required_level is None:
+            return True
+        if current_level is None:
+            return False
+        return current_level.rank() >= project.required_level.rank()

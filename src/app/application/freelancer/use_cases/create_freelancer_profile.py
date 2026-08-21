@@ -40,7 +40,7 @@ async def _create_freelancer_profile(
     profile = FreelancerProfile(
         id=await id_generator.new_id(),
         user_id=user_id,
-        current_level_id=None,
+        current_level=None,
         approval_status=FreelancerApprovalStatus.PENDING,
         approved_by_user_id=None,
         approved_at=None,

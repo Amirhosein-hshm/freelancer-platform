@@ -20,7 +20,7 @@ def to_profile_result(profile: FreelancerProfile) -> FreelancerProfileResult:
         hourly_rate_min=profile.hourly_rate_min,
         hourly_rate_max=profile.hourly_rate_max,
         is_available=profile.is_available,
-        current_level_id=profile.current_level_id,
+        current_level=profile.current_level,
         approval_status=profile.approval_status,
         approved_at=profile.approved_at,
     )

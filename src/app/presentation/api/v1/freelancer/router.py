@@ -62,6 +62,7 @@ from app.application.freelancer.use_cases.update_portfolio_item import (
 )
 from app.application.freelancer.use_cases.update_resume import UpdateResumeUseCase
 from app.application.freelancer.use_cases.upload_resume import UploadResumeUseCase
+from app.application.shared.pagination import total_pages
 from app.presentation.api.v1.freelancer.mappers import to_profile_response
 from app.presentation.api.v1.freelancer.schemas import (
     AddPortfolioItemRequest,
@@ -89,8 +90,8 @@ from app.presentation.api.v1.freelancer.schemas import (
     UploadResumeRequest,
     UploadResumeResponse,
 )
-from app.presentation.core.envelope import SuccessEnvelope
-from app.presentation.core.pagination import PageQuery, paginate
+from app.presentation.core.envelope import PaginationMeta, SuccessEnvelope
+from app.presentation.core.pagination import PageQuery
 from app.presentation.core.providers import (
     get_add_portfolio_item_use_case,
     get_approve_freelancer_use_case,
@@ -231,7 +232,7 @@ async def approve_freelancer(
         data=ApproveFreelancerResponse(
             profile_id=result.profile_id,
             approval_status=result.approval_status.value,
-            current_level_id=result.current_level_id,
+            current_level=result.current_level,
         ),
     )
 
@@ -278,7 +279,7 @@ async def assign_freelancer_level(
         AssignFreelancerLevelCommand(
             actor_id=current_user.user_id,
             profile_id=profile_id,
-            new_level_id=payload.new_level_id,
+            new_level=payload.new_level,
             reason=payload.reason,
         )
     )
@@ -286,8 +287,8 @@ async def assign_freelancer_level(
         message="Level assigned.",
         data=AssignFreelancerLevelResponse(
             profile_id=result.profile_id,
-            old_level_id=result.old_level_id,
-            new_level_id=result.new_level_id,
+            old_level=result.old_level,
+            new_level=result.new_level,
         ),
     )
 
@@ -446,8 +447,8 @@ def _to_history_response(result: FreelancerLevelHistoryResponse) -> FreelancerLe
     return FreelancerLevelHistoryResponse(
         history_id=result.history_id,
         freelancer_profile_id=result.freelancer_profile_id,
-        old_level_id=result.old_level_id,
-        new_level_id=result.new_level_id,
+        old_level=result.old_level,
+        new_level=result.new_level,
         assigned_by_user_id=result.assigned_by_user_id,
         reason=result.reason,
         assigned_at=result.assigned_at,
@@ -479,13 +480,24 @@ async def list_resume_versions(
     pagination: PageQuery = Depends(),
     use_case: ListResumeVersionsUseCase = Depends(get_list_resume_versions_use_case),
 ) -> SuccessEnvelope[list[ResumeResponse]]:
-    result = await use_case.execute(ListResumeVersionsQuery(actor_id=current_user.user_id, profile_id=profile_id))
-    resumes = [_to_resume_response(r) for r in result]
-    page_resumes, meta = paginate(resumes, pagination)
+    result = await use_case.execute(
+        ListResumeVersionsQuery(
+            actor_id=current_user.user_id,
+            profile_id=profile_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
+    resumes = [_to_resume_response(r) for r in result.resumes]
     return SuccessEnvelope(
         message="Resume versions.",
-        data=page_resumes,
-        meta=meta,
+        data=resumes,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )
 
 
@@ -563,13 +575,24 @@ async def list_portfolio_items(
     pagination: PageQuery = Depends(),
     use_case: ListPortfolioItemsUseCase = Depends(get_list_portfolio_items_use_case),
 ) -> SuccessEnvelope[list[PortfolioItemResponse]]:
-    result = await use_case.execute(ListPortfolioItemsQuery(actor_id=current_user.user_id, profile_id=profile_id))
-    items = [_to_portfolio_item_response(i) for i in result]
-    page_items, meta = paginate(items, pagination)
+    result = await use_case.execute(
+        ListPortfolioItemsQuery(
+            actor_id=current_user.user_id,
+            profile_id=profile_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
+    items = [_to_portfolio_item_response(i) for i in result.items]
     return SuccessEnvelope(
         message="Portfolio items.",
-        data=page_items,
-        meta=meta,
+        data=items,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )
 
 
@@ -600,12 +623,21 @@ async def list_freelancer_level_history(
     use_case: ListFreelancerLevelHistoryUseCase = Depends(get_list_freelancer_level_history_use_case),
 ) -> SuccessEnvelope[list[FreelancerLevelHistoryResponse]]:
     result = await use_case.execute(
-        ListFreelancerLevelHistoryQuery(actor_id=current_user.user_id, profile_id=profile_id)
+        ListFreelancerLevelHistoryQuery(
+            actor_id=current_user.user_id,
+            profile_id=profile_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
     )
-    history = [_to_history_response(h) for h in result]
-    page_history, meta = paginate(history, pagination)
+    history = [_to_history_response(h) for h in result.history]
     return SuccessEnvelope(
         message="Level history.",
-        data=page_history,
-        meta=meta,
+        data=history,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )

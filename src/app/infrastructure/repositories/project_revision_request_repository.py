@@ -32,12 +32,20 @@ class SqlAlchemyProjectRevisionRequestRepository(IProjectRevisionRequestReposito
             )
         )
 
-    async def list_by_project(self, project_id: EntityId) -> list[ProjectRevisionRequest]:
-        result = await self._session.execute(
+    async def list_by_project(
+        self,
+        project_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[ProjectRevisionRequest]:
+        stmt = (
             select(ProjectRevisionRequestModel)
             .where(ProjectRevisionRequestModel.project_id == project_id)
             .order_by(ProjectRevisionRequestModel.requested_at.asc())
         )
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
         return [to_domain_project_revision_request(row) for row in result.scalars().all()]
 
     async def count_by_project(self, project_id: EntityId) -> int:

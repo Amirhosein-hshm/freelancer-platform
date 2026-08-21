@@ -18,6 +18,7 @@ from app.application.review.use_cases.get_supervisor_projects import GetSupervis
 from app.application.review.use_cases.get_supervisor_review import GetSupervisorReviewUseCase
 from app.application.review.use_cases.reject_delivery import RejectDeliveryUseCase
 from app.application.review.use_cases.review_delivery import ReviewDeliveryUseCase
+from app.application.shared.pagination import total_pages
 from app.presentation.api.v1.project.mappers import to_delivery_response
 from app.presentation.api.v1.project.schemas import BudgetResponse, DeliveryResponse, ProjectResponse
 from app.presentation.api.v1.review.schemas import (
@@ -27,8 +28,8 @@ from app.presentation.api.v1.review.schemas import (
     ReviewDeliveryRequest,
     ReviewResponse,
 )
-from app.presentation.core.envelope import SuccessEnvelope
-from app.presentation.core.pagination import PageQuery, paginate
+from app.presentation.core.envelope import PaginationMeta, SuccessEnvelope
+from app.presentation.core.pagination import PageQuery
 from app.presentation.core.providers import (
     get_approve_delivery_use_case,
     get_get_pending_reviews_use_case,
@@ -107,13 +108,23 @@ async def get_pending_reviews(
     pagination: PageQuery = Depends(),
     use_case: GetPendingReviewsUseCase = Depends(get_get_pending_reviews_use_case),
 ) -> SuccessEnvelope[list[ReviewResponse]]:
-    result = await use_case.execute(GetPendingReviewsQuery(supervisor_user_id=current_user.user_id))
+    result = await use_case.execute(
+        GetPendingReviewsQuery(
+            supervisor_user_id=current_user.user_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
     reviews = [_to_review_response(review) for review in result.reviews]
-    page_reviews, meta = paginate(reviews, pagination)
     return SuccessEnvelope(
         message="Pending reviews.",
-        data=page_reviews,
-        meta=meta,
+        data=reviews,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )
 
 
@@ -127,13 +138,23 @@ async def get_supervisor_projects(
     pagination: PageQuery = Depends(),
     use_case: GetSupervisorProjectsUseCase = Depends(get_get_supervisor_projects_use_case),
 ) -> SuccessEnvelope[list[ProjectResponse]]:
-    result = await use_case.execute(GetSupervisorProjectsQuery(supervisor_user_id=current_user.user_id))
+    result = await use_case.execute(
+        GetSupervisorProjectsQuery(
+            supervisor_user_id=current_user.user_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
     projects = [_to_project_response(project) for project in result.projects]
-    page_projects, meta = paginate(projects, pagination)
     return SuccessEnvelope(
         message="Supervisor projects.",
-        data=page_projects,
-        meta=meta,
+        data=projects,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )
 
 

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.application.shared.exceptions import ValidationError
+from app.application.shared.pagination import DEFAULT_PAGE_SIZE
 from app.domain.iam.enums import UserStatus
 from app.domain.shared.types import EntityId
 
@@ -273,7 +274,7 @@ class AdminListUsersQuery:
     actor_id: EntityId
     status: UserStatus | None = None
     page: int = 1
-    page_size: int = 20
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True)

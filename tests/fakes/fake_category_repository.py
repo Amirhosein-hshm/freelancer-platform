@@ -5,6 +5,8 @@ from app.domain.shared.types import EntityId
 
 
 class FakeCategoryRepository(ICategoryRepository):
+    """Mirrors the SQLAlchemy repository: every read excludes soft-deleted categories."""
+
     def __init__(self) -> None:
         self._store: dict[str, Category] = {}
         self._by_slug: dict[str, Category] = {}
@@ -14,16 +16,16 @@ class FakeCategoryRepository(ICategoryRepository):
         self._by_slug[category.slug] = category
 
     async def get_by_id(self, category_id: EntityId) -> Category:
-        try:
-            return self._store[category_id]
-        except KeyError:
-            raise CategoryNotFoundError(f"Category {category_id} not found.") from None
+        category = self._store.get(category_id)
+        if category is None or category.deleted_at is not None:
+            raise CategoryNotFoundError(f"Category {category_id} not found.")
+        return category
 
     async def get_by_slug(self, slug: str) -> Category:
-        try:
-            return self._by_slug[slug]
-        except KeyError:
-            raise CategoryNotFoundError(f"Category with slug '{slug}' not found.") from None
+        category = self._by_slug.get(slug)
+        if category is None or category.deleted_at is not None:
+            raise CategoryNotFoundError(f"Category with slug '{slug}' not found.")
+        return category
 
     async def list_active(self) -> list[Category]:
         return [c for c in self._store.values() if c.is_active and c.deleted_at is None]

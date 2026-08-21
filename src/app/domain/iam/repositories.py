@@ -15,22 +15,38 @@ from app.domain.shared.types import EntityId
 
 
 class IUserRepository(ABC):
+    """All read methods exclude soft-deleted users (``deleted_at IS NULL``).
+
+    The single exception is ``email_exists_including_deleted``, whose explicit name
+    signals that it also sees soft-deleted rows: it mirrors the ``users.email`` UNIQUE
+    constraint, so a soft-deleted user still occupies their address.
+    """
+
     @abstractmethod
     async def add(self, user: User) -> None: ...
 
     @abstractmethod
     async def get_by_id(self, user_id: EntityId) -> User:
-        """Raise ``UserNotFoundError`` if absent."""
+        """Raise ``UserNotFoundError`` if absent or soft-deleted."""
 
     @abstractmethod
     async def find_by_id(self, user_id: EntityId) -> User | None: ...
 
     @abstractmethod
     async def get_by_email(self, email: Email) -> User:
-        """Raise ``UserNotFoundError`` if absent."""
+        """Raise ``UserNotFoundError`` if absent or soft-deleted."""
 
     @abstractmethod
-    async def exists_by_email(self, email: Email) -> bool: ...
+    async def exists_by_email(self, email: Email) -> bool:
+        """True only for a live (non-soft-deleted) user."""
+
+    @abstractmethod
+    async def email_exists_including_deleted(self, email: Email) -> bool:
+        """True if ANY row holds this email, including soft-deleted ones.
+
+        Use this for uniqueness pre-checks before an INSERT; using the filtered
+        ``exists_by_email`` there would let the insert hit the DB UNIQUE constraint.
+        """
 
     @abstractmethod
     async def update(self, user: User) -> None: ...

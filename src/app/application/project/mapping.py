@@ -23,6 +23,7 @@ def to_project_result(project: Project) -> ProjectResult:
         project_code=project.project_code.value,
         customer_user_id=project.customer_user_id,
         category_id=project.category_id,
+        required_level=project.required_level,
         title=project.title,
         description=project.description,
         status=project.status,

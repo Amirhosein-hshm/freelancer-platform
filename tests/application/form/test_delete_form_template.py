@@ -8,44 +8,49 @@ from app.domain.form.exceptions import FormTemplateHasActiveReferencesError, For
 from app.domain.project.enums import ProjectStatus
 
 
-def build_use_case(authorization_service, template_repo, project_repo, uow):
+def build_use_case(authorization_service, template_repo, project_repo, uow, clock):
     return DeleteFormTemplateUseCase(
         authorization_service=authorization_service,
         template_repo=template_repo,
         project_repo=project_repo,
+        clock=clock,
         uow=uow,
     )
 
 
 class TestDeleteFormTemplateUseCase:
     async def test_delete_draft_template_succeeds(
-        self, authorization_service, template_repo, project_repo, uow, make_template
+        self, authorization_service, template_repo, project_repo, uow, clock, make_template
     ):
         authorization_service.grant("admin", "form.manage")
         await make_template(template_id="template-1")
-        use_case = build_use_case(authorization_service, template_repo, project_repo, uow)
+        use_case = build_use_case(authorization_service, template_repo, project_repo, uow, clock)
 
         result = await use_case.execute(DeleteFormTemplateCommand(actor_id="admin", template_id="template-1"))
 
         assert result.template_id == "template-1"
+        # Soft-deleted: hidden from every read path. A hard delete here would break the
+        # projects.form_template_id FK still held by the terminal project.
+        with pytest.raises(FormTemplateNotFoundError):
+            await template_repo.get_by_id("template-1")
         with pytest.raises(FormTemplateNotFoundError):
             await template_repo.get_by_id("template-1")
 
     async def test_delete_requires_permission(
-        self, authorization_service, template_repo, project_repo, uow, make_template
+        self, authorization_service, template_repo, project_repo, uow, clock, make_template
     ):
         await make_template(template_id="template-1")
-        use_case = build_use_case(authorization_service, template_repo, project_repo, uow)
+        use_case = build_use_case(authorization_service, template_repo, project_repo, uow, clock)
 
         with pytest.raises(PermissionDeniedError):
             await use_case.execute(DeleteFormTemplateCommand(actor_id="admin", template_id="template-1"))
 
     async def test_delete_published_template_is_blocked(
-        self, authorization_service, template_repo, project_repo, uow, make_template
+        self, authorization_service, template_repo, project_repo, uow, clock, make_template
     ):
         authorization_service.grant("admin", "form.manage")
         await make_template(template_id="template-1", status=FormTemplateStatus.PUBLISHED)
-        use_case = build_use_case(authorization_service, template_repo, project_repo, uow)
+        use_case = build_use_case(authorization_service, template_repo, project_repo, uow, clock)
 
         with pytest.raises(FormTemplateHasActiveReferencesError):
             await use_case.execute(DeleteFormTemplateCommand(actor_id="admin", template_id="template-1"))
@@ -56,6 +61,7 @@ class TestDeleteFormTemplateUseCase:
         template_repo,
         project_repo,
         uow,
+        clock,
         make_template,
         make_project,
     ):
@@ -66,7 +72,7 @@ class TestDeleteFormTemplateUseCase:
             form_template_id="template-1",
             status=ProjectStatus.PUBLISHED,
         )
-        use_case = build_use_case(authorization_service, template_repo, project_repo, uow)
+        use_case = build_use_case(authorization_service, template_repo, project_repo, uow, clock)
 
         with pytest.raises(FormTemplateHasActiveReferencesError):
             await use_case.execute(DeleteFormTemplateCommand(actor_id="admin", template_id="template-1"))
@@ -77,6 +83,7 @@ class TestDeleteFormTemplateUseCase:
         template_repo,
         project_repo,
         uow,
+        clock,
         make_template,
         make_project,
     ):
@@ -87,7 +94,7 @@ class TestDeleteFormTemplateUseCase:
             form_template_id="template-1",
             status=ProjectStatus.COMPLETED,
         )
-        use_case = build_use_case(authorization_service, template_repo, project_repo, uow)
+        use_case = build_use_case(authorization_service, template_repo, project_repo, uow, clock)
 
         result = await use_case.execute(DeleteFormTemplateCommand(actor_id="admin", template_id="template-1"))
 

@@ -3,6 +3,8 @@ from datetime import datetime
 from decimal import Decimal
 
 from app.application.shared.exceptions import ValidationError
+from app.application.shared.pagination import DEFAULT_PAGE_SIZE
+from app.domain.freelancer.enums import FreelancerLevelEnum
 from app.domain.project.enums import (
     BudgetType,
     DeliveryStatus,
@@ -35,6 +37,7 @@ class ProjectResult:
     project_code: str
     customer_user_id: EntityId
     category_id: EntityId
+    required_level: FreelancerLevelEnum | None
     title: str
     description: str
     status: ProjectStatus
@@ -78,13 +81,16 @@ class DeliveryResult:
 
 @dataclass(frozen=True)
 class CreateProjectCommand:
+    """``category_id`` is derived from the chosen template, never supplied by the client."""
+
     actor_id: EntityId
-    category_id: EntityId
+    form_template_id: EntityId
     title: str
     description: str
     visibility: ProjectVisibility
     budget_type: BudgetType
     currency_code: str
+    required_level: FreelancerLevelEnum | None = None
     fixed_budget: Decimal | None = None
     budget_min: Decimal | None = None
     budget_max: Decimal | None = None
@@ -103,12 +109,13 @@ class CreateProjectCommand:
 class CreateProjectOnBehalfCommand:
     actor_id: EntityId
     target_customer_user_id: EntityId
-    category_id: EntityId
+    form_template_id: EntityId
     title: str
     description: str
     visibility: ProjectVisibility
     budget_type: BudgetType
     currency_code: str
+    required_level: FreelancerLevelEnum | None = None
     fixed_budget: Decimal | None = None
     budget_min: Decimal | None = None
     budget_max: Decimal | None = None
@@ -128,6 +135,56 @@ class CreateProjectResult:
     project_id: EntityId
     project_code: str
     status: ProjectStatus
+
+
+@dataclass(frozen=True)
+class UpdateProjectCommand:
+    """DRAFT-only edit. Every field is replaced, so callers send the full desired state.
+
+    ``form_template_id`` may be changed while the project is a draft (the customer picked the
+    wrong form); ``category_id`` is re-derived from the new template so the two can never
+    disagree, and ``form_values`` are validated against that template.
+    """
+
+    actor_id: EntityId
+    project_id: EntityId
+    form_template_id: EntityId
+    title: str
+    description: str
+    visibility: ProjectVisibility
+    budget_type: BudgetType
+    currency_code: str
+    required_level: FreelancerLevelEnum | None = None
+    fixed_budget: Decimal | None = None
+    budget_min: Decimal | None = None
+    budget_max: Decimal | None = None
+    priority: ProjectPriority = ProjectPriority.NORMAL
+    application_deadline: datetime | None = None
+    form_values: list[FormValueInput] = field(default_factory=list)
+
+    def validate(self) -> None:
+        if not self.title.strip() or not self.description.strip():
+            raise ValidationError("title and description are required.")
+        if not self.currency_code.strip():
+            raise ValidationError("currency_code is required.")
+
+
+@dataclass(frozen=True)
+class UpdateProjectResult:
+    project_id: EntityId
+    status: ProjectStatus
+
+
+@dataclass(frozen=True)
+class DeleteProjectCommand:
+    actor_id: EntityId
+    project_id: EntityId
+
+
+@dataclass(frozen=True)
+class DeleteProjectResult:
+    project_id: EntityId
+    deleted_at: datetime
 
 
 @dataclass(frozen=True)
@@ -196,12 +253,17 @@ class WithdrawApplicationResult:
 class ViewApplicationsQuery:
     actor_id: EntityId
     project_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True)
 class ViewApplicationsResult:
     project_id: EntityId
     applications: list[ApplicationResult]
+    total_items: int
+    page: int
+    page_size: int
 
 
 @dataclass(frozen=True)
@@ -298,21 +360,31 @@ class GetProjectDetailsResult:
 @dataclass(frozen=True)
 class GetMyProjectsQuery:
     customer_user_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True)
 class GetMyProjectsResult:
     projects: list[ProjectResult]
+    total_items: int
+    page: int
+    page_size: int
 
 
 @dataclass(frozen=True)
 class GetAvailableProjectsQuery:
     actor_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True)
 class GetAvailableProjectsResult:
     projects: list[ProjectResult]
+    total_items: int
+    page: int
+    page_size: int
 
 
 @dataclass(frozen=True)
@@ -325,11 +397,16 @@ class GetProjectApplicationQuery:
 class ListProjectDeliveriesQuery:
     actor_id: EntityId
     project_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True)
 class ListProjectDeliveriesResult:
     deliveries: list[DeliveryResult]
+    total_items: int
+    page: int
+    page_size: int
 
 
 @dataclass(frozen=True)
@@ -357,11 +434,16 @@ class ProjectRevisionRequestResult:
 class ListProjectRevisionRequestsQuery:
     actor_id: EntityId
     project_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True)
 class ListProjectRevisionRequestsResult:
     revisions: list[ProjectRevisionRequestResult]
+    total_items: int
+    page: int
+    page_size: int
 
 
 @dataclass(frozen=True)
@@ -397,8 +479,13 @@ class ProjectStatusHistoryResult:
 class ListProjectStatusHistoryQuery:
     actor_id: EntityId
     project_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True)
 class ListProjectStatusHistoryResult:
     history: list[ProjectStatusHistoryResult]
+    total_items: int
+    page: int
+    page_size: int

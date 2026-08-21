@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.shared.types import EntityId
@@ -31,22 +31,51 @@ class SqlAlchemyTicketMessageRepository(ITicketMessageRepository):
         )
 
     async def get_by_id(self, message_id: EntityId) -> TicketMessage:
+        """Deliberately does NOT filter soft-deleted rows.
+
+        Only the update/delete use cases call this; they rely on the entity guards
+        (``TicketMessage.edit``/``soft_delete``) to report an already-deleted message as a
+        409 conflict rather than a misleading 404. No read endpoint uses this method.
+        """
         row = await self._session.get(TicketMessageModel, message_id)
         if row is None:
             raise TicketMessageNotFoundError(f"Ticket message {message_id} not found.")
         return to_domain_ticket_message(row)
 
-    async def list_by_ticket(self, ticket_id: EntityId) -> list[TicketMessage]:
-        result = await self._session.execute(
+    async def list_by_ticket(
+        self,
+        ticket_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[TicketMessage]:
+        stmt = (
             select(TicketMessageModel)
-            .where(TicketMessageModel.ticket_id == ticket_id)
+            .where(
+                TicketMessageModel.ticket_id == ticket_id,
+                TicketMessageModel.deleted_at.is_(None),
+            )
             .order_by(TicketMessageModel.sent_at.asc())
         )
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
         return [to_domain_ticket_message(row) for row in result.scalars().all()]
+
+    async def count_by_ticket(self, ticket_id: EntityId) -> int:
+        result = await self._session.execute(
+            select(func.count(TicketMessageModel.id)).where(
+                TicketMessageModel.ticket_id == ticket_id,
+                TicketMessageModel.deleted_at.is_(None),
+            )
+        )
+        return int(result.scalar_one())
 
     async def list_by_file_asset_id(self, file_asset_id: EntityId) -> list[TicketMessage]:
         result = await self._session.execute(
-            select(TicketMessageModel).where(TicketMessageModel.attachment_file_asset_ids.contains([file_asset_id]))
+            select(TicketMessageModel).where(
+                TicketMessageModel.attachment_file_asset_ids.contains([file_asset_id]),
+                TicketMessageModel.deleted_at.is_(None),
+            )
         )
         return [to_domain_ticket_message(row) for row in result.scalars().all()]
 
@@ -57,8 +86,3 @@ class SqlAlchemyTicketMessageRepository(ITicketMessageRepository):
         row.body = message.body
         row.edited_at = message.edited_at
         row.deleted_at = message.deleted_at
-
-    async def delete(self, message_id: EntityId) -> None:
-        row = await self._session.get(TicketMessageModel, message_id)
-        if row is not None:
-            await self._session.delete(row)

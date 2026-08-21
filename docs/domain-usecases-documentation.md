@@ -807,9 +807,10 @@ lookup / N+1), plus `total_items`, `page`, `page_size`.
 `PermissionDeniedError`.
 
 ### Side effects
-None (read-only). **This endpoint is the first admin-IAM route with real DB offset/limit
-pagination** — a partial fix of the client-side-only pagination gap tracked in
-`docs/presentation-analysis.md` §7 item 2, scoped to this endpoint only.
+None (read-only). **This was the first admin-IAM route with real DB offset/limit pagination**
+— the reference for the client-side-only pagination gap tracked in
+`docs/presentation-analysis.md` §7 item 2, since extended to every list endpoint by 7g
+(via the shared `limit_offset`/`total_pages` helpers).
 
 ---
 
@@ -987,25 +988,17 @@ Location: `src/app/domain/freelancer/`, `src/app/application/freelancer/`.
 ### 4.2 Enums
 
 - `FreelancerApprovalStatus`: `PENDING`, `APPROVED`, `REJECTED`, `SUSPENDED`.
-- `FreelancerLevelAccessType`: `STANDARD`, `RESTRICTED`, `PREMIUM`.
+- `FreelancerLevelEnum`: `JUNIOR`, `MID_LEVEL`, `SENIOR`. A **fixed, closed** set (7d removed
+  the configurable `freelancer_levels` table and the old `FreelancerLevelAccessType`).
+  Provides `rank()` for the hierarchical eligibility rule.
 
 ### 4.3 Entities
-
-#### FreelancerLevel (Entity)
-
-- **Why it exists:** defines the tiers that gate a freelancer's access to projects.
-- **Attributes:** `level_key`, `name`, `rank_order`, `access_type`,
-  `min_completed_projects`, `min_rating: Decimal | None`, `max_active_applications: int | None`,
-  `can_apply_public_projects`, `can_apply_private_projects`, `is_active`.
-- **Methods:** `deactivate()`. (No `activate()`.)
-- **Rules:** eligibility is evaluated by `FreelancerEligibilityPolicy` (§7), which reads these
-  flags but **does not check `is_active`**.
 
 #### FreelancerProfile (AggregateRoot)
 
 - **Why it exists:** the freelancer persona bound to a `User`; carries approval state and
   level that gate project participation.
-- **Attributes:** `user_id`, `current_level_id: EntityId | None`, `approval_status`,
+- **Attributes:** `user_id`, `current_level: FreelancerLevelEnum | None`, `approval_status`,
   `approved_by_user_id`, `approved_at`, `approval_note`, `display_name`, `headline`, `bio`,
   `country_code`, `city`, `timezone`, `hourly_rate_min`, `hourly_rate_max`, `is_available`,
   `deleted_at`.
@@ -1019,7 +1012,8 @@ Location: `src/app/domain/freelancer/`, `src/app/application/freelancer/`.
     is legal** (the only coded exit from SUSPENDED). Note: it writes into the `approved_*`
     audit fields even though this is a rejection.
   - `suspend(admin_id, at, note)` — only from `APPROVED`. **No use case calls it** (see §12).
-  - `change_level(new_level_id)` — unconditional setter (no existence/activity/approval checks).
+  - `change_level(new_level: FreelancerLevelEnum)` — unconditional setter (no existence/
+    activity/approval checks).
   - `is_approved()` — `status == APPROVED and deleted_at is None`.
   - `set_availability(available)` — **unreachable from any use case** (no `is_available` in DTOs).
   - `update_rate_range(min_rate, max_rate)` — raises `InvalidRateRangeError` when both are
@@ -1027,9 +1021,9 @@ Location: `src/app/domain/freelancer/`, `src/app/application/freelancer/`.
 
 #### FreelancerLevelHistory (Entity)
 
-- Records level changes: `freelancer_profile_id`, `old_level_id`, `new_level_id`,
-  `assigned_by_user_id`, `reason`, `assigned_at`. Written by `ApproveFreelancer` (only on a
-  level change) and `AssignFreelancerLevel` (always).
+- Records level changes: `freelancer_profile_id`, `old_level: FreelancerLevelEnum | None`,
+  `new_level: FreelancerLevelEnum`, `assigned_by_user_id`, `reason`, `assigned_at`. Written by
+  `AssignFreelancerLevel` (always).
 
 #### Resume (Entity)
 
@@ -1047,20 +1041,21 @@ Location: `src/app/domain/freelancer/`, `src/app/application/freelancer/`.
 
 `IFreelancerProfileRepository` (`add`, `get_by_id`, `get_by_user_id`, `update`,
 `list_by_approval_status`, `list_available_for_level`),
-`IFreelancerLevelRepository` (`get_by_id`, `get_by_key`, `list_active`),
 `IFreelancerLevelHistoryRepository` (`add`, `list_by_profile`),
 `IResumeRepository` (`add`, `update`, `list_by_profile`, `get_current`),
 `IPortfolioItemRepository` (`add`, `get_by_id`, `list_by_profile`, `update`, `delete`).
 
-> `IFreelancerLevelRepository.get_by_key`, `IFreelancerLevelHistoryRepository`, and
-> `IResumeRepository.update` are code additions not listed in `DOMAIN.md`. Several list
-> methods are unused by application use cases (future reporting/admin queries).
+> `IFreelancerLevelHistoryRepository` and `IResumeRepository.update` are code additions not
+> listed in `DOMAIN.md`. Several list methods are unused by application use cases (future
+> reporting/admin queries). `IFreelancerLevelRepository` was removed in 7d along with the
+> `FreelancerLevel` entity.
 
 ### 4.5 Domain exceptions
 
-`FreelancerProfileNotFoundError`, `FreelancerLevelNotFoundError`, `ResumeNotFoundError`,
+`FreelancerProfileNotFoundError`, `ResumeNotFoundError`,
 `PortfolioItemNotFoundError`, `DuplicateFreelancerProfileError`, `FreelancerAlreadyApprovedError`,
 `FreelancerNotApprovedError` (raised in the **project** context), `InvalidRateRangeError`.
+(`FreelancerLevelNotFoundError` removed in 7d.)
 
 ### 4.6 Use cases
 
@@ -1089,7 +1084,7 @@ Freelancer holding `freelancer.create_own` (self-service).
 2. `request.validate()` (non-blank `display_name`).
 3. `get_by_user_id` — if a profile exists → `DuplicateFreelancerProfileError`;
    `FreelancerProfileNotFoundError` is swallowed.
-4. Build `FreelancerProfile(approval_status=PENDING, current_level_id=None, is_available=True)`.
+4. Build `FreelancerProfile(approval_status=PENDING, current_level=None, is_available=True)`.
 5. `add`; commit.
 
 ### Errors
@@ -1116,7 +1111,7 @@ Freelancer (self-service; ownership via `user_id` lookup).
 
 ### Output (`FreelancerProfileResult` — shared result)
 `profile_id`, `user_id`, `display_name`, `headline`, `bio`, `country_code`, `city`, `timezone`,
-`hourly_rate_min`, `hourly_rate_max`, `is_available`, `current_level_id`, `approval_status`,
+`hourly_rate_min`, `hourly_rate_max`, `is_available`, `current_level`, `approval_status`,
 `approved_at`.
 
 ### Dependencies
@@ -1339,7 +1334,7 @@ Status → `PENDING`.
 ## ApproveFreelancer
 
 ### Purpose
-Approves a freelancer profile and grants the default level on first approval.
+Approves a freelancer profile.
 
 ### Actor
 Admin with permission `freelancer.approve`.
@@ -1348,30 +1343,25 @@ Admin with permission `freelancer.approve`.
 - `actor_id`, `profile_id`, `note: str | None`
 
 ### Output (`ApproveFreelancerResult`)
-`profile_id`, `approval_status`, `current_level_id`.
+`profile_id`, `approval_status`, `current_level`.
 
 ### Dependencies
-`IAuthorizationService`, `IFreelancerProfileRepository`, `IFreelancerLevelRepository`,
-`IFreelancerLevelHistoryRepository`, `IIdGenerator`, `IClock`, `IUnitOfWork`.
-Constant: `DEFAULT_LEVEL_KEY = "standard"`.
+`IAuthorizationService`, `IFreelancerProfileRepository`, `IClock`, `IUnitOfWork`.
 
 ### Flow
 1. `require_permission(actor_id, "freelancer.approve")`.
 2. `get_by_id(profile)`; `profile.approve(actor_id, now, note)`.
-3. Look up the `standard` level (`FreelancerLevelNotFoundError` is **swallowed**).
-4. If the default level exists and differs from `current_level_id`: `change_level` + write a
-   `FreelancerLevelHistory` row (`reason="Default level granted on approval."`).
-5. Update profile; commit.
+3. Update profile; commit.
 
 ### Errors
 `PermissionDeniedError`, `FreelancerProfileNotFoundError`, `FreelancerAlreadyApprovedError`,
 `InvalidStateTransitionError` (SUSPENDED).
 
 ### Side effects
-Status → `APPROVED`; possibly a new level + history row.
+Status → `APPROVED`.
 
-> **Gaps:** a missing `standard` level is silently ignored; no check that the default level
-> `is_active`; a `deleted_at` profile can still be approved.
+> **Gaps:** a `deleted_at` profile can still be approved. (7d removed the automatic
+> "standard" level grant — levels are assigned explicitly via `AssignFreelancerLevel`.)
 
 ---
 
@@ -1414,28 +1404,30 @@ Assigns a level to a freelancer profile and records the change.
 Admin with permission `freelancer.assign_level`.
 
 ### Input (`AssignFreelancerLevelCommand`)
-- `actor_id`, `profile_id`, `new_level_id`, `reason: str | None`
+- `actor_id`, `profile_id`, `new_level: FreelancerLevelEnum`, `reason: str | None`
 
 ### Output (`AssignFreelancerLevelResult`)
-`profile_id`, `old_level_id`, `new_level_id`.
+`profile_id`, `old_level`, `new_level`.
 
 ### Dependencies
-`IAuthorizationService`, `IFreelancerProfileRepository`, `IFreelancerLevelRepository`,
+`IAuthorizationService`, `IFreelancerProfileRepository`,
 `IFreelancerLevelHistoryRepository`, `IIdGenerator`, `IClock`, `IUnitOfWork`.
 
 ### Flow
 1. `require_permission(actor_id, "freelancer.assign_level")`.
-2. `get_by_id(profile)`; `level_repo.get_by_id(new_level_id)` → `FreelancerLevelNotFoundError`.
-3. Capture `old_level_id`; `profile.change_level(level.id)`.
+2. `get_by_id(profile)`; capture `profile.current_level` as `old_level`.
+3. `profile.change_level(new_level)`.
 4. Always write a `FreelancerLevelHistory` row (even if old == new); update; commit.
 
 ### Errors
-`PermissionDeniedError`, `FreelancerProfileNotFoundError`, `FreelancerLevelNotFoundError`.
+`PermissionDeniedError`, `FreelancerProfileNotFoundError`.
 
 ### Side effects
 Profile level changed; history recorded.
 
-> **Gaps:** no `is_active` check on the level; no approval-status check on the profile.
+> **Gaps:** no approval-status check on the profile. (7d removed the 
+> `IFreelancerLevelRepository` existence/`is_active` checks — the enum is closed, so the
+> value is valid by construction.)
 
 ---
 
@@ -1727,162 +1719,6 @@ Profile owner (`freelancer.read_own`) or admin (`freelancer.read_any`).
 
 ### Errors
 `PortfolioItemNotFoundError`, `FreelancerProfileNotFoundError`, `PermissionDeniedError`.
-
----
-
-## ListFreelancerLevels
-
-### Purpose
-Lists all freelancer levels.
-
-### Actor
-Admin holding `freelancer.manage_levels`.
-
-### Input (`ListFreelancerLevelsQuery`)
-- `actor_id`
-
-### Output
-`list[FreelancerLevelResult]`.
-
-### Dependencies
-`IAuthorizationService`, `IFreelancerLevelRepository`.
-
-### Flow
-`require_permission(freelancer.manage_levels)` → `list_all()` → map.
-
-### Errors
-`PermissionDeniedError`.
-
----
-
-## CreateFreelancerLevel
-
-### Purpose
-Creates a new freelancer level (admin).
-
-### Actor
-Admin holding `freelancer.manage_levels`.
-
-### Input (`CreateFreelancerLevelCommand`)
-- `actor_id`, `level_key`, `name`, `rank_order`, `access_type`, `min_completed_projects`,
-  plus optional `min_rating`, `max_active_applications`, `can_apply_public_projects`,
-  `can_apply_private_projects`; `validate()` requires non-empty `level_key`/`name`.
-
-### Output (`CreateFreelancerLevelResult`)
-`level_id`.
-
-### Dependencies
-`IAuthorizationService`, `IFreelancerLevelRepository`, `IIdGenerator`, `IClock`.
-
-### Flow
-`require_permission(freelancer.manage_levels)` → `validate()` → build `FreelancerLevel`
-(active by default) → `add`.
-
-### Errors
-`PermissionDeniedError`, `ValidationError`.
-
----
-
-## UpdateFreelancerLevel
-
-### Purpose
-Updates editable fields of a freelancer level (admin).
-
-### Actor
-Admin holding `freelancer.manage_levels`.
-
-### Input (`UpdateFreelancerLevelCommand`)
-- `actor_id`, `level_id`, plus optional `name`, `rank_order`, `access_type`,
-  `min_completed_projects`, `min_rating`, `max_active_applications`,
-  `can_apply_public_projects`, `can_apply_private_projects`.
-
-### Output (`UpdateFreelancerLevelResult`)
-`level_id`.
-
-### Dependencies
-`IAuthorizationService`, `IFreelancerLevelRepository`.
-
-### Flow
-`require_permission(freelancer.manage_levels)` → `get_by_id` → apply non-None fields →
-`update`.
-
-### Errors
-`PermissionDeniedError`, `FreelancerLevelNotFoundError`.
-
----
-
-## DeleteFreelancerLevel
-
-### Purpose
-Deletes a freelancer level (admin).
-
-### Actor
-Admin holding `freelancer.manage_levels`.
-
-### Input (`DeleteFreelancerLevelCommand`)
-- `actor_id`, `level_id`
-
-### Output (`DeleteFreelancerLevelResult`)
-`level_id`.
-
-### Dependencies
-`IAuthorizationService`, `IFreelancerLevelRepository`.
-
-### Flow
-`require_permission(freelancer.manage_levels)` → `get_by_id` (existence probe) → `delete`.
-
-### Errors
-`PermissionDeniedError`, `FreelancerLevelNotFoundError`.
-
----
-
-## ActivateFreelancerLevel
-
-### Purpose
-Activates a freelancer level (admin).
-
-### Actor
-Admin holding `freelancer.manage_levels`.
-
-### Input (`ActivateFreelancerLevelCommand`)
-- `actor_id`, `level_id`
-
-### Output (`ActivateFreelancerLevelResult`)
-`level_id`, `is_active`.
-
-### Dependencies
-`IAuthorizationService`, `IFreelancerLevelRepository`.
-
-### Flow
-`require_permission(freelancer.manage_levels)` → `get_by_id` → `level.activate()` → `update`.
-
-### Errors
-`PermissionDeniedError`, `FreelancerLevelNotFoundError`.
-
----
-
-## DeactivateFreelancerLevel
-
-### Purpose
-Deactivates a freelancer level (admin).
-
-### Actor
-Admin holding `freelancer.manage_levels`.
-
-### Input (`DeactivateFreelancerLevelCommand`)
-- `actor_id`, `level_id`
-
-### Output (`DeactivateFreelancerLevelResult`)
-`level_id`, `is_active`.
-
-### Dependencies
-`IAuthorizationService`, `IFreelancerLevelRepository`.
-
-### Flow
-`require_permission(freelancer.manage_levels)` → `get_by_id` → `level.deactivate()` → `update`.
-
-### Errors
-`PermissionDeniedError`, `FreelancerLevelNotFoundError`.
 
 ---
 
@@ -2630,6 +2466,39 @@ None.
 
 ---
 
+## ListFormTemplates
+
+### Purpose
+Lists form templates across **all** categories, for admin browsing and for the customer-facing
+"pick a form, then create a project against it" flow.
+
+### Actor
+Any authenticated user (no permission gate, matching the other form-template reads).
+
+### Input (`ListFormTemplatesQuery`)
+- `category_id: EntityId | None`, `status: FormTemplateStatus | None`, `search: str | None`
+  (case-insensitive substring on `name`), `page`, `page_size`
+
+### Output (`ListFormTemplatesResult`)
+`templates: list[FormTemplateResult]`, `total_items`, `page`, `page_size`.
+
+### Dependencies
+`IFormTemplateRepository` (`list_templates` + `count_templates`).
+
+### Flow
+1. `limit_offset(page, page_size)` (`application/shared/pagination.py`).
+2. `list_templates(category_id, status, search, limit, offset)` — filters and paging both run
+   in SQL, newest first.
+3. `count_templates(...)` with the same filters for `total_items`.
+
+### Errors
+None beyond authentication.
+
+> **Distinct from `ListFormTemplateVersions`**, which walks the version chain of ONE
+> `template_key` within one category. This one lists across all templates and categories.
+
+---
+
 ## ListFormTemplateVersions
 
 ### Purpose
@@ -2873,12 +2742,14 @@ Generated by `IProjectCodeGenerator` (e.g. `PRJ-2026-001`).
   `MaxRevisionsExceededError`. **Now enforced by every revision-creating path:**
   `RequestRevisionUseCase`, `ReviewDeliveryUseCase` (supervisor reject) and
   `SubmitReviewUseCase` (customer reject).
-- **`FreelancerEligibilityPolicy.is_eligible_to_apply(level, project, active_application_count)`**:
-  - Returns `False` if `not level.is_active` (fixed).
-  - `PUBLIC` requires `level.can_apply_public_projects`.
-  - `PRIVATE` requires `level.can_apply_private_projects`.
+- **`FreelancerEligibilityPolicy.is_eligible_to_apply(current_level, project, active_application_count)`**:
+  - Hierarchical `>=`: `current_level.rank() >= project.required_level.rank()` when both are set
+    (SENIOR may apply to any required level); a `current_level is None` freelancer is
+    ineligible whenever `project.required_level` is set.
+  - `project.required_level is None` → every freelancer is eligible on the level axis (incl. `None`).
   - `INVITE_ONLY` → always `False` (no invitation mechanism exists).
-  - Cap active applications via `level.max_active_applications`.
+  - Cap active applications via `MAX_ACTIVE_APPLICATIONS = 10` (global constant; the
+    per-level flags/caps were removed in 7d).
   - **Does not check the application deadline** (that is enforced separately by
     `ApplyForProjectUseCase` via `Project.is_application_deadline_passed`).
 
@@ -2923,37 +2794,45 @@ Generated by `IProjectCodeGenerator` (e.g. `PRJ-2026-001`).
 ## CreateProject
 
 ### Purpose
-Creates a project in `DRAFT` after validating the dynamic form for the category.
+Creates a project in `DRAFT` after validating the dynamic form of the **chosen** template.
 
 ### Actor
 Customer (`project.create_own`).
 
 ### Input (`CreateProjectCommand`)
-- `actor_id`, `category_id`, `title`, `description`, `visibility`,
+- `actor_id`, `form_template_id`, `title`, `description`, `visibility`,
   `budget_type`, `currency_code`
-- optional: `fixed_budget`, `budget_min`, `budget_max`, `priority` (default `NORMAL`),
+- optional: `required_level` (default `None` — open to all freelancers), `fixed_budget`,
+  `budget_min`, `budget_max`, `priority` (default `NORMAL`),
   `application_deadline`, `form_values: list[FormValueInput]` (`field_id`, `value`)
+
+The client picks the template (see `ListFormTemplates`). The **category is derived** from
+`template.category_id` — `category_id` is never accepted from the client, so the template and
+category can never disagree.
 
 ### Output (`CreateProjectResult`)
 `project_id`, `project_code`, `status` (=DRAFT).
 
 ### Dependencies
-`IAuthorizationService`, `IProjectRepository`, `ICategoryRepository`,
-`IFormTemplateRepository`, `IProjectStatusHistoryRepository`, `IProjectCodeGenerator`,
-`IIdGenerator`, `IClock`, `IUnitOfWork`.
+`IAuthorizationService`, `IProjectRepository`, `IFormTemplateRepository`,
+`IProjectStatusHistoryRepository`, `IProjectCodeGenerator`, `IIdGenerator`, `IClock`,
+`IUnitOfWork`.
 
 ### Flow
 1. `require_permission(actor_id, "project.create_own")`.
 2. `request.validate()`.
-3. `category_repo.get_by_id(category_id)` → `CategoryNotFoundError`.
-4. `form_template_repo.get_published_for_category(category.id)`.
+3. `form_template_repo.get_by_id(form_template_id)` → `FormTemplateNotFoundError` if absent or
+   soft-deleted.
+4. Reject templates not in `PUBLISHED` → `FormTemplateNotPublishedError` (DRAFT/ARCHIVED are
+   never valid targets).
 5. `validate_form_values(template, form_values)` → `FormValidationError`.
-6. Generate project code; build `Budget` (validates); build `Project(status=DRAFT)`.
+6. Generate project code; build `Budget` (validates); build `Project(status=DRAFT)`,
+   `category_id=template.category_id`, `form_template_id=template.id`.
 7. In UoW: `add` + record `None → DRAFT` history ("Project created."); commit.
 
 ### Errors
-`PermissionDeniedError`, `ValidationError`, `CategoryNotFoundError`,
-`FormTemplateNotFoundError`, `FormValidationError`, `InvalidBudgetError`,
+`PermissionDeniedError`, `ValidationError`, `FormTemplateNotFoundError`,
+`FormTemplateNotPublishedError`, `FormValidationError`, `InvalidBudgetError`,
 `InvalidProjectCodeError`.
 
 ### Side effects
@@ -2971,27 +2850,31 @@ Creates a project on behalf of a target customer (Pattern B, admin-only).
 Admin holding `project.create_on_behalf`.
 
 ### Input (`CreateProjectOnBehalfCommand`)
-- `actor_id`, `target_customer_user_id`, `category_id`, `title`, `description`,
+- `actor_id`, `target_customer_user_id`, `form_template_id`, `title`, `description`,
   `visibility`, `budget_type`, `currency_code`
-- optional: `fixed_budget`, `budget_min`, `budget_max`, `priority`,
+- optional: `required_level`, `fixed_budget`, `budget_min`, `budget_max`, `priority`,
   `application_deadline`, `form_values`
+
+Same template-driven contract as `CreateProject`: the admin picks the template and the
+category is derived from it.
 
 ### Output (`CreateProjectResult`)
 `project_id`, `project_code`, `status` (=DRAFT).
 
 ### Dependencies
-`IAuthorizationService`, `IUserRepository`, `IProjectRepository`, `ICategoryRepository`,
+`IAuthorizationService`, `IUserRepository`, `IProjectRepository`,
 `IFormTemplateRepository`, `IProjectStatusHistoryRepository`, `IProjectCodeGenerator`,
 `IIdGenerator`, `IClock`, `IUnitOfWork`.
 
 ### Flow
 `require_permission(actor_id, "project.create_on_behalf")` → verify the target customer
 exists (`IUserRepository.get_by_id`) → `validate()` → shared `_create_project` helper
-(`created_by_user_id` = the admin).
+(`created_by_user_id` = the admin; same template lookup + `PUBLISHED` guard + category
+derivation).
 
 ### Errors
-`PermissionDeniedError`, `UserNotFoundError`, `ValidationError`, `CategoryNotFoundError`,
-`FormTemplateNotFoundError`, `FormValidationError`, `InvalidBudgetError`.
+`PermissionDeniedError`, `UserNotFoundError`, `ValidationError`, `FormTemplateNotFoundError`,
+`FormTemplateNotPublishedError`, `FormValidationError`, `InvalidBudgetError`.
 
 ### Side effects
 As `CreateProject` (DRAFT project + status-history row).
@@ -3029,6 +2912,96 @@ The project's owner (customer, `project.manage_own`) or an admin (`project.manag
 
 ### Side effects
 Two status-history rows; project reaches `COLLECTING_APPLICATIONS` in one operation.
+
+---
+
+## UpdateProject
+
+### Purpose
+Edits a project's customer-supplied fields while it is still `DRAFT`.
+
+### Actor
+The project's owner (customer, `project.manage_own`) or an admin (`project.manage_any`).
+
+### Input (`UpdateProjectCommand`)
+- `actor_id`, `project_id`, `form_template_id`, `title`, `description`, `visibility`,
+  `budget_type`, `currency_code`, `required_level` (default `None`), `fixed_budget`,
+  `budget_min`, `budget_max`, `priority`,
+  `application_deadline`, `form_values`
+- Full-replacement semantics: every editable field is overwritten, so callers send the whole
+  desired state.
+- `form_template_id` **is** editable while the project is a draft — the customer may have
+  picked the wrong form (e.g. `ListFormTemplates` filter changed). `category_id` is **not**
+  accepted from the client: it is re-derived from the new template, and `form_values` are
+  re-validated against that template.
+
+### Output (`UpdateProjectResult`)
+`project_id`, `status` (always `DRAFT`).
+
+### Dependencies
+`IAuthorizationService`, `IProjectRepository`, `IFormTemplateRepository`, `IUnitOfWork`.
+
+### Flow
+1. `get_by_id`; `authorize_owned_action(project.manage_own, project.manage_any)` against
+   `project.customer_user_id`.
+2. `request.validate()` (title/description/currency required).
+3. `project.require_draft("be edited")` → `ProjectNotDraftError` (409) past DRAFT.
+4. Look up `request.form_template_id`; require `PUBLISHED` → `FormTemplateNotPublishedError`
+   (DRAFT/ARCHIVED targets rejected, matching `CreateProject`).
+5. Re-run `validate_form_values(template, request.form_values)`, exactly as `CreateProject`.
+6. `project.update_details(category_id=template.category_id, form_template_id=template.id,
+   ...)` (which re-asserts the DRAFT guard); `update`; commit.
+
+### Errors
+`ProjectNotFoundError`, `PermissionDeniedError`, `ValidationError`, `ProjectNotDraftError`,
+`FormTemplateNotFoundError`, `FormTemplateNotPublishedError`, `FormValidationError`,
+`InvalidBudgetError`.
+
+### Side effects
+Project row updated. No status history row is written — the status does not change.
+
+> **Note:** `form_values` are validated and then **discarded**, matching `CreateProject`;
+> there is no form-value store anywhere in the system (see §12.3).
+
+---
+
+## DeleteProject
+
+### Purpose
+Soft-deletes a `DRAFT` project.
+
+### Actor
+The project's owner (customer, `project.manage_own`) or an admin (`project.manage_any`).
+
+### Input (`DeleteProjectCommand`)
+- `actor_id`, `project_id`
+
+### Output (`DeleteProjectResult`)
+`project_id`, `deleted_at`.
+
+### Dependencies
+`IAuthorizationService`, `IProjectRepository`, `IClock`, `IUnitOfWork`.
+
+### Flow
+1. `get_by_id`; `authorize_owned_action(project.manage_own, project.manage_any)` against
+   `project.customer_user_id`.
+2. `project.soft_delete(now)` — which calls `require_draft("be deleted")` first, so anything
+   past DRAFT raises `ProjectNotDraftError` (409) with a message directing the caller to
+   `CancelProject`. A second delete raises `ProjectNotFoundError` (404), since reads already
+   exclude the row.
+3. `update`; commit.
+
+### Errors
+`ProjectNotFoundError`, `PermissionDeniedError`, `ProjectNotDraftError`.
+
+### Side effects
+`deleted_at` set. Because every project read path filters `deleted_at IS NULL` (§12.6), the
+draft immediately stops surfacing in `GetProjectDetails`, `GetMyProjects`,
+`GetAvailableProjects`, `GetCategoryProjects` and both `count_active_*` guards.
+
+> **Why DRAFT-only:** a published project has applicants, deliveries and status history;
+> making it vanish would strand those records. `CancelProject` is the supported terminal path
+> and preserves the audit trail.
 
 ---
 
@@ -3081,7 +3054,7 @@ Approved freelancer (requires `project.apply`).
 
 ### Dependencies
 `IAuthorizationService`, `IProjectRepository`, `IProjectApplicationRepository`,
-`IFreelancerProfileRepository`, `IFreelancerLevelRepository`, `IIdGenerator`, `IClock`,
+`IFreelancerProfileRepository`, `IIdGenerator`, `IClock`,
 `IUnitOfWork`.
 
 ### Flow
@@ -3091,15 +3064,14 @@ Approved freelancer (requires `project.apply`).
    **now enforced**).
 4. `profile_repo.get_by_user_id(actor_id)`; `profile.is_approved()` else `FreelancerNotApprovedError`.
 5. Duplicate check `find_by_project_and_freelancer` → `DuplicateApplicationError`.
-6. Require `current_level_id`; load level.
-7. `count_active_for_freelancer`; `FreelancerEligibilityPolicy.is_eligible_to_apply(...)` else
-   `FreelancerNotEligibleError`.
-8. Build `ProjectApplication(status=APPLIED, submitted_by_user_id=actor_id)`; `add`; commit.
+6. `count_active_for_freelancer`; `FreelancerEligibilityPolicy.is_eligible_to_apply(
+   profile.current_level, project, active_count)` else `FreelancerNotEligibleError`.
+7. Build `ProjectApplication(status=APPLIED, submitted_by_user_id=actor_id)`; `add`; commit.
 
 ### Errors
 `PermissionDeniedError`, `ProjectNotFoundError`, `FreelancerNotEligibleError`,
 `ApplicationDeadlineExpiredError`, `FreelancerNotApprovedError`,
-`DuplicateApplicationError`, `FreelancerLevelNotFoundError`.
+`DuplicateApplicationError`.
 
 ### Side effects
 New application (records `submitted_by_user_id`).
@@ -3125,7 +3097,7 @@ Admin holding `project.apply_on_behalf`.
 
 ### Dependencies
 `IAuthorizationService`, `IProjectRepository`, `IProjectApplicationRepository`,
-`IFreelancerProfileRepository`, `IFreelancerLevelRepository`, `IIdGenerator`, `IClock`,
+`IFreelancerProfileRepository`, `IIdGenerator`, `IClock`,
 `IUnitOfWork`.
 
 ### Flow
@@ -3137,7 +3109,7 @@ application belongs to the target profile's owner; the admin is recorded as
 ### Errors
 `PermissionDeniedError`, `FreelancerProfileNotFoundError`, `ProjectNotFoundError`,
 `FreelancerNotEligibleError`, `ApplicationDeadlineExpiredError`,
-`DuplicateApplicationError`, `FreelancerLevelNotFoundError`.
+`DuplicateApplicationError`.
 
 ### Side effects
 New application with `submitted_by_user_id` = the admin.
@@ -3488,15 +3460,16 @@ Approved freelancer.
 `projects: list[ProjectResult]`.
 
 ### Dependencies
-`IProjectRepository`, `IFreelancerProfileRepository`, `IFreelancerLevelRepository`.
+`IProjectRepository`, `IFreelancerProfileRepository`.
 
 ### Flow
 1. `profile_repo.get_by_user_id(actor_id)`; `is_approved()` else `FreelancerNotApprovedError`.
-2. `current_level_id is None` → return empty list.
-3. `list_available_for_freelancer(level.id)` → map.
+2. `list_available_for_freelancer(profile.current_level)` → map. The repository applies the
+   same hierarchical `>=` rule as `FreelancerEligibilityPolicy` at the SQL level and always
+   includes projects with no `required_level` (open to all).
 
 ### Errors
-`FreelancerProfileNotFoundError`, `FreelancerNotApprovedError`, `FreelancerLevelNotFoundError`.
+`FreelancerProfileNotFoundError`, `FreelancerNotApprovedError`.
 
 ---
 
@@ -4270,9 +4243,14 @@ Location: `src/app/domain/ticketing/`, `src/app/application/ticketing/`.
 
 ### 10.1 Domain purpose
 
-- **Business problem:** threaded support/coordination between customers, freelancers,
-  supervisors, and admins around projects/categories.
-- **Responsibilities:** ticket creation and lifecycle, participants, messages, assignment.
+- **Business problem:** threaded support/coordination between two users who have a real
+  business relationship on the platform (customer ↔ freelancer, customer ↔ supervisor,
+  freelancer ↔ supervisor, category supervisor ↔ stakeholder).
+- **Responsibilities:** two-party ticket creation (with relationship eligibility), lifecycle,
+  messages.
+- **Two-party rule:** a ticket is exactly two users — `created_by_user_id` (the requester)
+  and `target_user_id` (the other party). There is **no participant model and no assignment**
+  (7e redesign). The second party is set at creation and never changes.
 - **Must NOT be responsible for:** the underlying project/delivery domain transitions —
   a ticket only *references* `related_project_id`/`related_category_id`.
 
@@ -4280,33 +4258,34 @@ Location: `src/app/domain/ticketing/`, `src/app/application/ticketing/`.
 
 | Enum | Values |
 |---|---|
-| `TicketStatus` | `OPEN`, `IN_PROGRESS`, `WAITING_CUSTOMER`, `WAITING_FREELANCER`, `WAITING_SUPERVISOR`, `CLOSED`, `ARCHIVED` |
+| `TicketStatus` | `OPEN`, `CLOSED`, `ARCHIVED` |
 | `TicketPriority` | `LOW`, `NORMAL`, `HIGH`, `URGENT` |
 | `TicketMessageType` | `TEXT`, `FILE`, `SYSTEM` |
-| `TicketParticipantRole` | `REQUESTER`, `ASSIGNEE`, `WATCHER`, `SUPERVISOR`, `ADMIN`, `CUSTOMER`, `FREELANCER` |
 
-> Only `OPEN` is ever created; only `CLOSED` is reachable via `close()` — `ARCHIVED`,
-> `IN_PROGRESS`, and the `WAITING_*` states are **unreachable** in Phase 1. Only
-> `TicketMessageType.TEXT` is produced (see gaps).
+> **7e:** `TicketStatus` was pruned from seven to three values — `IN_PROGRESS` and the
+> `WAITING_*` states are gone, and with them the `transition_to()` method (which only
+> produced those unreachable states). `TicketParticipantRole` was removed entirely.
+> Only `TicketMessageType.TEXT` is produced (see gaps).
 
 ### 10.3 Entities
 
 #### Ticket (AggregateRoot)
 
-- **Attributes:** `ticket_code`, `created_by_user_id`, `assigned_to_user_id`,
+- **Attributes:** `ticket_code`, `created_by_user_id`, `target_user_id`,
   `related_project_id`, `related_category_id`, `subject`, `status`, `priority`,
-  `closed_by_user_id`, `closed_at`, `last_message_at`, `deleted_at`.
+  `closed_by_user_id`, `closed_at`, `last_message_at`, `deleted_at`,
+  `submitted_by_user_id` (`None` for self-service, the admin for on-behalf).
 - **Methods:**
-  - `assign(user_id)` — **plain setter, no validation** (closed tickets can be assigned).
+  - `is_party(user_id)` — the actor is the creator or the target (the only access check).
   - `close(by_user_id, at)` — `is_closed()` guard → `InvalidStateTransitionError`; sets
     `status=CLOSED` + `closed_by_user_id`/`closed_at`.
+  - `reopen()` — CLOSED → OPEN, clears close bookkeeping.
+  - `archive(by_user_id, at)` — sets `status=ARCHIVED` (terminal; rejects re-open).
+  - `set_priority(priority)` / `update_subject(subject)` — reject when ARCHIVED.
   - `touch_last_message(at)` — sets `last_message_at`.
   - `is_closed()` — status in `{CLOSED, ARCHIVED}`.
 
-#### TicketParticipant (Entity)
-
-- `ticket_id`, `user_id`, `participant_role`, `joined_at`, `left_at`.
-- **`left_at` is never set** (no leave method, no repository update).
+> **7e removed:** `assigned_to_user_id` + `assign()` and the `transition_to()` method.
 
 #### TicketMessage (Entity)
 
@@ -4316,137 +4295,119 @@ Location: `src/app/domain/ticketing/`, `src/app/application/ticketing/`.
 
 ### 10.4 Repository interfaces
 
-`ITicketRepository` (`add`, `get_by_id`, `get_by_code`, `list_for_user`, `update`),
-`ITicketMessageRepository` (`add`, `list_by_ticket`),
-`ITicketParticipantRepository` (`add`, `list_by_ticket`, `is_participant`).
+`ITicketRepository` (`add`, `get_by_id`, `get_by_code`, `list_for_user`, `update`) —
+`list_for_user(user_id)` returns tickets where the user is **either party** (creator or
+target). `ITicketMessageRepository` (`add`, `get_by_id`, `list_by_ticket`,
+`list_by_file_asset_id`, `update`).
+
+> **7e removed:** `ITicketParticipantRepository` and the `ticket_participants` table.
 
 ### 10.5 Domain exceptions
 
-`TicketNotFoundError`, `TicketClosedError`, `NotTicketParticipantError`.
+`TicketNotFoundError`, `TicketClosedError`, `NotTicketPartyError` (was
+`NotTicketParticipantError`), `TicketRelationshipError`, `TicketMessageNotFoundError`.
 
 ### 10.6 Access helper (`application/ticketing/access.py`)
 
-`ensure_participant(participant_repo, ticket_id, actor_id)` — raises
-`NotTicketParticipantError` if the actor is not a participant. It grants equal access to
-**every** participant role (no staff-vs-customer distinction). Used by assign/send/get-messages/
-close.
+`ensure_party(ticket, actor_id)` — raises `NotTicketPartyError` if the actor is neither the
+creator nor the target. **7e:** no longer takes a repo; the loaded `Ticket` alone decides.
 
-### 10.7 Use cases
+### 10.7 Domain service — RelationshipEligibilityService (`domain/ticketing/services.py`)
+
+`ensure_related(user_a, user_b, related_project_id, related_category_id)` raises
+`TicketRelationshipError` when the pair has no verifiable business relationship. Anchors:
+
+- **Project** (when `related_project_id` given): both users are stakeholders of that project —
+  the customer, the selected freelancer (profile behind `selected_application_id`), or the
+  assigned supervisor.
+- **Category** (when only `related_category_id` given): at least one is an active supervisor
+  of the category and the other is a customer or selected freelancer of a project in it, or
+  both are active supervisors of the category.
+- **Neither anchor:** no relationship → rejected.
+
+### 10.8 Use cases
 
 ---
 
 ## CreateTicket
 
 ### Purpose
-Creates a ticket (OPEN) and adds the creator as the REQUESTER participant.
+Creates a two-party ticket (OPEN) where the actor is the requester and the supplied
+`target_user_id` is the other party — **only if the pair is relationship-eligible**.
 
 ### Actor
 Any user (customer/freelancer/supervisor/admin).
 
 ### Input (`CreateTicketCommand`)
-- `actor_id`, `subject`
+- `actor_id`, `target_user_id` (the other party), `subject`
 - optional: `related_project_id`, `related_category_id`, `priority` (default `NORMAL`)
 
 ### Output (`CreateTicketResult`)
 `ticket_id`, `ticket_code` (e.g. `TCK-2026-001`), `status`.
 
 ### Dependencies
-`ITicketRepository`, `ITicketParticipantRepository`, `ITicketCodeGenerator`, `IIdGenerator`,
-`IClock`, `IUnitOfWork`.
+`ITicketRepository`, `ITicketCodeGenerator`, `IIdGenerator`, `IClock`, `IUnitOfWork`,
+`RelationshipEligibilityService`.
 
 ### Flow
-1. Generate code for `now.year`.
-2. Build `Ticket(status=OPEN, assigned_to=None)`.
-3. Build `TicketParticipant(role=REQUESTER, joined_at=now)`.
-4. In UoW: `add(ticket)`, `add(participant)`; commit.
+1. `relationship_service.ensure_related(actor, target, related_project_id, related_category_id)`.
+2. Generate code for `now.year`.
+3. Build `Ticket(status=OPEN, created_by=actor, target_user_id=target, submitted_by=actor)`.
+4. In UoW: `add(ticket)`; commit.
 
 ### Errors
-None (no validation; subject not checked for blank).
+`TicketRelationshipError`.
 
 ### Side effects
-Ticket + requester participant.
+One two-party ticket. **No participant rows** (7e).
 
-> **Gaps:** empty `subject` allowed; `actor_id` not verified to exist; no duplicate-code check
-> (delegated to repository).
+> **Gaps:** `actor_id`/`target_user_id` not verified to exist (self-service); no duplicate-code
+> check (delegated to repository).
 
 ---
 
 ## AdminCreateTicketOnBehalf
 
 ### Purpose
-Creates a ticket on behalf of a target user (Pattern B, admin-only).
+Creates a two-party ticket on behalf of a requester (Pattern B, admin-only). The admin
+supplies **both** parties: `requester_user_id` (the user the ticket is opened for) and
+`target_user_id` (the other party).
 
 ### Actor
 Admin holding `ticket.create_on_behalf`.
 
 ### Input (`CreateTicketOnBehalfCommand`)
-- `actor_id`, `target_user_id`, `subject`
+- `actor_id`, `requester_user_id`, `target_user_id`, `subject`
 - optional: `related_project_id`, `related_category_id`, `priority`
 
 ### Output (`CreateTicketResult`)
 `ticket_id`, `ticket_code`, `status`.
 
 ### Dependencies
-`IAuthorizationService`, `IUserRepository`, `ITicketRepository`,
-`ITicketParticipantRepository`, `ITicketCodeGenerator`, `IIdGenerator`, `IClock`,
-`IUnitOfWork`.
+`IAuthorizationService`, `IUserRepository`, `ITicketRepository`, `ITicketCodeGenerator`,
+`IIdGenerator`, `IClock`, `IUnitOfWork`, `RelationshipEligibilityService`.
 
 ### Flow
-`require_permission(actor_id, "ticket.create_on_behalf")` → verify the target user exists
-(`IUserRepository.get_by_id`) → shared `_create_ticket` helper (`requester_user_id` = the
-target user, `submitted_by_user_id` = the admin).
+`require_permission(actor_id, "ticket.create_on_behalf")` → verify **both** users exist
+(`IUserRepository.get_by_id` twice) → shared `_create_ticket` helper (`requester_user_id` =
+the requester, `target_user_id` = the other party, `submitted_by_user_id` = the admin).
 
 ### Errors
-`PermissionDeniedError`, `UserNotFoundError`.
+`PermissionDeniedError`, `UserNotFoundError`, `TicketRelationshipError`.
 
 ### Side effects
-Ticket + requester participant for the target user.
-
----
-
-## AssignTicket
-
-### Purpose
-Assigns a ticket to a user and adds them as an ASSIGNEE participant.
-
-### Actor
-A participant of the ticket with permission `ticket.assign`.
-
-### Input (`AssignTicketCommand`)
-- `actor_id`, `ticket_id`, `assignee_user_id`
-
-### Output (`AssignTicketResult`)
-`ticket_id`, `assigned_to_user_id`.
-
-### Dependencies
-`IAuthorizationService`, `ITicketRepository`, `ITicketParticipantRepository`, `IIdGenerator`,
-`IClock`, `IUnitOfWork`.
-
-### Flow
-1. `require_permission(actor_id, "ticket.assign")`.
-2. `get_by_id(ticket)`; `ensure_participant(actor_id)`.
-3. `ticket.assign(assignee)`; if assignee not a participant, add
-   `TicketParticipant(role=ASSIGNEE, joined_at=now)`.
-4. `update(ticket)`; commit.
-
-### Errors
-`PermissionDeniedError`, `TicketNotFoundError`, `NotTicketParticipantError`.
-
-### Side effects
-Assignee set (+ new participant if needed).
-
-> **Gaps:** closed tickets can be assigned; no check `assignee != actor` or that assignee exists;
-> an assignee who is already a participant keeps their old role (no upgrade to `ASSIGNEE`).
+One two-party ticket for the requester (7e: `target_user_id` in the on-behalf command was
+renamed `requester_user_id` and a new `target_user_id` field names the other party).
 
 ---
 
 ## SendMessage
 
 ### Purpose
-Sends a text message on a non-closed ticket the actor participates in.
+Sends a text message on a non-closed ticket the actor is a party of.
 
 ### Actor
-A participant of the ticket.
+A party of the ticket (creator or target).
 
 ### Input (`SendMessageCommand`)
 - `actor_id`, `ticket_id`, `body: str`
@@ -4456,17 +4417,18 @@ A participant of the ticket.
 `message_id`, `ticket_id`, `last_message_at`.
 
 ### Dependencies
-`ITicketRepository`, `ITicketMessageRepository`, `ITicketParticipantRepository`,
-`IIdGenerator`, `IClock`, `IUnitOfWork`.
+`ITicketRepository`, `ITicketMessageRepository`, `IFileStorageService`, `IIdGenerator`,
+`IClock`, `IUnitOfWork`.
 
 ### Flow
-1. `get_by_id`; `ticket.is_closed()` → `TicketClosedError`.
-2. `ensure_participant(actor_id)`.
-3. Build `TicketMessage(message_type=TEXT, is_internal=False, sent_at=now, attachments=...)`.
-4. In UoW: `add(message)`, `ticket.touch_last_message(now)`, `update(ticket)`; commit.
+1. Validate attachment file assets exist (`IFileStorageService.get_metadata`).
+2. `get_by_id`; `ticket.is_closed()` → `TicketClosedError`.
+3. `ensure_party(actor_id)`.
+4. Build `TicketMessage(message_type=TEXT, is_internal=False, sent_at=now, attachments=...)`.
+5. In UoW: `add(message)`, `ticket.touch_last_message(now)`, `update(ticket)`; commit.
 
 ### Errors
-`TicketNotFoundError`, `TicketClosedError`, `NotTicketParticipantError`.
+`TicketNotFoundError`, `TicketClosedError`, `NotTicketPartyError`, `ValidationError`.
 
 ### Side effects
 New message; `last_message_at` bumped.
@@ -4479,10 +4441,10 @@ New message; `last_message_at` bumped.
 ## GetTicketMessages
 
 ### Purpose
-Lists a ticket's messages for a participant.
+Lists a ticket's messages for a party.
 
 ### Actor
-A participant of the ticket.
+A party of the ticket.
 
 ### Input (`GetTicketMessagesQuery`)
 - `actor_id`, `ticket_id`
@@ -4491,27 +4453,28 @@ A participant of the ticket.
 `messages: list[TicketMessageResult]`.
 
 ### Dependencies
-`ITicketRepository`, `ITicketMessageRepository`, `ITicketParticipantRepository`.
+`ITicketRepository`, `ITicketMessageRepository`.
 
 ### Flow
-`get_by_id`; `ensure_participant`; `list_by_ticket` → map.
+`get_by_id`; `ensure_party`; `list_by_ticket` → map.
 
 ### Errors
-`TicketNotFoundError`, `NotTicketParticipantError`.
+`TicketNotFoundError`, `NotTicketPartyError`.
 
-> **Gap:** `is_internal` messages (when they exist) are returned to **all** participants —
-> no staff-only filtering; soft-deleted messages are not filtered either.
+> **Gap:** `is_internal` messages (when they exist) are returned to **all** parties — no
+> staff-only filtering; soft-deleted messages are not filtered either.
 
 ---
 
 ## CloseTicket
 
 ### Purpose
-Closes a ticket.
+Closes a ticket. **7e:** either party may close their own ticket (`ticket.close_own`), or
+anyone with `ticket.close_any` (the old creator-only `authorize_owned_action` was replaced —
+the target party was previously blocked).
 
 ### Actor
-The ticket creator (owner, `ticket.close_own`) or an admin (`ticket.close_any`), who must also
-be a participant.
+A party of the ticket with `ticket.close_own`, or anyone with `ticket.close_any`.
 
 ### Input (`CloseTicketCommand`)
 - `actor_id`, `ticket_id`
@@ -4520,21 +4483,20 @@ be a participant.
 `ticket_id`, `status`.
 
 ### Dependencies
-`IAuthorizationService`, `ITicketRepository`, `ITicketParticipantRepository`, `IClock`,
-`IUnitOfWork`.
+`IAuthorizationService`, `ITicketRepository`, `IClock`, `IUnitOfWork`.
 
 ### Flow
 1. `get_by_id(ticket)`.
-2. `authorize_owned_action(ticket.close_own, ticket.close_any)` against `ticket.created_by_user_id`.
-3. `ensure_participant(actor_id)`.
+2. `ensure_party(actor_id)`.
+3. If the actor lacks `ticket.close_any`, require `ticket.close_own`.
 4. `ticket.close(actor_id, now)`; update; commit.
 
 ### Errors
-`TicketNotFoundError`, `PermissionDeniedError`, `NotTicketParticipantError`,
+`TicketNotFoundError`, `NotTicketPartyError`, `PermissionDeniedError`,
 `InvalidStateTransitionError` (already closed).
 
 ### Side effects
-Status → `CLOSED`. **No reopen/archive path** (`ARCHIVED` unreachable).
+Status → `CLOSED`. Reopen/archive are reachable via `UpdateTicket`.
 
 ---
 
@@ -4562,10 +4524,46 @@ The user themselves (`ticket.read_own`) or an admin (`ticket.read_any`).
 ### Errors
 `PermissionDeniedError`.
 
-> **Updated:** `GetUserTicketsUseCase` now authorizes — an actor may only list their own tickets
-> (`actor_id == user_id` + `ticket.read_own`) unless they hold `ticket.read_any`. Remaining gap:
-> `list_for_user` semantics (created-by vs participant) are still delegated entirely to the
-> repository.
+> **7e:** `list_for_user` now returns tickets where the user is **either party** (creator or
+> target) — the participant-subquery was removed.
+
+---
+
+## ListRelatedUsers
+
+### Purpose
+Enumerates the users an actor has an eligible two-party ticket relationship with (7f),
+powering the "pick the other party" picker in the ticket-creation UI.
+
+### Actor
+The user themselves (`ticket.read_own`) or an admin/supervisor on their behalf
+(`ticket.read_any`).
+
+### Input (`ListRelatedUsersQuery`)
+- `actor_id`, `user_id` (the user whose relationships to enumerate)
+- `page`, `page_size` (DB-level pagination — 7f, aligned with 7g)
+
+### Output (`ListRelatedUsersResult`)
+`users: list[RelatedUserResult]`, `total_items`, `page`, `page_size`.
+
+### Dependencies
+`IAuthorizationService`, `IRelatedUsersRepository`.
+
+### Flow
+`authorize_owned_action(ticket.read_own, ticket.read_any)` against `request.user_id` →
+`list_related_users(user_id, limit, offset)` + `count_related_users(user_id)` → map.
+
+### Errors
+`PermissionDeniedError`.
+
+### Relationship rules (mirrors `RelationshipEligibilityService`)
+Users are related when they share a **project** as stakeholders (customer, assigned
+supervisor, selected freelancer — any project status) or share a **category** (co-active
+supervisors; active supervisor + customer/selected-freelancer of an open project in a
+supervised category; active supervisors of categories where the user has an open project).
+The queried user and soft-deleted users are excluded. Endpoint: `GET /api/v1/users/related`
+(`list_related_users`), registered before `GET /api/v1/users/{user_id}` so the literal
+`related` segment wins.
 
 ---
 
@@ -4575,7 +4573,7 @@ The user themselves (`ticket.read_own`) or an admin (`ticket.read_any`).
 Returns a single ticket by ID.
 
 ### Actor
-A participant of the ticket, or anyone holding `ticket.read_any`.
+A party of the ticket, or anyone holding `ticket.read_any`.
 
 ### Input (`GetTicketQuery`)
 - `actor_id`, `ticket_id`
@@ -4584,14 +4582,14 @@ A participant of the ticket, or anyone holding `ticket.read_any`.
 `ticket: TicketResult`.
 
 ### Dependencies
-`ITicketRepository`, `ITicketParticipantRepository`, `IAuthorizationService`.
+`ITicketRepository`, `IAuthorizationService`.
 
 ### Flow
-`get_by_id(ticket)` → unless the actor holds `ticket.read_any`, require participant
-(`ensure_participant`) → map.
+`get_by_id(ticket)` → unless the actor holds `ticket.read_any`, require party (`ensure_party`)
+→ map.
 
 ### Errors
-`TicketNotFoundError`, `PermissionDeniedError`.
+`TicketNotFoundError`, `NotTicketPartyError`, `PermissionDeniedError`.
 
 ---
 
@@ -4601,7 +4599,8 @@ A participant of the ticket, or anyone holding `ticket.read_any`.
 Updates a ticket's subject, priority, and/or status (owner/admin).
 
 ### Actor
-Ticket owner (`ticket.manage_own`) or admin (`ticket.manage_any`).
+Ticket owner (`ticket.manage_own`) or admin (`ticket.manage_any`). (Ownership is judged
+against `created_by_user_id`; the target party's update path is a documented gap below.)
 
 ### Input (`UpdateTicketCommand`)
 - `actor_id`, `ticket_id`, plus optional `subject`, `priority`, `status`
@@ -4615,36 +4614,13 @@ Ticket owner (`ticket.manage_own`) or admin (`ticket.manage_any`).
 ### Flow
 `get_by_id(ticket)` → `authorize_owned_action(ticket.manage_own, ticket.manage_any)`
 against `created_by_user_id` → apply `update_subject`/`set_priority` and status transitions
-(`close`, `archive`, `reopen`, `transition_to`) → `update` + commit.
+(`close`, `archive`, `reopen` — `transition_to` removed in 7e) → `update` + commit.
 
 ### Errors
 `TicketNotFoundError`, `PermissionDeniedError`, `InvalidStateTransitionError`.
 
----
-
-## ListTicketParticipants
-
-### Purpose
-Lists the participants of a ticket.
-
-### Actor
-A participant of the ticket, or anyone holding `ticket.read_any`.
-
-### Input (`ListTicketParticipantsQuery`)
-- `actor_id`, `ticket_id`
-
-### Output (`ListTicketParticipantsResult`)
-`participants: list[TicketParticipantResult]`.
-
-### Dependencies
-`ITicketRepository`, `ITicketParticipantRepository`, `IAuthorizationService`.
-
-### Flow
-`get_by_id(ticket)` → unless the actor holds `ticket.read_any`, require participant →
-`list_by_ticket(ticket_id)` → map.
-
-### Errors
-`TicketNotFoundError`, `PermissionDeniedError`.
+> **Gap:** unlike CloseTicket, UpdateTicket still keys ownership to `created_by_user_id` only —
+> the target party cannot manage/close via `PATCH` unless they hold `ticket.manage_any`.
 
 ---
 
@@ -4663,16 +4639,17 @@ The message sender, or anyone holding `ticket.manage_any`.
 `message_id`.
 
 ### Dependencies
-`ITicketRepository`, `ITicketMessageRepository`, `ITicketParticipantRepository`,
-`IAuthorizationService`, `IClock`, `IUnitOfWork`.
+`ITicketRepository`, `ITicketMessageRepository`, `IAuthorizationService`, `IClock`,
+`IUnitOfWork`.
 
 ### Flow
 `get_by_id(ticket)` → `get_by_id(message)` → `PermissionDeniedError` if the message belongs
-to another ticket → unless `ticket.manage_any`, require participant and sender match →
+to another ticket → unless `ticket.manage_any`, require party and sender match →
 `message.edit(body, now)` → `update` + commit.
 
 ### Errors
-`TicketNotFoundError`, `TicketMessageNotFoundError`, `PermissionDeniedError`.
+`TicketNotFoundError`, `TicketMessageNotFoundError`, `NotTicketPartyError`,
+`PermissionDeniedError`.
 
 ---
 
@@ -4691,16 +4668,20 @@ The message sender, or anyone holding `ticket.manage_any`.
 `message_id`.
 
 ### Dependencies
-`ITicketRepository`, `ITicketMessageRepository`, `ITicketParticipantRepository`,
-`IAuthorizationService`, `IClock`, `IUnitOfWork`.
+`ITicketRepository`, `ITicketMessageRepository`, `IAuthorizationService`, `IClock`,
+`IUnitOfWork`.
 
 ### Flow
 `get_by_id(ticket)` → `get_by_id(message)` → `PermissionDeniedError` if the message belongs
-to another ticket → unless `ticket.manage_any`, require participant and sender match →
+to another ticket → unless `ticket.manage_any`, require party and sender match →
 `message.soft_delete(now)` → `update` + commit.
 
 ### Errors
-`TicketNotFoundError`, `TicketMessageNotFoundError`, `PermissionDeniedError`.
+`TicketNotFoundError`, `TicketMessageNotFoundError`, `NotTicketPartyError`,
+`PermissionDeniedError`.
+
+> **Removed (7e):** `AssignTicket` and `ListTicketParticipants` use cases, the
+> `ticket.assign` permission, and the `/assign` and `/participants` routes.
 
 ---
 
@@ -4863,7 +4844,6 @@ code-verified inventory:
 | `freelancer.read_own` / `freelancer.read_any` | resume reads/mutations (`get_current_resume`, `get_resume`, `list_resume_versions`, `set_current_resume`, `delete_resume`), portfolio reads (`get_portfolio_item`, `list_portfolio_items`), `list_freelancer_level_history` |
 | `freelancer.read_any` | `freelancer.list_freelancer_profiles_by_approval_status` |
 | `freelancer.delete_any` | `freelancer.soft_delete_freelancer_profile` |
-| `freelancer.manage_levels` | `FreelancerLevel` CRUD (list/create/update/delete/activate/deactivate) |
 | `form.manage` | all 9 form-mutating use cases (create/update/publish/delete template, add/update/remove field, add/update/remove option) |
 | `project.create_own` | `project.create_project` |
 | `project.create_on_behalf` | `project.admin_create_project_on_behalf` |
@@ -4873,9 +4853,8 @@ code-verified inventory:
 | `review.decide_own` / `review.decide_any` | `review.review_delivery`, `review.approve_delivery`, `review.reject_delivery` (via `decide_delivery_review`); `get_supervisor_review` checks `decide_own` for a category supervisor, else the `project.manage_own`/`manage_any` pair |
 | `feedback.manage_own` / `feedback.manage_any` | `submit_review`, `submit_rating`, `get_customer_review`, `list_customer_reviews`, `update_customer_review`, `delete_customer_review`, `update_rating`, `delete_rating` |
 | `ticket.create_on_behalf` | `ticketing.admin_create_ticket_on_behalf` |
-| `ticket.assign` | `ticketing.assign_ticket` |
-| `ticket.read_own` / `ticket.read_any` | `get_user_tickets` (`read_own`/`read_any`); `get_ticket`, `list_ticket_participants` (`read_any` or participant check) |
-| `ticket.close_own` / `ticket.close_any` | `ticketing.close_ticket` |
+| `ticket.read_own` / `ticket.read_any` | `get_user_tickets` (`read_own`/`read_any`); `get_ticket` (`read_any` or party check) |
+| `ticket.close_own` / `ticket.close_any` | `ticketing.close_ticket` (either party with `close_own`, or `close_any`) |
 | `ticket.manage_own` / `ticket.manage_any` | `update_ticket` (owner/admin); `update_ticket_message`, `delete_ticket_message` (`manage_any` or sender-only) |
 | `reporting.read` | all 6 reporting use cases |
 | `file.upload` | seeded and granted to `customer`/`freelancer`; upload is authenticated but **not** gated by `require_permission` in `UploadFileUseCase` |
@@ -4883,7 +4862,10 @@ code-verified inventory:
 
 Owned-resource use cases (`project.*`, `review.*`, `feedback.*`, `ticketing.*`,
 `freelancer.read_own`) use the `_own`/`_any` pair via `authorize_owned_action`: the resource
-owner holds the `_own` permission; any other actor (an admin) must hold `_any`. `GetProjectDetails`,
+owner holds the `_own` permission; any other actor (an admin) must hold `_any`. Exception
+(7e): `close_ticket` no longer uses `authorize_owned_action` — either party of a two-party
+ticket may close with `ticket.close_own` (or anyone with `ticket.close_any`).
+`GetProjectDetails`,
 `GetMyProjects`, `GetAvailableProjects`, `GetCategories`, `GetCategoryProjects`,
 `GetFormTemplate`/`GetFormTemplateById`, and the read queries have **no** permission gate.
 
@@ -4902,13 +4884,19 @@ following previously-flagged gaps were **resolved** in code:
 - **`Project.cancel`** now sets `locked_at`.
 - **`GrantPermission`** now rejects duplicates (`PermissionAlreadyGrantedError`).
 - **`GetUserTickets`** is now authorized (`ticket.read_own`/`ticket.read_any`).
-- **`RemoveRole` / `RevokePermission`** no longer conflate catalog protection with link
-  mutation: the blanket `is_system` guard (which rejected **every** call, since all seeded
-  roles have `is_system = True`) was removed. `RemoveRole` now enforces the rule the system
-  actually needs — the last active `admin` assignment cannot be removed
-  (`LastAdminRoleRemovalError`, HTTP 409). See §12.5.
-- **Reliable supervisor removal**: `RemoveSupervisorUseCase` promotes the next active supervisor.
-- **`CreateProject`/`Register`** default-role & ownership checks unchanged.
+- **Soft-delete filtering** is now systemic (task §2): every read path of every entity
+  carrying `deleted_at` excludes soft-deleted rows. Previously **no** `User` read filtered
+  them, so a soft-deleted user could still authenticate (`get_by_email`) and still appeared
+  in admin lists and counts — `AdminDeleteUser` was effectively cosmetic. See §12.6.
+- **`PortfolioItem` is now truly soft-deleted** (was a hard `DELETE` despite carrying
+  `deleted_at`), and so is **`FormTemplate`** — the same conflation, found by the audit and
+  not in the original brief, where the hard delete was additionally an FK/500 risk. See §12.6.
+- **`list_by_file_asset_id` no longer 500s**: `ticket_messages.attachment_file_asset_ids` and
+  `project_deliveries.file_asset_ids` were `JSON`, on which SQLAlchemy's containment
+  predicate degrades to `LIKE`; Postgres rejects that (`operator does not exist: json ~~
+  text`), so **every** file-access check touching a ticket attachment or a delivery
+  attachment raised a 500 in `DomainFileAccessPolicy`. Both columns are now `JSONB`
+  (migration `a1c4e77b90d2`) and covered by an integration test.
 
 The remaining current deviations follow:
 
@@ -4919,9 +4907,9 @@ The remaining current deviations follow:
 | 3 | Forgot-password + reset | `ForgotPasswordUseCase` sends a token that is **never persisted/expired**; **no reset-password use case** | Incomplete auth flow (enumeration leak fixed) |
 | 4 | `User.suspend()` / availability | `User.suspend()`, `FreelancerProfile.set_availability`, `Resume.mark_as_current()` are defined but **never invoked** by any use case | Dead domain surface |
 | 5 | Availability/schedule domain services | `UserAvailabilityPolicy`, schedule/availability rules exist but are never invoked | Unreachable rules |
-| 6 | Soft-delete (`deleted_at`) | Present on `Ticket`, `TicketMessage`, `User` but **never set** | Dead columns |
+| 6 | Soft-delete (`deleted_at`) | **Resolved** — filtering is systemic and `deleted_at` is set by `AdminDeleteUser`, `DeleteCategory`, `SoftDeleteFreelancerProfile`, `DeletePortfolioItem`, `DeleteTicketMessage` (§12.6). `Ticket.deleted_at` is still never set (no delete-ticket use case exists). | Only `Ticket` remains a dead column |
 | 7 | `INVITE_ONLY` project | Eligibility **always rejects** `INVITE_ONLY` | Invite-only mode unusable |
-| 8 | Ticket lifecycle | Only `OPEN → CLOSED` reachable; `ARCHIVED`, `IN_PROGRESS`, `WAITING_*` unreachable | Dead states |
+| 8 | Ticket lifecycle | **Resolved in 7e** — `OPEN → CLOSED` (close/reopen) and `OPEN/CLOSED → ARCHIVED` (archive) are reachable; `IN_PROGRESS`/`WAITING_*` were removed | Fixed |
 | 9 | `SystemAnalytics` read model | Composite model + `GetSystemAnalytics` are code additions not in `DOMAIN.md` | Added value; undocumented |
 | 10 | Reporting queries | Unparameterized — no date range, scope, filter, or pagination | Coarse analytics |
 
@@ -5007,6 +4995,86 @@ Binding rules:
    no specific permission is documented as permanently required on the `admin` role. If that
    ever changes, add a narrowly-scoped, separately-named exception — never `SystemRoleImmutableError`.
 
+### 12.6 Soft-delete contract (task §2 audit result)
+
+Eight entities carry `deleted_at`: `User`, `FreelancerProfile`, `PortfolioItem`, `Category`,
+`FormTemplate`, `Project`, `Ticket`, `TicketMessage`.
+
+**The rule:** every repository read method filters `deleted_at IS NULL` by default, so a
+soft-deleted entity raises its `*NotFoundError` (→ HTTP 404) from single-gets and simply does
+not appear in lists. An "escape hatch" that intentionally sees deleted rows must carry an
+explicitly different method name — never the same method silently returning both.
+
+Audit outcome (all gaps below are now **fixed**):
+
+| Entity | Read paths that leaked soft-deleted rows before this pass |
+|---|---|
+| `User` | **all of them** — `find_by_id`, `get_by_id`, `get_by_email`, `exists_by_email`, `list_all`, `list_by_status`, `count_all`. `get_by_email` backs login, so a deleted user could still log in. |
+| `FreelancerProfile` | `get_by_id`, `get_by_user_id`, `list_by_approval_status` (`list_available_for_level` already filtered) |
+| `PortfolioItem` | `get_by_id`, `list_by_profile`, `get_by_file_asset_id` — plus the delete was a HARD delete |
+| `Category` | `get_by_id`, `get_by_slug` (`list_active`, `list_by_parent_id` already filtered) |
+| `FormTemplate` | `get_by_id`, `get_published_for_category`, `list_versions` |
+| `Project` | `get_by_id`, `get_by_code`, `list_by_customer`, `list_by_supervisor`, `list_by_category` (`list_available_for_freelancer`, both `count_active_*` already filtered) |
+| `Ticket` | `get_by_id`, `get_by_code`, `list_for_user` |
+| `TicketMessage` | `list_by_ticket`, `list_by_file_asset_id` |
+
+Two deliberate, documented exceptions:
+
+1. **`IUserRepository.email_exists_including_deleted`** — the only method that sees deleted
+   rows, named accordingly. It mirrors the `users.email` UNIQUE constraint and is used by
+   `RegisterUser`/`AdminCreateUser` for the uniqueness pre-check; using the filtered
+   `exists_by_email` there would let the INSERT hit the DB constraint and surface as a 500
+   instead of `DuplicateEmailError`. `ForgotPassword` keeps using the **filtered**
+   `exists_by_email`, so no reset mail is sent to a deleted account.
+2. **`ITicketMessageRepository.get_by_id`** — deliberately unfiltered. Only
+   `UpdateTicketMessage`/`DeleteTicketMessage` call it (there is no message read endpoint),
+   and they rely on the entity guards `TicketMessage.edit`/`soft_delete` to report an
+   already-deleted message as a 409 conflict rather than a misleading 404.
+
+Related fixes in the same pass:
+
+- `IUserRoleRepository.list_active_user_ids_for_role` now joins `users` and excludes
+  soft-deleted holders, so a deleted admin no longer satisfies the last-admin guards in
+  `RemoveRoleUseCase` (`LastAdminRoleRemovalError`) or `AdminDeleteUserUseCase`
+  (`LastAdminCannotBeDeletedError`).
+- **`PortfolioItem`**: chose true soft-delete over dropping the column, for consistency with
+  the other seven entities and because portfolio items are referenced by historical
+  applications. `PortfolioItem.soft_delete(at)` was added (rejecting a double delete),
+  `DeletePortfolioItemUseCase` now loads → `soft_delete` → `update` inside the UoW, and the
+  hard-delete `IPortfolioItemRepository.delete` was **removed from the interface** so the
+  footgun cannot come back.
+- **`FormTemplate`** had the *same* conflation, not listed in the original task brief but
+  found by this audit: `DeleteFormTemplateUseCase` issued a HARD delete despite the entity
+  carrying `deleted_at`. That was also a latent `IntegrityError`/500: deletion is allowed once
+  no **active** project references the template, but `count_active_by_form_template` ignores
+  terminal projects, which still hold the `projects.form_template_id` FK — and an existing
+  test (`test_delete_template_with_terminal_project_allowed`) exercises exactly that path.
+  Converted to `FormTemplate.soft_delete(at)` + `update`, with
+  `IFormTemplateRepository.delete` removed. An integration test now asserts the FK survives.
+- **`ITicketMessageRepository.delete`** (hard delete) was removed too: it had zero callers
+  and contradicted the soft-delete contract for the same entity.
+- The in-memory Fakes were updated to mirror this filtering exactly, so application-level
+  tests can catch a soft-delete leak instead of only the infra suite.
+
+After this pass, **no hard-delete repository method exists for any entity carrying
+`deleted_at`** — that is the invariant to preserve.
+
+New finding, **not fixed** (out of scope, flagged): `TimestampMixin.created_at`/`updated_at`
+(`infrastructure/db/base.py:20`) omit `timezone=True`, so `categories`, `freelancer_*`,
+`form_*` and `project_*` tables store **naive** timestamps while `iam_*`/`ticketing_*` tables
+store tz-aware ones. The repositories for the mixin-based tables also never persist the
+entity's own `created_at` (they rely on the `server_default`), so a domain-supplied
+`created_at` is silently discarded on those tables.
+
+- **`RemoveRole` / `RevokePermission`** no longer conflate catalog protection with link
+  mutation: the blanket `is_system` guard (which rejected **every** call, since all seeded
+  roles have `is_system = True`) was removed. `RemoveRole` now enforces the rule the system
+  actually needs — the last active `admin` assignment cannot be removed
+  (`LastAdminRoleRemovalError`, HTTP 409). See §12.5.
+- **Reliable supervisor removal**: `RemoveSupervisorUseCase` promotes the next active supervisor.
+- **`CreateProject`/`Register`** default-role & ownership checks unchanged.
+
+
 ---
 
 ## 13. Presentation Layer (HTTP Exposure)
@@ -5086,18 +5154,14 @@ Binding rules:
 | ListFreelancerLevelHistory | `/freelancers/{profile_id}/level-history` | GET | `list_freelancer_level_history` |
 | ListFreelancerProfilesByApprovalStatus | `/admin/freelancers` | GET | `list_freelancer_profiles_by_approval_status` |
 | SoftDeleteFreelancerProfile | `/admin/freelancers/{profile_id}` | DELETE | `soft_delete_freelancer_profile` |
-| ListFreelancerLevels | `/admin/freelancer-levels` | GET | `list_freelancer_levels` |
-| CreateFreelancerLevel | `/admin/freelancer-levels` | POST | `create_freelancer_level` |
-| UpdateFreelancerLevel | `/admin/freelancer-levels/{level_id}` | PATCH | `update_freelancer_level` |
-| DeleteFreelancerLevel | `/admin/freelancer-levels/{level_id}` | DELETE | `delete_freelancer_level` |
-| ActivateFreelancerLevel | `/admin/freelancer-levels/{level_id}/activate` | POST | `activate_freelancer_level` |
-| DeactivateFreelancerLevel | `/admin/freelancer-levels/{level_id}/deactivate` | POST | `deactivate_freelancer_level` |
 | CreateProject (self) | `/projects` | POST | `create_project` |
 | AdminCreateProjectOnBehalf | `/admin/projects` | POST | `admin_create_project` |
 | GetAvailableProjects | `/projects` | GET | `get_available_projects` |
 | GetMyProjects | `/projects/my` | GET | `get_my_projects` |
 | GetProjectDetails | `/projects/{project_id}` | GET | `get_project_details` |
 | PublishProject | `/projects/{project_id}/publish` | POST | `publish_project` |
+| UpdateProject | `/projects/{project_id}` | PATCH | `update_project` |
+| DeleteProject | `/projects/{project_id}` | DELETE | `delete_project` |
 | CancelProject | `/projects/{project_id}/cancel` | POST | `cancel_project` |
 | CompleteProject | `/projects/{project_id}/complete` | POST | `complete_project` |
 | ApplyForProject (self) | `/projects/{project_id}/applications` | POST | `apply_for_project` |
@@ -5137,11 +5201,9 @@ Binding rules:
 | GetUserTickets | `/tickets` | GET | `get_user_tickets` |
 | GetTicketMessages | `/tickets/{ticket_id}/messages` | GET | `get_ticket_messages` |
 | SendMessage | `/tickets/{ticket_id}/messages` | POST | `send_message` |
-| AssignTicket | `/tickets/{ticket_id}/assign` | POST | `assign_ticket` |
 | CloseTicket | `/tickets/{ticket_id}/close` | POST | `close_ticket` |
 | GetTicket | `/tickets/{ticket_id}` | GET | `get_ticket` |
 | UpdateTicket | `/tickets/{ticket_id}` | PATCH | `update_ticket` |
-| ListTicketParticipants | `/tickets/{ticket_id}/participants` | GET | `list_ticket_participants` |
 | UpdateTicketMessage | `/tickets/{ticket_id}/messages/{message_id}` | PATCH | `update_ticket_message` |
 | DeleteTicketMessage | `/tickets/{ticket_id}/messages/{message_id}` | DELETE | `delete_ticket_message` |
 | GetDashboardStatistics | `/reporting/dashboard` | GET | `get_dashboard_statistics` |
@@ -5210,6 +5272,73 @@ Binding rules:
   portfolio read routes (`GET /portfolio`, `/portfolio/{item_id}`). Decision: resume versions are
   rollable via `set-current`; individual non-current versions can also be deleted, and deleting the
   current version promotes the latest remaining version to current.
+- **2026-08-20 — Part 7d: freelancer levels redesigned from a configurable table to a fixed
+  `FreelancerLevelEnum` (JUNIOR / MID_LEVEL / SENIOR).** Removed the `FreelancerLevel` entity,
+  `IFreelancerLevelRepository`, `FreelancerLevelNotFoundError`, the six level-CRUD use cases
+  (list/create/update/delete/activate/deactivate) and their `/admin/freelancer-levels` routes,
+  and the `freelancer.manage_levels` permission (catalog + seed). `FreelancerProfile.current_level`
+  and `FreelancerLevelHistory.old_level/new_level` are now enum values. `Project.required_level`
+  added (create/on-behalf/update commands and results). `FreelancerEligibilityPolicy` rewritten:
+  hierarchical `>=` on `rank()`, `None` level ineligible when a level is required, projects with
+  no required level open to all, single global `MAX_ACTIVE_APPLICATIONS = 10`, INVITE_ONLY always
+  rejected. `ApproveFreelancer` no longer auto-grants a level; `AssignFreelancerLevel` takes an
+  enum. `GetAvailableProjects` filters at the SQL level via
+  `IProjectRepository.list_available_for_freelancer(current_level)`. Infrastructure: models,
+  mappings and repositories switched to string enum columns + `projects.required_level`;
+  migration `3f9b1c2d5e8a` drops `freelancer_levels` and converts the FK columns (existing rows
+  reset to NULL — admins re-assign; no data migration attempted per §5 decision). Migration not
+  executed (Docker unavailable) — to be exercised on next `docker compose up`.
+- **2026-08-20 — Part 7e: two-party ticket redesign + `RelationshipEligibilityService` (task §8).**
+  Tickets are now strictly two-user conversations (`created_by_user_id` + required
+  `target_user_id`); the participant model, assignment flow, and the extra ticket states are
+  gone. `TicketStatus` pruned to OPEN / CLOSED / ARCHIVED (removed `IN_PROGRESS`, `WAITING_*`,
+  and `transition_to()`); `TicketParticipant` entity, `TicketParticipantRole`, and
+  `ITicketParticipantRepository` removed; `Ticket` drops `assigned_to_user_id`/`assign()` for
+  `target_user_id` + `is_party()`; `NotTicketParticipantError` → `NotTicketPartyError`; new
+  `TicketRelationshipError`. New `RelationshipEligibilityService` validates that the pair shares
+  a project (customer / selected freelancer / assigned supervisor) or a category (active
+  supervisor + stakeholder, or two supervisors); no anchor → rejected. Application: removed
+  `AssignTicket`/`ListTicketParticipants` use cases + DTOs, `PERMISSION_TICKET_ASSIGN`, and
+  `ensure_participant` (replaced by `ensure_party(ticket, actor)`); `CreateTicketCommand`
+  requires `target_user_id`; `CreateTicketOnBehalfCommand` now takes `requester_user_id` +
+  `target_user_id` (both verified to exist); `CloseTicket` allows either party with `close_own`.
+  Infrastructure: `TicketModel.assigned_to_user_id` → NOT NULL `target_user_id`,
+  `ticket_participants` table + repo deleted, `list_for_user` filters creator OR target,
+  `DomainFileAccessPolicy` uses `is_party`; migration `7e01b2c3d4e5` (not executed — Docker
+  unavailable). Presentation: `/assign` and `/participants` routes removed; schemas/providers/
+  container updated; seed row `ticket.assign` removed.
+- **2026-08-20 — Part 7f: related-users picker (`GET /users/related`).** New
+  `ListRelatedUsersUseCase` enumerates the users an actor has an eligible two-party ticket
+  relationship with, mirroring `RelationshipEligibilityService` (project stakeholders — customer /
+  assigned supervisor / selected freelancer, any status — plus category links: co-active
+  supervisors, supervisor + customer/selected-freelancer of open projects in a supervised
+  category, and active supervisors of categories where the user has an open project). Domain:
+  `RelatedUser` read model + `IRelatedUsersRepository` (`list_related_users`,
+  `count_related_users`). Application: `ListRelatedUsersQuery`/`ListRelatedUsersResult`/DTOs,
+  use case gated by `authorize_owned_action(ticket.read_own, ticket.read_any)` with DB-level
+  pagination (7f, aligned with 7g). Infrastructure: `SqlAlchemyRelatedUsersRepository`
+  (UNION of project/category anchored subqueries, excludes self + soft-deleted). Presentation:
+  `GET /api/v1/users/related` (`list_related_users`), registered before the IAM
+  `/users/{user_id}` route; `RelatedUserResponse` schema; provider stubs + container override.
+- **2026-08-20 — Part 7g: DB-level pagination on all remaining list endpoints.** Migrated the 16
+  client-side-slicing list endpoints (project ×6, category ×2, freelancer ×4, ticketing ×2,
+  review ×2) to SQL-level `limit`/`offset` + a `count_*` companion per repository method,
+  matching the pattern 7c set for `ListFormTemplates` via `application/shared/pagination.py`
+  (`limit_offset`, `total_pages`, `DEFAULT_PAGE_SIZE`). New count methods:
+  `IProjectRepository.count_by_customer`/`count_available_for_freelancer`/`count_by_supervisor`/
+  `count_open_by_category` (the new one — `count_active_by_category` counts non-terminal statuses
+  while `list_by_category` returns only open ones, so reusing it would corrupt `total_items`);
+  `IProjectApplicationRepository`/`IProjectDeliveryRepository`/`IProjectStatusHistoryRepository`
+  `count_by_project`; `ICategoryRepository.count_active`;
+  `IFreelancerProfileRepository.count_by_approval_status`;
+  `IFreelancerLevelHistoryRepository`/`IResumeRepository`/`IPortfolioItemRepository`
+  `count_by_profile`; `ITicketRepository.count_for_user`;
+  `ITicketMessageRepository.count_by_ticket`; `ISupervisorReviewRepository
+  .count_pending_for_supervisor`. `IResumeRepository.list_by_profile` ordering switched to
+  `version_no.asc()` (was desc) so DB paging matches the endpoint's in-memory ascending sort.
+  All 18 list Query DTOs default `page_size = DEFAULT_PAGE_SIZE`; every list Result carries
+  `total_items`/`page`/`page_size`. The old in-memory `paginate()` helper
+  (`presentation/core/pagination.py`) was deleted (no callers).
 - **2026-08-16 — Part 4c: project read/access gaps closed.** Added project-scoped read use cases
   `GetProjectApplicationUseCase`, `ListProjectDeliveriesUseCase`, `ListProjectRevisionRequestsUseCase`,
   `ListProjectStatusHistoryUseCase`, plus standalone lookups `GetProjectDeliveryUseCase`,

@@ -33,3 +33,11 @@ class OptionNotFoundError(EntityNotFoundError): ...
 
 class FormTemplateHasActiveReferencesError(ReferencedEntityConflictError):
     """Raised when deleting a form template that is published or referenced by active projects."""
+
+
+class FormTemplateNotPublishedError(InvalidStateTransitionError):
+    """A project was submitted against a DRAFT or ARCHIVED template.
+
+    Only reachable now that clients supply ``form_template_id`` directly; the old
+    ``get_published_for_category`` lookup could only ever return a PUBLISHED template.
+    """

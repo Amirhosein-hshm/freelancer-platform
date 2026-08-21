@@ -19,6 +19,7 @@ from app.domain.iam.exceptions import (
     LastAdminCannotBeDeletedError,
     UserNotFoundError,
 )
+from app.domain.iam.value_objects import Email
 
 NOW = datetime(2026, 8, 2)
 
@@ -182,10 +183,19 @@ class TestAdminDeleteUserUseCase:
 
         result = await use_case.execute(AdminDeleteUserCommand(actor_id="admin", target_user_id="u1"))
 
-        user = await user_repo.get_by_id("u1")
-        assert user.deleted_at is not None
-        assert result.deleted_at == user.deleted_at
+        assert result.deleted_at is not None
         assert uow.committed is True
+        # A soft-deleted user must vanish from every read path, including login lookup.
+        with pytest.raises(UserNotFoundError):
+            await user_repo.get_by_id("u1")
+        with pytest.raises(UserNotFoundError):
+            await user_repo.get_by_email(Email("user@example.com"))
+        assert await user_repo.find_by_id("u1") is None
+        assert await user_repo.exists_by_email(Email("user@example.com")) is False
+        assert await user_repo.list_all(limit=10, offset=0) == []
+        assert await user_repo.count_all() == 0
+        # ...but the address stays occupied, mirroring the DB UNIQUE constraint.
+        assert await user_repo.email_exists_including_deleted(Email("user@example.com")) is True
 
     async def test_last_admin_cannot_be_deleted(
         self, authorization_service, user_repo, user_role_repo, role_repo, clock, uow, make_user
@@ -210,5 +220,7 @@ class TestAdminDeleteUserUseCase:
 
         result = await use_case.execute(AdminDeleteUserCommand(actor_id="admin-2", target_user_id="admin-1"))
 
-        assert (await user_repo.get_by_id("admin-1")).deleted_at is not None
         assert result.user_id == "admin-1"
+        assert result.deleted_at is not None
+        with pytest.raises(UserNotFoundError):
+            await user_repo.get_by_id("admin-1")

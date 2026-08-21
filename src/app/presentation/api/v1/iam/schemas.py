@@ -98,6 +98,13 @@ class AdminUserSummaryResponse(BaseModel):
     created_at: str
 
 
+class RelatedUserResponse(BaseModel):
+    user_id: str
+    email: str
+    first_name: str
+    last_name: str
+
+
 class AdminListUsersResponse(BaseModel):
     users: list[AdminUserSummaryResponse]
 

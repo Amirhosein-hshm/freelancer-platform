@@ -38,7 +38,7 @@ class AdminCreateUserUseCase(UseCase[AdminCreateUserCommand, AdminCreateUserResu
         await self._authorization_service.require_permission(request.actor_id, "user.create")
         request.validate()
         email = Email(request.email)
-        if await self._user_repo.exists_by_email(email):
+        if await self._user_repo.email_exists_including_deleted(email):
             raise DuplicateEmailError(f"Email {email.value} is already registered.")
         password_hash = PasswordHash(await self._password_hasher.hash(request.password))
         now = await self._clock.now()

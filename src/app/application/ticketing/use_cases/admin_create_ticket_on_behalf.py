@@ -13,10 +13,8 @@ from app.application.ticketing.dto import (
 from app.application.ticketing.permissions import PERMISSION_TICKET_CREATE_ON_BEHALF
 from app.application.ticketing.use_cases.create_ticket import _create_ticket
 from app.domain.iam.repositories import IUserRepository
-from app.domain.ticketing.repositories import (
-    ITicketParticipantRepository,
-    ITicketRepository,
-)
+from app.domain.ticketing.repositories import ITicketRepository
+from app.domain.ticketing.services import RelationshipEligibilityService
 
 
 class AdminCreateTicketOnBehalfUseCase(UseCase[CreateTicketOnBehalfCommand, CreateTicketResult]):
@@ -25,35 +23,37 @@ class AdminCreateTicketOnBehalfUseCase(UseCase[CreateTicketOnBehalfCommand, Crea
         authorization_service: IAuthorizationService,
         user_repo: IUserRepository,
         ticket_repo: ITicketRepository,
-        participant_repo: ITicketParticipantRepository,
         ticket_code_generator: ITicketCodeGenerator,
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
+        relationship_service: RelationshipEligibilityService,
     ) -> None:
         self._authorization_service = authorization_service
         self._user_repo = user_repo
         self._ticket_repo = ticket_repo
-        self._participant_repo = participant_repo
         self._ticket_code_generator = ticket_code_generator
         self._id_generator = id_generator
         self._clock = clock
         self._uow = uow
+        self._relationship_service = relationship_service
 
     async def execute(self, request: CreateTicketOnBehalfCommand) -> CreateTicketResult:
         await self._authorization_service.require_permission(request.actor_id, PERMISSION_TICKET_CREATE_ON_BEHALF)
+        await self._user_repo.get_by_id(request.requester_user_id)
         await self._user_repo.get_by_id(request.target_user_id)
         return await _create_ticket(
-            requester_user_id=request.target_user_id,
+            requester_user_id=request.requester_user_id,
+            target_user_id=request.target_user_id,
             submitted_by_user_id=request.actor_id,
             related_project_id=request.related_project_id,
             related_category_id=request.related_category_id,
             subject=request.subject,
             priority=request.priority,
             ticket_repo=self._ticket_repo,
-            participant_repo=self._participant_repo,
             ticket_code_generator=self._ticket_code_generator,
             id_generator=self._id_generator,
             clock=self._clock,
             uow=self._uow,
+            relationship_service=self._relationship_service,
         )

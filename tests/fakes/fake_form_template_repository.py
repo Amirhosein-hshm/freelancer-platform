@@ -6,6 +6,8 @@ from app.domain.shared.types import EntityId
 
 
 class FakeFormTemplateRepository(IFormTemplateRepository):
+    """Mirrors the SQLAlchemy repository: every read excludes soft-deleted templates."""
+
     def __init__(self) -> None:
         self._store: dict[str, FormTemplate] = {}
 
@@ -13,10 +15,10 @@ class FakeFormTemplateRepository(IFormTemplateRepository):
         self._store[template.id] = template
 
     async def get_by_id(self, template_id: EntityId) -> FormTemplate:
-        try:
-            return self._store[template_id]
-        except KeyError:
-            raise FormTemplateNotFoundError(f"Form template {template_id} not found.") from None
+        template = self._store.get(template_id)
+        if template is None or template.deleted_at is not None:
+            raise FormTemplateNotFoundError(f"Form template {template_id} not found.")
+        return template
 
     async def get_published_for_category(self, category_id: EntityId) -> FormTemplate:
         published = [
@@ -31,8 +33,9 @@ class FakeFormTemplateRepository(IFormTemplateRepository):
     async def update(self, template: FormTemplate) -> None:
         self._store[template.id] = template
 
-    async def delete(self, template_id: EntityId) -> None:
-        self._store.pop(template_id, None)
-
     async def list_versions(self, category_id: EntityId, template_key: str) -> list[FormTemplate]:
-        return [t for t in self._store.values() if t.category_id == category_id and t.template_key == template_key]
+        return [
+            t
+            for t in self._store.values()
+            if t.category_id == category_id and t.template_key == template_key and t.deleted_at is None
+        ]

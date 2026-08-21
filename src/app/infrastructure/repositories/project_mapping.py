@@ -1,3 +1,4 @@
+from app.domain.freelancer.enums import FreelancerLevelEnum
 from app.domain.project.entities import (
     Project,
     ProjectApplication,
@@ -26,6 +27,7 @@ def to_domain_project(row: object) -> Project:
         customer_user_id=row.customer_user_id,
         category_id=row.category_id,
         form_template_id=row.form_template_id,
+        required_level=FreelancerLevelEnum(row.required_level) if row.required_level else None,
         assigned_supervisor_user_id=row.assigned_supervisor_user_id,
         selected_application_id=row.selected_application_id,
         title=row.title,

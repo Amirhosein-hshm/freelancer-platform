@@ -28,6 +28,7 @@ def to_project_response(result: ProjectResult) -> ProjectResponse:
         project_code=result.project_code,
         customer_user_id=result.customer_user_id,
         category_id=result.category_id,
+        required_level=result.required_level,
         title=result.title,
         description=result.description,
         status=result.status,

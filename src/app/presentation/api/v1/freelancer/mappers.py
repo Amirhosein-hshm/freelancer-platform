@@ -16,7 +16,7 @@ def to_profile_response(result: Any) -> FreelancerProfileResponse:
         hourly_rate_min=result.hourly_rate_min,
         hourly_rate_max=result.hourly_rate_max,
         is_available=result.is_available,
-        current_level_id=result.current_level_id,
+        current_level=result.current_level,
         approval_status=result.approval_status.value,
         approved_at=result.approved_at.isoformat() if result.approved_at else None,
     )

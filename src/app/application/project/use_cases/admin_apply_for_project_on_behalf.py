@@ -7,10 +7,7 @@ from app.application.project.use_cases.apply_for_project import _apply_for_proje
 from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
-from app.domain.freelancer.repositories import (
-    IFreelancerLevelRepository,
-    IFreelancerProfileRepository,
-)
+from app.domain.freelancer.repositories import IFreelancerProfileRepository
 from app.domain.project.repositories import (
     IProjectApplicationRepository,
     IProjectRepository,
@@ -31,7 +28,6 @@ class AdminApplyForProjectOnBehalfUseCase(UseCase[AdminApplyForProjectOnBehalfCo
         project_repo: IProjectRepository,
         application_repo: IProjectApplicationRepository,
         profile_repo: IFreelancerProfileRepository,
-        level_repo: IFreelancerLevelRepository,
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
@@ -40,7 +36,6 @@ class AdminApplyForProjectOnBehalfUseCase(UseCase[AdminApplyForProjectOnBehalfCo
         self._project_repo = project_repo
         self._application_repo = application_repo
         self._profile_repo = profile_repo
-        self._level_repo = level_repo
         self._id_generator = id_generator
         self._clock = clock
         self._uow = uow
@@ -58,7 +53,6 @@ class AdminApplyForProjectOnBehalfUseCase(UseCase[AdminApplyForProjectOnBehalfCo
             project_repo=self._project_repo,
             application_repo=self._application_repo,
             profile_repo=self._profile_repo,
-            level_repo=self._level_repo,
             id_generator=self._id_generator,
             clock=self._clock,
             uow=self._uow,

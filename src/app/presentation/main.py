@@ -9,13 +9,13 @@ from app.presentation.api.v1.feedback.router import router as feedback_router
 from app.presentation.api.v1.file.router import router as file_router
 from app.presentation.api.v1.form.router import router as form_router
 from app.presentation.api.v1.freelancer.admin_router import (
-    level_router as admin_freelancer_level_router,
-)
-from app.presentation.api.v1.freelancer.admin_router import (
     router as admin_freelancer_router,
 )
 from app.presentation.api.v1.freelancer.router import router as freelancer_router
 from app.presentation.api.v1.iam.catalog_router import router as iam_catalog_router
+from app.presentation.api.v1.iam.related_users_router import (
+    router as related_users_router,
+)
 from app.presentation.api.v1.iam.router import router as iam_router
 from app.presentation.api.v1.project.admin_router import router as admin_project_router
 from app.presentation.api.v1.project.revisions_router import (
@@ -56,11 +56,11 @@ def create_app(cors_origins: Sequence[str] | None = None) -> FastAPI:
 
     for router in (
         auth_router,
+        related_users_router,
         iam_router,
         iam_catalog_router,
         freelancer_router,
         admin_freelancer_router,
-        admin_freelancer_level_router,
         category_router,
         file_router,
         form_router,

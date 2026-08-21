@@ -1,6 +1,7 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.domain.form.entities import FormField, FormTemplate
 from app.domain.form.enums import FormTemplateStatus
@@ -23,11 +24,12 @@ class SqlAlchemyFormTemplateRepository(IFormTemplateRepository):
         self._session.add(self._to_model(template))
 
     async def get_by_id(self, template_id: EntityId) -> FormTemplate:
-        row = await self._session.get(
-            FormTemplateModel,
-            template_id,
-            options=[selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options)],
+        result = await self._session.execute(
+            select(FormTemplateModel)
+            .where(FormTemplateModel.id == template_id, FormTemplateModel.deleted_at.is_(None))
+            .options(selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options))
         )
+        row = result.scalar_one_or_none()
         if row is None:
             raise FormTemplateNotFoundError(f"Form template {template_id} not found.")
         return to_domain_form_template(row)
@@ -38,6 +40,7 @@ class SqlAlchemyFormTemplateRepository(IFormTemplateRepository):
             .where(
                 FormTemplateModel.category_id == category_id,
                 FormTemplateModel.status == FormTemplateStatus.PUBLISHED.value,
+                FormTemplateModel.deleted_at.is_(None),
             )
             .options(selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options))
             .order_by(FormTemplateModel.version_no.desc())
@@ -67,22 +70,64 @@ class SqlAlchemyFormTemplateRepository(IFormTemplateRepository):
         row.deleted_at = template.deleted_at
         row.fields = [self._to_field_model(field) for field in template.fields]
 
-    async def delete(self, template_id: EntityId) -> None:
-        row = await self._session.get(FormTemplateModel, template_id)
-        if row is not None:
-            await self._session.delete(row)
-
     async def list_versions(self, category_id: EntityId, template_key: str) -> list[FormTemplate]:
         result = await self._session.execute(
             select(FormTemplateModel)
             .where(
                 FormTemplateModel.category_id == category_id,
                 FormTemplateModel.template_key == template_key,
+                FormTemplateModel.deleted_at.is_(None),
             )
             .options(selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options))
             .order_by(FormTemplateModel.version_no.desc())
         )
         return [to_domain_form_template(row) for row in result.scalars().all()]
+
+    def _template_filters(
+        self,
+        category_id: EntityId | None,
+        status: FormTemplateStatus | None,
+        search: str | None,
+    ) -> list[ColumnElement[bool]]:
+        conditions: list[ColumnElement[bool]] = [FormTemplateModel.deleted_at.is_(None)]
+        if category_id is not None:
+            conditions.append(FormTemplateModel.category_id == category_id)
+        if status is not None:
+            conditions.append(FormTemplateModel.status == status.value)
+        if search:
+            conditions.append(FormTemplateModel.name.ilike(f"%{search}%"))
+        return conditions
+
+    async def list_templates(
+        self,
+        category_id: EntityId | None = None,
+        status: FormTemplateStatus | None = None,
+        search: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> list[FormTemplate]:
+        result = await self._session.execute(
+            select(FormTemplateModel)
+            .where(*self._template_filters(category_id, status, search))
+            .options(selectinload(FormTemplateModel.fields).selectinload(FormFieldModel.options))
+            .order_by(FormTemplateModel.created_at.desc(), FormTemplateModel.version_no.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return [to_domain_form_template(row) for row in result.scalars().all()]
+
+    async def count_templates(
+        self,
+        category_id: EntityId | None = None,
+        status: FormTemplateStatus | None = None,
+        search: str | None = None,
+    ) -> int:
+        result = await self._session.execute(
+            select(func.count())
+            .select_from(FormTemplateModel)
+            .where(*self._template_filters(category_id, status, search))
+        )
+        return int(result.scalar_one())
 
     def _to_model(self, template: FormTemplate) -> FormTemplateModel:
         return FormTemplateModel(

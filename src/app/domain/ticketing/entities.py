@@ -6,7 +6,6 @@ from app.domain.shared.exceptions import InvalidStateTransitionError
 from app.domain.shared.types import EntityId
 from app.domain.ticketing.enums import (
     TicketMessageType,
-    TicketParticipantRole,
     TicketPriority,
     TicketStatus,
 )
@@ -18,7 +17,7 @@ _CLOSED_STATUSES = (TicketStatus.CLOSED, TicketStatus.ARCHIVED)
 class Ticket(AggregateRoot):
     ticket_code: str
     created_by_user_id: EntityId
-    assigned_to_user_id: EntityId | None
+    target_user_id: EntityId
     related_project_id: EntityId | None
     related_category_id: EntityId | None
     subject: str
@@ -30,8 +29,8 @@ class Ticket(AggregateRoot):
     deleted_at: datetime | None
     submitted_by_user_id: EntityId | None = None
 
-    def assign(self, user_id: EntityId) -> None:
-        self.assigned_to_user_id = user_id
+    def is_party(self, user_id: EntityId) -> bool:
+        return user_id in (self.created_by_user_id, self.target_user_id)
 
     def close(self, by_user_id: EntityId, at: datetime) -> None:
         if self.is_closed():
@@ -56,19 +55,6 @@ class Ticket(AggregateRoot):
         self.closed_by_user_id = by_user_id
         self.closed_at = at
 
-    def transition_to(self, status: TicketStatus) -> None:
-        if self.status == TicketStatus.ARCHIVED:
-            raise InvalidStateTransitionError(f"Ticket {self.id} is archived and cannot be modified.")
-        if self.status == TicketStatus.CLOSED and status != TicketStatus.OPEN:
-            raise InvalidStateTransitionError(
-                f"Closed ticket {self.id} must be reopened before transitioning to '{status.value}'."
-            )
-        if status in (TicketStatus.CLOSED, TicketStatus.ARCHIVED):
-            raise InvalidStateTransitionError(
-                f"Use close() or archive() to reach '{status.value}', not transition_to()."
-            )
-        self.status = status
-
     def set_priority(self, priority: TicketPriority) -> None:
         if self.status == TicketStatus.ARCHIVED:
             raise InvalidStateTransitionError(f"Ticket {self.id} is archived and cannot be modified.")
@@ -84,15 +70,6 @@ class Ticket(AggregateRoot):
 
     def is_closed(self) -> bool:
         return self.status in _CLOSED_STATUSES
-
-
-@dataclass(eq=False)
-class TicketParticipant(Entity):
-    ticket_id: EntityId
-    user_id: EntityId
-    participant_role: TicketParticipantRole
-    joined_at: datetime
-    left_at: datetime | None
 
 
 @dataclass(eq=False)

@@ -24,6 +24,7 @@ from app.application.iam.use_cases.block_user import BlockUserUseCase
 from app.application.iam.use_cases.grant_permission import GrantPermissionUseCase
 from app.application.iam.use_cases.remove_role import RemoveRoleUseCase
 from app.application.iam.use_cases.revoke_permission import RevokePermissionUseCase
+from app.application.shared.pagination import total_pages
 from app.domain.iam.enums import UserStatus
 from app.presentation.api.v1.iam.schemas import (
     ActivateUserResponse,
@@ -103,7 +104,7 @@ async def admin_list_users(
             page=result.page,
             page_size=result.page_size,
             total_items=result.total_items,
-            total_pages=(result.total_items + result.page_size - 1) // result.page_size,
+            total_pages=total_pages(result.total_items, result.page_size),
         ),
     )
 

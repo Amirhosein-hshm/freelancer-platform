@@ -46,3 +46,7 @@ class InvalidBudgetError(BusinessRuleViolationError): ...
 
 
 class InvalidProjectCodeError(BusinessRuleViolationError): ...
+
+
+class ProjectNotDraftError(InvalidStateTransitionError):
+    """A DRAFT-only operation (edit/delete) was attempted on a project past DRAFT."""

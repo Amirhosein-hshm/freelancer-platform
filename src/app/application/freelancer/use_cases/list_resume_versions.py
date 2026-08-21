@@ -1,9 +1,14 @@
-from app.application.freelancer.dto import ListResumeVersionsQuery, ResumeResult
+from app.application.freelancer.dto import (
+    ListResumeVersionsQuery,
+    ListResumeVersionsResult,
+    ResumeResult,
+)
 from app.application.freelancer.permissions import (
     PERMISSION_FREELANCER_READ_ANY,
     PERMISSION_FREELANCER_READ_OWN,
 )
 from app.application.shared.authorization import IAuthorizationService, authorize_owned_action
+from app.application.shared.pagination import limit_offset
 from app.application.shared.use_case import UseCase
 from app.domain.freelancer.repositories import (
     IFreelancerProfileRepository,
@@ -11,7 +16,7 @@ from app.domain.freelancer.repositories import (
 )
 
 
-class ListResumeVersionsUseCase(UseCase[ListResumeVersionsQuery, list[ResumeResult]]):
+class ListResumeVersionsUseCase(UseCase[ListResumeVersionsQuery, ListResumeVersionsResult]):
     def __init__(
         self,
         authorization_service: IAuthorizationService,
@@ -22,7 +27,7 @@ class ListResumeVersionsUseCase(UseCase[ListResumeVersionsQuery, list[ResumeResu
         self._profile_repo = profile_repo
         self._resume_repo = resume_repo
 
-    async def execute(self, request: ListResumeVersionsQuery) -> list[ResumeResult]:
+    async def execute(self, request: ListResumeVersionsQuery) -> ListResumeVersionsResult:
         profile = await self._profile_repo.get_by_id(request.profile_id)
         await authorize_owned_action(
             self._authorization_service,
@@ -31,15 +36,26 @@ class ListResumeVersionsUseCase(UseCase[ListResumeVersionsQuery, list[ResumeResu
             PERMISSION_FREELANCER_READ_OWN,
             PERMISSION_FREELANCER_READ_ANY,
         )
-        resumes = await self._resume_repo.list_by_profile(request.profile_id)
-        return [
-            ResumeResult(
-                resume_id=r.id,
-                freelancer_profile_id=r.freelancer_profile_id,
-                file_asset_id=r.file_asset_id,
-                version_no=r.version_no,
-                summary=r.summary,
-                is_current=r.is_current,
-            )
-            for r in sorted(resumes, key=lambda r: r.version_no)
-        ]
+        limit, offset = limit_offset(request.page, request.page_size)
+        resumes = await self._resume_repo.list_by_profile(
+            request.profile_id,
+            limit=limit,
+            offset=offset,
+        )
+        total_items = await self._resume_repo.count_by_profile(request.profile_id)
+        return ListResumeVersionsResult(
+            resumes=[
+                ResumeResult(
+                    resume_id=r.id,
+                    freelancer_profile_id=r.freelancer_profile_id,
+                    file_asset_id=r.file_asset_id,
+                    version_no=r.version_no,
+                    summary=r.summary,
+                    is_current=r.is_current,
+                )
+                for r in resumes
+            ],
+            total_items=total_items,
+            page=request.page,
+            page_size=request.page_size,
+        )

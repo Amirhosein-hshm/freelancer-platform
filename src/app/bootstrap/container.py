@@ -1,6 +1,7 @@
 from fastapi import Depends, FastAPI
 
 from app.application.shared.file_access_policy import DomainFileAccessPolicy
+from app.domain.ticketing.services import RelationshipEligibilityService
 from app.infrastructure.clock import SystemClock
 from app.infrastructure.code_generators import (
     SqlSequenceProjectCodeGenerator,
@@ -25,9 +26,6 @@ from app.infrastructure.repositories.form_template_repository import (
 )
 from app.infrastructure.repositories.freelancer_level_history_repository import (
     SqlAlchemyFreelancerLevelHistoryRepository,
-)
-from app.infrastructure.repositories.freelancer_level_repository import (
-    SqlAlchemyFreelancerLevelRepository,
 )
 from app.infrastructure.repositories.freelancer_profile_repository import (
     SqlAlchemyFreelancerProfileRepository,
@@ -55,6 +53,9 @@ from app.infrastructure.repositories.rating_repository import SqlAlchemyRatingRe
 from app.infrastructure.repositories.refresh_token_repository import (
     SqlAlchemyRefreshTokenRepository,
 )
+from app.infrastructure.repositories.related_users_repository import (
+    SqlAlchemyRelatedUsersRepository,
+)
 from app.infrastructure.repositories.reporting_read_repository import (
     SqlAlchemyReportingReadRepository,
 )
@@ -68,9 +69,6 @@ from app.infrastructure.repositories.supervisor_review_repository import (
 )
 from app.infrastructure.repositories.ticket_message_repository import (
     SqlAlchemyTicketMessageRepository,
-)
-from app.infrastructure.repositories.ticket_participant_repository import (
-    SqlAlchemyTicketParticipantRepository,
 )
 from app.infrastructure.repositories.ticket_repository import SqlAlchemyTicketRepository
 from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
@@ -135,7 +133,6 @@ def build_app() -> FastAPI:
             project_application_repo=SqlAlchemyProjectApplicationRepository(session),
             project_delivery_repo=SqlAlchemyProjectDeliveryRepository(session),
             ticket_repo=SqlAlchemyTicketRepository(session),
-            ticket_participant_repo=SqlAlchemyTicketParticipantRepository(session),
             ticket_message_repo=SqlAlchemyTicketMessageRepository(session),
         )
     )
@@ -179,9 +176,6 @@ def build_app() -> FastAPI:
     )
     app.dependency_overrides[providers.get_freelancer_profile_repository] = lambda session=Depends(get_db_session): (
         SqlAlchemyFreelancerProfileRepository(session)
-    )
-    app.dependency_overrides[providers.get_freelancer_level_repository] = lambda session=Depends(get_db_session): (
-        SqlAlchemyFreelancerLevelRepository(session)
     )
     app.dependency_overrides[providers.get_freelancer_level_history_repository] = (
         lambda session=Depends(get_db_session): SqlAlchemyFreelancerLevelHistoryRepository(session)
@@ -227,8 +221,16 @@ def build_app() -> FastAPI:
     app.dependency_overrides[providers.get_ticket_message_repository] = lambda session=Depends(get_db_session): (
         SqlAlchemyTicketMessageRepository(session)
     )
-    app.dependency_overrides[providers.get_ticket_participant_repository] = lambda session=Depends(get_db_session): (
-        SqlAlchemyTicketParticipantRepository(session)
+    app.dependency_overrides[providers.get_relationship_eligibility_service] = lambda session=Depends(get_db_session): (
+        RelationshipEligibilityService(
+            project_repo=SqlAlchemyProjectRepository(session),
+            project_application_repo=SqlAlchemyProjectApplicationRepository(session),
+            profile_repo=SqlAlchemyFreelancerProfileRepository(session),
+            category_supervisor_repo=SqlAlchemyCategorySupervisorRepository(session),
+        )
+    )
+    app.dependency_overrides[providers.get_related_users_repository] = lambda session=Depends(get_db_session): (
+        SqlAlchemyRelatedUsersRepository(session)
     )
     app.dependency_overrides[providers.get_reporting_read_repository] = lambda session=Depends(get_db_session): (
         SqlAlchemyReportingReadRepository(session)

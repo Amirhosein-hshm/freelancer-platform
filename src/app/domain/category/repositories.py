@@ -17,7 +17,14 @@ class ICategoryRepository(ABC):
         """Raise ``CategoryNotFoundError`` if absent."""
 
     @abstractmethod
-    async def list_active(self) -> list[Category]: ...
+    async def list_active(
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[Category]: ...
+
+    @abstractmethod
+    async def count_active(self) -> int: ...
 
     @abstractmethod
     async def list_by_parent_id(self, parent_category_id: EntityId) -> list[Category]: ...

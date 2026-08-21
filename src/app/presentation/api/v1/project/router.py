@@ -6,6 +6,7 @@ from app.application.project.dto import (
     CancelProjectCommand,
     CompleteProjectCommand,
     CreateProjectCommand,
+    DeleteProjectCommand,
     FormValueInput,
     GetAvailableProjectsQuery,
     GetMyProjectsQuery,
@@ -19,6 +20,7 @@ from app.application.project.dto import (
     RequestRevisionCommand,
     StartProjectCommand,
     SubmitDeliveryCommand,
+    UpdateProjectCommand,
     ViewApplicationsQuery,
     WithdrawApplicationCommand,
 )
@@ -27,6 +29,7 @@ from app.application.project.use_cases.apply_for_project import ApplyForProjectU
 from app.application.project.use_cases.cancel_project import CancelProjectUseCase
 from app.application.project.use_cases.complete_project import CompleteProjectUseCase
 from app.application.project.use_cases.create_project import CreateProjectUseCase
+from app.application.project.use_cases.delete_project import DeleteProjectUseCase
 from app.application.project.use_cases.get_available_projects import GetAvailableProjectsUseCase
 from app.application.project.use_cases.get_my_projects import GetMyProjectsUseCase
 from app.application.project.use_cases.get_project_application import (
@@ -47,8 +50,10 @@ from app.application.project.use_cases.reject_freelancer import RejectFreelancer
 from app.application.project.use_cases.request_revision import RequestRevisionUseCase
 from app.application.project.use_cases.start_project import StartProjectUseCase
 from app.application.project.use_cases.submit_delivery import SubmitDeliveryUseCase
+from app.application.project.use_cases.update_project import UpdateProjectUseCase
 from app.application.project.use_cases.view_applications import ViewApplicationsUseCase
 from app.application.project.use_cases.withdraw_application import WithdrawApplicationUseCase
+from app.application.shared.pagination import total_pages
 from app.presentation.api.v1.project.mappers import (
     to_application_response,
     to_delivery_response,
@@ -64,6 +69,7 @@ from app.presentation.api.v1.project.schemas import (
     CompleteProjectResponse,
     CreateProjectRequest,
     CreateProjectResponse,
+    DeleteProjectResponse,
     DeliveryResponse,
     ProjectDetailsResponse,
     ProjectResponse,
@@ -77,16 +83,19 @@ from app.presentation.api.v1.project.schemas import (
     StartProjectResponse,
     SubmitDeliveryRequest,
     SubmitDeliveryResponse,
+    UpdateProjectRequest,
+    UpdateProjectResponse,
     WithdrawApplicationResponse,
 )
-from app.presentation.core.envelope import SuccessEnvelope
-from app.presentation.core.pagination import PageQuery, paginate
+from app.presentation.core.envelope import PaginationMeta, SuccessEnvelope
+from app.presentation.core.pagination import PageQuery
 from app.presentation.core.providers import (
     get_accept_freelancer_use_case,
     get_apply_for_project_use_case,
     get_cancel_project_use_case,
     get_complete_project_use_case,
     get_create_project_use_case,
+    get_delete_project_use_case,
     get_get_available_projects_use_case,
     get_get_my_projects_use_case,
     get_get_project_application_use_case,
@@ -99,6 +108,7 @@ from app.presentation.core.providers import (
     get_request_revision_use_case,
     get_start_project_use_case,
     get_submit_delivery_use_case,
+    get_update_project_use_case,
     get_view_applications_use_case,
     get_withdraw_application_use_case,
 )
@@ -122,12 +132,13 @@ async def create_project(
     result = await use_case.execute(
         CreateProjectCommand(
             actor_id=current_user.user_id,
-            category_id=payload.category_id,
+            form_template_id=payload.form_template_id,
             title=payload.title,
             description=payload.description,
             visibility=payload.visibility,
             budget_type=payload.budget_type,
             currency_code=payload.currency_code,
+            required_level=payload.required_level,
             fixed_budget=payload.fixed_budget,
             budget_min=payload.budget_min,
             budget_max=payload.budget_max,
@@ -159,13 +170,23 @@ async def get_available_projects(
     pagination: PageQuery = Depends(),
     use_case: GetAvailableProjectsUseCase = Depends(get_get_available_projects_use_case),
 ) -> SuccessEnvelope[list[ProjectResponse]]:
-    result = await use_case.execute(GetAvailableProjectsQuery(actor_id=current_user.user_id))
+    result = await use_case.execute(
+        GetAvailableProjectsQuery(
+            actor_id=current_user.user_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
     projects = [to_project_response(project) for project in result.projects]
-    page_projects, meta = paginate(projects, pagination)
     return SuccessEnvelope(
         message="Available projects.",
-        data=page_projects,
-        meta=meta,
+        data=projects,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )
 
 
@@ -179,13 +200,23 @@ async def get_my_projects(
     pagination: PageQuery = Depends(),
     use_case: GetMyProjectsUseCase = Depends(get_get_my_projects_use_case),
 ) -> SuccessEnvelope[list[ProjectResponse]]:
-    result = await use_case.execute(GetMyProjectsQuery(customer_user_id=current_user.user_id))
+    result = await use_case.execute(
+        GetMyProjectsQuery(
+            customer_user_id=current_user.user_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
     projects = [to_project_response(project) for project in result.projects]
-    page_projects, meta = paginate(projects, pagination)
     return SuccessEnvelope(
         message="My projects.",
-        data=page_projects,
-        meta=meta,
+        data=projects,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )
 
 
@@ -224,6 +255,64 @@ async def publish_project(
     return SuccessEnvelope(
         message="Project published.",
         data=PublishProjectResponse(project_id=result.project_id, status=result.status),
+    )
+
+
+@router.patch(
+    "/{project_id}",
+    response_model=SuccessEnvelope[UpdateProjectResponse],
+    operation_id="update_project",
+)
+async def update_project(
+    project_id: str,
+    payload: UpdateProjectRequest,
+    current_user=Depends(get_current_user),
+    use_case: UpdateProjectUseCase = Depends(get_update_project_use_case),
+) -> SuccessEnvelope[UpdateProjectResponse]:
+    result = await use_case.execute(
+        UpdateProjectCommand(
+            actor_id=current_user.user_id,
+            project_id=project_id,
+            form_template_id=payload.form_template_id,
+            title=payload.title,
+            description=payload.description,
+            visibility=payload.visibility,
+            budget_type=payload.budget_type,
+            currency_code=payload.currency_code,
+            required_level=payload.required_level,
+            fixed_budget=payload.fixed_budget,
+            budget_min=payload.budget_min,
+            budget_max=payload.budget_max,
+            priority=payload.priority,
+            application_deadline=payload.application_deadline,
+            form_values=[
+                FormValueInput(field_id=form_value.field_id, value=form_value.value)
+                for form_value in payload.form_values
+            ],
+        )
+    )
+    return SuccessEnvelope(
+        message="Project updated.",
+        data=UpdateProjectResponse(project_id=result.project_id, status=result.status),
+    )
+
+
+@router.delete(
+    "/{project_id}",
+    response_model=SuccessEnvelope[DeleteProjectResponse],
+    operation_id="delete_project",
+)
+async def delete_project(
+    project_id: str,
+    current_user=Depends(get_current_user),
+    use_case: DeleteProjectUseCase = Depends(get_delete_project_use_case),
+) -> SuccessEnvelope[DeleteProjectResponse]:
+    result = await use_case.execute(
+        DeleteProjectCommand(actor_id=current_user.user_id, project_id=project_id)
+    )
+    return SuccessEnvelope(
+        message="Project deleted.",
+        data=DeleteProjectResponse(project_id=result.project_id, deleted_at=result.deleted_at),
     )
 
 
@@ -309,13 +398,24 @@ async def view_applications(
     pagination: PageQuery = Depends(),
     use_case: ViewApplicationsUseCase = Depends(get_view_applications_use_case),
 ) -> SuccessEnvelope[list[ApplicationResponse]]:
-    result = await use_case.execute(ViewApplicationsQuery(actor_id=current_user.user_id, project_id=project_id))
+    result = await use_case.execute(
+        ViewApplicationsQuery(
+            actor_id=current_user.user_id,
+            project_id=project_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
     applications = [to_application_response(application) for application in result.applications]
-    page_applications, meta = paginate(applications, pagination)
     return SuccessEnvelope(
         message="Project applications.",
-        data=page_applications,
-        meta=meta,
+        data=applications,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )
 
 
@@ -530,13 +630,24 @@ async def list_project_deliveries(
     pagination: PageQuery = Depends(),
     use_case: ListProjectDeliveriesUseCase = Depends(get_list_project_deliveries_use_case),
 ) -> SuccessEnvelope[list[DeliveryResponse]]:
-    result = await use_case.execute(ListProjectDeliveriesQuery(actor_id=current_user.user_id, project_id=project_id))
+    result = await use_case.execute(
+        ListProjectDeliveriesQuery(
+            actor_id=current_user.user_id,
+            project_id=project_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
     deliveries = [to_delivery_response(d) for d in result.deliveries]
-    page_deliveries, meta = paginate(deliveries, pagination)
     return SuccessEnvelope(
         message="Project deliveries.",
-        data=page_deliveries,
-        meta=meta,
+        data=deliveries,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )
 
 
@@ -552,14 +663,23 @@ async def list_project_revision_requests(
     use_case: ListProjectRevisionRequestsUseCase = Depends(get_list_project_revision_requests_use_case),
 ) -> SuccessEnvelope[list[ProjectRevisionRequestResponse]]:
     result = await use_case.execute(
-        ListProjectRevisionRequestsQuery(actor_id=current_user.user_id, project_id=project_id)
+        ListProjectRevisionRequestsQuery(
+            actor_id=current_user.user_id,
+            project_id=project_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
     )
     revisions = [_to_revision_response(r) for r in result.revisions]
-    page_revisions, meta = paginate(revisions, pagination)
     return SuccessEnvelope(
         message="Project revision requests.",
-        data=page_revisions,
-        meta=meta,
+        data=revisions,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )
 
 
@@ -574,11 +694,22 @@ async def list_project_status_history(
     pagination: PageQuery = Depends(),
     use_case: ListProjectStatusHistoryUseCase = Depends(get_list_project_status_history_use_case),
 ) -> SuccessEnvelope[list[ProjectStatusHistoryResponse]]:
-    result = await use_case.execute(ListProjectStatusHistoryQuery(actor_id=current_user.user_id, project_id=project_id))
+    result = await use_case.execute(
+        ListProjectStatusHistoryQuery(
+            actor_id=current_user.user_id,
+            project_id=project_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
     history = [_to_status_history_response(h) for h in result.history]
-    page_history, meta = paginate(history, pagination)
     return SuccessEnvelope(
         message="Project status history.",
-        data=page_history,
-        meta=meta,
+        data=history,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )

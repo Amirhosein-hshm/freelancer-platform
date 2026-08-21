@@ -43,7 +43,7 @@ class RegisterUserUseCase(UseCase[RegisterUserCommand, RegisterUserResult]):
         if request.role not in ALLOWED_REGISTER_ROLES:
             raise ValidationError(f"role must be one of {sorted(ALLOWED_REGISTER_ROLES)}.")
         email = Email(request.email)
-        if await self._user_repo.exists_by_email(email):
+        if await self._user_repo.email_exists_including_deleted(email):
             raise DuplicateEmailError(f"Email {email.value} is already registered.")
         role = await self._role_repo.get_by_key(request.role)
         password_hash = PasswordHash(await self._password_hasher.hash(request.password))

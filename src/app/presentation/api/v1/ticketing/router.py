@@ -2,61 +2,50 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends
 
+from app.application.shared.pagination import total_pages
 from app.application.ticketing.dto import (
-    AssignTicketCommand,
     CloseTicketCommand,
     CreateTicketCommand,
     DeleteTicketMessageCommand,
     GetTicketMessagesQuery,
     GetTicketQuery,
     GetUserTicketsQuery,
-    ListTicketParticipantsQuery,
     SendMessageCommand,
     TicketMessageResult,
-    TicketParticipantResult,
     TicketResult,
     UpdateTicketCommand,
     UpdateTicketMessageCommand,
 )
-from app.application.ticketing.use_cases.assign_ticket import AssignTicketUseCase
 from app.application.ticketing.use_cases.close_ticket import CloseTicketUseCase
 from app.application.ticketing.use_cases.create_ticket import CreateTicketUseCase
 from app.application.ticketing.use_cases.delete_ticket_message import DeleteTicketMessageUseCase
 from app.application.ticketing.use_cases.get_ticket import GetTicketUseCase
 from app.application.ticketing.use_cases.get_ticket_messages import GetTicketMessagesUseCase
 from app.application.ticketing.use_cases.get_user_tickets import GetUserTicketsUseCase
-from app.application.ticketing.use_cases.list_ticket_participants import (
-    ListTicketParticipantsUseCase,
-)
 from app.application.ticketing.use_cases.send_message import SendMessageUseCase
 from app.application.ticketing.use_cases.update_ticket import UpdateTicketUseCase
 from app.application.ticketing.use_cases.update_ticket_message import UpdateTicketMessageUseCase
 from app.domain.ticketing.enums import TicketMessageType, TicketPriority
 from app.presentation.api.v1.ticketing.schemas import (
-    AssignTicketRequest,
-    AssignTicketResponse,
     CloseTicketResponse,
     CreateTicketRequest,
     CreateTicketResponse,
     SendMessageRequest,
     SendMessageResponse,
     TicketMessageResponse,
-    TicketParticipantResponse,
     TicketResponse,
     UpdateTicketMessageRequest,
     UpdateTicketRequest,
 )
-from app.presentation.core.envelope import SuccessEnvelope
-from app.presentation.core.pagination import PageQuery, paginate
+from app.presentation.core.envelope import PaginationMeta, SuccessEnvelope
+from app.presentation.core.pagination import PageQuery
 from app.presentation.core.providers import (
-    get_assign_ticket_use_case,
     get_close_ticket_use_case,
     get_create_ticket_use_case,
     get_delete_ticket_message_use_case,
     get_get_ticket_messages_use_case,
     get_get_ticket_use_case,
     get_get_user_tickets_use_case,
-    get_list_ticket_participants_use_case,
     get_send_message_use_case,
     get_update_ticket_message_use_case,
     get_update_ticket_use_case,
@@ -72,7 +61,7 @@ def _to_ticket_response(result: TicketResult) -> TicketResponse:
         ticket_id=result.ticket_id,
         ticket_code=result.ticket_code,
         created_by_user_id=result.created_by_user_id,
-        assigned_to_user_id=result.assigned_to_user_id,
+        target_user_id=result.target_user_id,
         related_project_id=result.related_project_id,
         related_category_id=result.related_category_id,
         subject=result.subject,
@@ -96,16 +85,6 @@ def _to_message_response(result: TicketMessageResult) -> TicketMessageResponse:
     )
 
 
-def _to_participant_response(result: TicketParticipantResult) -> TicketParticipantResponse:
-    return TicketParticipantResponse(
-        participant_id=result.participant_id,
-        ticket_id=result.ticket_id,
-        user_id=result.user_id,
-        participant_role=result.participant_role,
-        joined_at=result.joined_at,
-    )
-
-
 @router.post(
     "",
     response_model=SuccessEnvelope[CreateTicketResponse],
@@ -120,6 +99,7 @@ async def create_ticket(
     result = await use_case.execute(
         CreateTicketCommand(
             actor_id=current_user.user_id,
+            target_user_id=payload.target_user_id,
             subject=payload.subject,
             related_project_id=payload.related_project_id,
             related_category_id=payload.related_category_id,
@@ -146,13 +126,24 @@ async def get_user_tickets(
     pagination: PageQuery = Depends(),
     use_case: GetUserTicketsUseCase = Depends(get_get_user_tickets_use_case),
 ) -> SuccessEnvelope[list[TicketResponse]]:
-    result = await use_case.execute(GetUserTicketsQuery(actor_id=current_user.user_id, user_id=current_user.user_id))
+    result = await use_case.execute(
+        GetUserTicketsQuery(
+            actor_id=current_user.user_id,
+            user_id=current_user.user_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
     tickets = [_to_ticket_response(t) for t in result.tickets]
-    page_tickets, meta = paginate(tickets, pagination)
     return SuccessEnvelope(
         message="User tickets.",
-        data=page_tickets,
-        meta=meta,
+        data=tickets,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )
 
 
@@ -167,13 +158,24 @@ async def get_ticket_messages(
     pagination: PageQuery = Depends(),
     use_case: GetTicketMessagesUseCase = Depends(get_get_ticket_messages_use_case),
 ) -> SuccessEnvelope[list[TicketMessageResponse]]:
-    result = await use_case.execute(GetTicketMessagesQuery(actor_id=current_user.user_id, ticket_id=ticket_id))
+    result = await use_case.execute(
+        GetTicketMessagesQuery(
+            actor_id=current_user.user_id,
+            ticket_id=ticket_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
     messages = [_to_message_response(m) for m in result.messages]
-    page_messages, meta = paginate(messages, pagination)
     return SuccessEnvelope(
         message="Ticket messages.",
-        data=page_messages,
-        meta=meta,
+        data=messages,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
     )
 
 
@@ -203,33 +205,6 @@ async def send_message(
             message_id=result.message_id,
             ticket_id=result.ticket_id,
             last_message_at=result.last_message_at,
-        ),
-    )
-
-
-@router.post(
-    "/{ticket_id}/assign",
-    response_model=SuccessEnvelope[AssignTicketResponse],
-    operation_id="assign_ticket",
-)
-async def assign_ticket(
-    ticket_id: str,
-    payload: AssignTicketRequest,
-    current_user=Depends(get_current_user),
-    use_case: AssignTicketUseCase = Depends(get_assign_ticket_use_case),
-) -> SuccessEnvelope[AssignTicketResponse]:
-    result = await use_case.execute(
-        AssignTicketCommand(
-            actor_id=current_user.user_id,
-            ticket_id=ticket_id,
-            assignee_user_id=payload.assignee_user_id,
-        )
-    )
-    return SuccessEnvelope(
-        message="Ticket assigned.",
-        data=AssignTicketResponse(
-            ticket_id=result.ticket_id,
-            assigned_to_user_id=result.assigned_to_user_id,
         ),
     )
 
@@ -295,7 +270,7 @@ async def update_ticket(
                 ticket_id=result.ticket_id,
                 ticket_code="",
                 created_by_user_id="",
-                assigned_to_user_id=None,
+                target_user_id="",
                 related_project_id=None,
                 related_category_id=None,
                 subject=payload.subject or "",
@@ -305,27 +280,6 @@ async def update_ticket(
                 last_message_at=None,
             )
         ),
-    )
-
-
-@router.get(
-    "/{ticket_id}/participants",
-    response_model=SuccessEnvelope[list[TicketParticipantResponse]],
-    operation_id="list_ticket_participants",
-)
-async def list_ticket_participants(
-    ticket_id: str,
-    current_user=Depends(get_current_user),
-    pagination: PageQuery = Depends(),
-    use_case: ListTicketParticipantsUseCase = Depends(get_list_ticket_participants_use_case),
-) -> SuccessEnvelope[list[TicketParticipantResponse]]:
-    result = await use_case.execute(ListTicketParticipantsQuery(actor_id=current_user.user_id, ticket_id=ticket_id))
-    participants = [_to_participant_response(p) for p in result.participants]
-    page_participants, meta = paginate(participants, pagination)
-    return SuccessEnvelope(
-        message="Ticket participants.",
-        data=page_participants,
-        meta=meta,
     )
 
 

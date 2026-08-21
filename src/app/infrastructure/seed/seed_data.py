@@ -37,7 +37,6 @@ _PERMISSIONS = [
     ("freelancer.read_own", "freelancer", "read_own"),
     ("freelancer.read_any", "freelancer", "read_any"),
     ("freelancer.delete_any", "freelancer", "delete_any"),
-    ("freelancer.manage_levels", "freelancer", "manage_levels"),
     # Form
     ("form.manage", "form", "manage"),
     # Project
@@ -55,7 +54,6 @@ _PERMISSIONS = [
     ("feedback.manage_any", "feedback", "manage_any"),
     # Ticketing
     ("ticket.create_on_behalf", "ticket", "create_on_behalf"),
-    ("ticket.assign", "ticket", "assign"),
     ("ticket.read_own", "ticket", "read_own"),
     ("ticket.read_any", "ticket", "read_any"),
     ("ticket.close_own", "ticket", "close_own"),

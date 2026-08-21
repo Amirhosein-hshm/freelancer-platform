@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
-from app.domain.freelancer.enums import FreelancerLevelAccessType
+from app.domain.freelancer.enums import FreelancerLevelEnum
 
 
 class CreateFreelancerProfileRequest(BaseModel):
@@ -47,7 +47,7 @@ class FreelancerProfileResponse(BaseModel):
     hourly_rate_min: Decimal | None
     hourly_rate_max: Decimal | None
     is_available: bool
-    current_level_id: str | None
+    current_level: FreelancerLevelEnum | None
     approval_status: str
     approved_at: str | None
 
@@ -68,7 +68,7 @@ class ApproveFreelancerRequest(BaseModel):
 class ApproveFreelancerResponse(BaseModel):
     profile_id: str
     approval_status: str
-    current_level_id: str | None
+    current_level: FreelancerLevelEnum | None
 
 
 class RejectFreelancerRequest(BaseModel):
@@ -81,14 +81,14 @@ class RejectFreelancerResponse(BaseModel):
 
 
 class AssignFreelancerLevelRequest(BaseModel):
-    new_level_id: str
+    new_level: FreelancerLevelEnum
     reason: str | None = None
 
 
 class AssignFreelancerLevelResponse(BaseModel):
     profile_id: str
-    old_level_id: str | None
-    new_level_id: str
+    old_level: FreelancerLevelEnum | None
+    new_level: FreelancerLevelEnum
 
 
 class UploadResumeRequest(BaseModel):
@@ -140,48 +140,11 @@ class DeletePortfolioItemResponse(BaseModel):
     item_id: str
 
 
-class FreelancerLevelResponse(BaseModel):
-    level_id: str
-    level_key: str
-    name: str
-    rank_order: int
-    access_type: str
-    min_completed_projects: int
-    min_rating: Decimal | None
-    max_active_applications: int | None
-    can_apply_public_projects: bool
-    can_apply_private_projects: bool
-    is_active: bool
-
-
-class CreateFreelancerLevelRequest(BaseModel):
-    level_key: str = Field(..., min_length=1)
-    name: str = Field(..., min_length=1)
-    rank_order: int
-    access_type: FreelancerLevelAccessType
-    min_completed_projects: int = 0
-    min_rating: Decimal | None = None
-    max_active_applications: int | None = None
-    can_apply_public_projects: bool = True
-    can_apply_private_projects: bool = False
-
-
-class UpdateFreelancerLevelRequest(BaseModel):
-    name: str | None = None
-    rank_order: int | None = None
-    access_type: FreelancerLevelAccessType | None = None
-    min_completed_projects: int | None = None
-    min_rating: Decimal | None = None
-    max_active_applications: int | None = None
-    can_apply_public_projects: bool | None = None
-    can_apply_private_projects: bool | None = None
-
-
 class FreelancerLevelHistoryResponse(BaseModel):
     history_id: str
     freelancer_profile_id: str
-    old_level_id: str | None
-    new_level_id: str
+    old_level: FreelancerLevelEnum | None
+    new_level: FreelancerLevelEnum
     assigned_by_user_id: str
     reason: str | None
     assigned_at: str

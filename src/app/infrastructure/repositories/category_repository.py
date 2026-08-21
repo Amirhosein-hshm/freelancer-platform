@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.category.entities import Category
@@ -29,20 +29,29 @@ class SqlAlchemyCategoryRepository(ICategoryRepository):
         )
 
     async def get_by_id(self, category_id: EntityId) -> Category:
-        row = await self._session.get(CategoryModel, category_id)
+        result = await self._session.execute(
+            select(CategoryModel).where(CategoryModel.id == category_id, CategoryModel.deleted_at.is_(None))
+        )
+        row = result.scalar_one_or_none()
         if row is None:
             raise CategoryNotFoundError(f"Category {category_id} not found.")
         return to_domain_category(row)
 
     async def get_by_slug(self, slug: str) -> Category:
-        result = await self._session.execute(select(CategoryModel).where(CategoryModel.slug == slug))
+        result = await self._session.execute(
+            select(CategoryModel).where(CategoryModel.slug == slug, CategoryModel.deleted_at.is_(None))
+        )
         row = result.scalar_one_or_none()
         if row is None:
             raise CategoryNotFoundError(f"Category with slug '{slug}' not found.")
         return to_domain_category(row)
 
-    async def list_active(self) -> list[Category]:
-        result = await self._session.execute(
+    async def list_active(
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[Category]:
+        stmt = (
             select(CategoryModel)
             .where(
                 CategoryModel.is_active.is_(True),
@@ -50,7 +59,19 @@ class SqlAlchemyCategoryRepository(ICategoryRepository):
             )
             .order_by(CategoryModel.sort_order.asc())
         )
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
         return [to_domain_category(row) for row in result.scalars().all()]
+
+    async def count_active(self) -> int:
+        result = await self._session.execute(
+            select(func.count(CategoryModel.id)).where(
+                CategoryModel.is_active.is_(True),
+                CategoryModel.deleted_at.is_(None),
+            )
+        )
+        return int(result.scalar_one())
 
     async def list_by_parent_id(self, parent_category_id: EntityId) -> list[Category]:
         result = await self._session.execute(

@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.project.entities import ProjectStatusHistory
@@ -25,10 +25,26 @@ class SqlAlchemyProjectStatusHistoryRepository(IProjectStatusHistoryRepository):
             )
         )
 
-    async def list_by_project(self, project_id: EntityId) -> list[ProjectStatusHistory]:
-        result = await self._session.execute(
+    async def list_by_project(
+        self,
+        project_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[ProjectStatusHistory]:
+        stmt = (
             select(ProjectStatusHistoryModel)
             .where(ProjectStatusHistoryModel.project_id == project_id)
             .order_by(ProjectStatusHistoryModel.changed_at.asc())
         )
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
         return [to_domain_project_status_history(row) for row in result.scalars().all()]
+
+    async def count_by_project(self, project_id: EntityId) -> int:
+        result = await self._session.execute(
+            select(func.count(ProjectStatusHistoryModel.id)).where(
+                ProjectStatusHistoryModel.project_id == project_id,
+            )
+        )
+        return int(result.scalar_one())

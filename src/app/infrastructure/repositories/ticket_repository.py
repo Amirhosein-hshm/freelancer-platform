@@ -1,14 +1,11 @@
-from sqlalchemy import exists, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.shared.types import EntityId
 from app.domain.ticketing.entities import Ticket
 from app.domain.ticketing.exceptions import TicketNotFoundError
 from app.domain.ticketing.repositories import ITicketRepository
-from app.infrastructure.db.models.ticketing_models import (
-    TicketModel,
-    TicketParticipantModel,
-)
+from app.infrastructure.db.models.ticketing_models import TicketModel
 from app.infrastructure.repositories.ticketing_mapping import to_domain_ticket
 
 
@@ -22,7 +19,7 @@ class SqlAlchemyTicketRepository(ITicketRepository):
                 id=ticket.id,
                 ticket_code=ticket.ticket_code,
                 created_by_user_id=ticket.created_by_user_id,
-                assigned_to_user_id=ticket.assigned_to_user_id,
+                target_user_id=ticket.target_user_id,
                 related_project_id=ticket.related_project_id,
                 related_category_id=ticket.related_category_id,
                 subject=ticket.subject,
@@ -38,35 +35,50 @@ class SqlAlchemyTicketRepository(ITicketRepository):
         )
 
     async def get_by_id(self, ticket_id: EntityId) -> Ticket:
-        row = await self._session.get(TicketModel, ticket_id)
+        result = await self._session.execute(
+            select(TicketModel).where(TicketModel.id == ticket_id, TicketModel.deleted_at.is_(None))
+        )
+        row = result.scalar_one_or_none()
         if row is None:
             raise TicketNotFoundError(f"Ticket {ticket_id} not found.")
         return to_domain_ticket(row)
 
     async def get_by_code(self, ticket_code: str) -> Ticket:
-        result = await self._session.execute(select(TicketModel).where(TicketModel.ticket_code == ticket_code))
+        result = await self._session.execute(
+            select(TicketModel).where(TicketModel.ticket_code == ticket_code, TicketModel.deleted_at.is_(None))
+        )
         row = result.scalar_one_or_none()
         if row is None:
             raise TicketNotFoundError(f"Ticket with code '{ticket_code}' not found.")
         return to_domain_ticket(row)
 
-    async def list_for_user(self, user_id: EntityId) -> list[Ticket]:
-        is_participant = exists(
-            select(TicketParticipantModel.id).where(
-                TicketParticipantModel.ticket_id == TicketModel.id,
-                TicketParticipantModel.user_id == user_id,
-            )
-        )
-        result = await self._session.execute(
+    async def list_for_user(
+        self,
+        user_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[Ticket]:
+        stmt = (
             select(TicketModel)
             .where(
-                (TicketModel.created_by_user_id == user_id)
-                | (TicketModel.assigned_to_user_id == user_id)
-                | is_participant
+                TicketModel.deleted_at.is_(None),
+                (TicketModel.created_by_user_id == user_id) | (TicketModel.target_user_id == user_id),
             )
             .order_by(TicketModel.created_at.desc())
         )
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
         return [to_domain_ticket(row) for row in result.scalars().all()]
+
+    async def count_for_user(self, user_id: EntityId) -> int:
+        result = await self._session.execute(
+            select(func.count(TicketModel.id)).where(
+                TicketModel.deleted_at.is_(None),
+                (TicketModel.created_by_user_id == user_id) | (TicketModel.target_user_id == user_id),
+            )
+        )
+        return int(result.scalar_one())
 
     async def update(self, ticket: Ticket) -> None:
         row = await self._session.get(TicketModel, ticket.id)
@@ -74,7 +86,7 @@ class SqlAlchemyTicketRepository(ITicketRepository):
             raise TicketNotFoundError(f"Ticket {ticket.id} not found.")
         row.ticket_code = ticket.ticket_code
         row.created_by_user_id = ticket.created_by_user_id
-        row.assigned_to_user_id = ticket.assigned_to_user_id
+        row.target_user_id = ticket.target_user_id
         row.related_project_id = ticket.related_project_id
         row.related_category_id = ticket.related_category_id
         row.subject = ticket.subject

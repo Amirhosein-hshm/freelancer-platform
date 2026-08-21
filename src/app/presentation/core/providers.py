@@ -39,23 +39,20 @@ from app.application.form.use_cases.delete_form_template import DeleteFormTempla
 from app.application.form.use_cases.get_form_template import GetFormTemplateUseCase
 from app.application.form.use_cases.get_form_template_by_id import GetFormTemplateByIdUseCase
 from app.application.form.use_cases.list_form_template_versions import ListFormTemplateVersionsUseCase
+from app.application.form.use_cases.list_form_templates import ListFormTemplatesUseCase
 from app.application.form.use_cases.publish_form_template import PublishFormTemplateUseCase
 from app.application.form.use_cases.remove_field import RemoveFieldUseCase
 from app.application.form.use_cases.remove_field_option import RemoveFieldOptionUseCase
 from app.application.form.use_cases.update_field import UpdateFieldUseCase
 from app.application.form.use_cases.update_field_option import UpdateFieldOptionUseCase
 from app.application.form.use_cases.update_form_template import UpdateFormTemplateUseCase
-from app.application.freelancer.use_cases.activate_freelancer_level import ActivateFreelancerLevelUseCase
 from app.application.freelancer.use_cases.add_portfolio_item import AddPortfolioItemUseCase
 from app.application.freelancer.use_cases.admin_create_freelancer_profile_on_behalf import (
     AdminCreateFreelancerProfileOnBehalfUseCase,
 )
 from app.application.freelancer.use_cases.approve_freelancer import ApproveFreelancerUseCase
 from app.application.freelancer.use_cases.assign_freelancer_level import AssignFreelancerLevelUseCase
-from app.application.freelancer.use_cases.create_freelancer_level import CreateFreelancerLevelUseCase
 from app.application.freelancer.use_cases.create_freelancer_profile import CreateFreelancerProfileUseCase
-from app.application.freelancer.use_cases.deactivate_freelancer_level import DeactivateFreelancerLevelUseCase
-from app.application.freelancer.use_cases.delete_freelancer_level import DeleteFreelancerLevelUseCase
 from app.application.freelancer.use_cases.delete_portfolio_item import DeletePortfolioItemUseCase
 from app.application.freelancer.use_cases.delete_resume import DeleteResumeUseCase
 from app.application.freelancer.use_cases.get_current_resume import GetCurrentResumeUseCase
@@ -63,7 +60,6 @@ from app.application.freelancer.use_cases.get_freelancer_profile import GetFreel
 from app.application.freelancer.use_cases.get_portfolio_item import GetPortfolioItemUseCase
 from app.application.freelancer.use_cases.get_resume import GetResumeUseCase
 from app.application.freelancer.use_cases.list_freelancer_level_history import ListFreelancerLevelHistoryUseCase
-from app.application.freelancer.use_cases.list_freelancer_levels import ListFreelancerLevelsUseCase
 from app.application.freelancer.use_cases.list_freelancer_profiles_by_approval_status import (
     ListFreelancerProfilesByApprovalStatusUseCase,
 )
@@ -72,7 +68,6 @@ from app.application.freelancer.use_cases.list_resume_versions import ListResume
 from app.application.freelancer.use_cases.set_current_resume import SetCurrentResumeUseCase
 from app.application.freelancer.use_cases.soft_delete_freelancer_profile import SoftDeleteFreelancerProfileUseCase
 from app.application.freelancer.use_cases.submit_freelancer_approval import SubmitFreelancerApprovalUseCase
-from app.application.freelancer.use_cases.update_freelancer_level import UpdateFreelancerLevelUseCase
 from app.application.freelancer.use_cases.update_freelancer_profile import UpdateFreelancerProfileUseCase
 from app.application.freelancer.use_cases.update_portfolio_item import UpdatePortfolioItemUseCase
 from app.application.freelancer.use_cases.update_resume import UpdateResumeUseCase
@@ -104,6 +99,7 @@ from app.application.project.use_cases.cancel_project import CancelProjectUseCas
 from app.application.project.use_cases.close_project_revision_request import CloseProjectRevisionRequestUseCase
 from app.application.project.use_cases.complete_project import CompleteProjectUseCase
 from app.application.project.use_cases.create_project import CreateProjectUseCase
+from app.application.project.use_cases.delete_project import DeleteProjectUseCase
 from app.application.project.use_cases.get_available_projects import GetAvailableProjectsUseCase
 from app.application.project.use_cases.get_my_projects import GetMyProjectsUseCase
 from app.application.project.use_cases.get_project_application import GetProjectApplicationUseCase
@@ -118,6 +114,7 @@ from app.application.project.use_cases.reject_freelancer import RejectFreelancer
 from app.application.project.use_cases.request_revision import RequestRevisionUseCase
 from app.application.project.use_cases.start_project import StartProjectUseCase
 from app.application.project.use_cases.submit_delivery import SubmitDeliveryUseCase
+from app.application.project.use_cases.update_project import UpdateProjectUseCase
 from app.application.project.use_cases.view_applications import ViewApplicationsUseCase
 from app.application.project.use_cases.withdraw_application import WithdrawApplicationUseCase
 from app.application.reporting.use_cases.get_customer_statistics import GetCustomerStatisticsUseCase
@@ -146,14 +143,13 @@ from app.application.shared.ports import (
     IUnitOfWork,
 )
 from app.application.ticketing.use_cases.admin_create_ticket_on_behalf import AdminCreateTicketOnBehalfUseCase
-from app.application.ticketing.use_cases.assign_ticket import AssignTicketUseCase
 from app.application.ticketing.use_cases.close_ticket import CloseTicketUseCase
 from app.application.ticketing.use_cases.create_ticket import CreateTicketUseCase
 from app.application.ticketing.use_cases.delete_ticket_message import DeleteTicketMessageUseCase
 from app.application.ticketing.use_cases.get_ticket import GetTicketUseCase
 from app.application.ticketing.use_cases.get_ticket_messages import GetTicketMessagesUseCase
 from app.application.ticketing.use_cases.get_user_tickets import GetUserTicketsUseCase
-from app.application.ticketing.use_cases.list_ticket_participants import ListTicketParticipantsUseCase
+from app.application.ticketing.use_cases.list_related_users import ListRelatedUsersUseCase
 from app.application.ticketing.use_cases.send_message import SendMessageUseCase
 from app.application.ticketing.use_cases.update_ticket import UpdateTicketUseCase
 from app.application.ticketing.use_cases.update_ticket_message import UpdateTicketMessageUseCase
@@ -162,7 +158,6 @@ from app.domain.feedback.repositories import ICustomerReviewRepository, IRatingR
 from app.domain.form.repositories import IFormTemplateRepository
 from app.domain.freelancer.repositories import (
     IFreelancerLevelHistoryRepository,
-    IFreelancerLevelRepository,
     IFreelancerProfileRepository,
     IPortfolioItemRepository,
     IResumeRepository,
@@ -184,7 +179,12 @@ from app.domain.project.repositories import (
 )
 from app.domain.reporting.repositories import IReportingReadRepository
 from app.domain.review.repositories import ISupervisorReviewRepository
-from app.domain.ticketing.repositories import ITicketMessageRepository, ITicketParticipantRepository, ITicketRepository
+from app.domain.ticketing.repositories import (
+    IRelatedUsersRepository,
+    ITicketMessageRepository,
+    ITicketRepository,
+)
+from app.domain.ticketing.services import RelationshipEligibilityService
 
 
 def get_authorization_service() -> IAuthorizationService:
@@ -222,9 +222,6 @@ def get_form_template_repository() -> IFormTemplateRepository:
 def get_freelancer_level_history_repository() -> IFreelancerLevelHistoryRepository:
     raise NotImplementedError("must be overridden by bootstrap.container")
 
-
-def get_freelancer_level_repository() -> IFreelancerLevelRepository:
-    raise NotImplementedError("must be overridden by bootstrap.container")
 
 
 def get_freelancer_profile_repository() -> IFreelancerProfileRepository:
@@ -311,11 +308,15 @@ def get_ticket_message_repository() -> ITicketMessageRepository:
     raise NotImplementedError("must be overridden by bootstrap.container")
 
 
-def get_ticket_participant_repository() -> ITicketParticipantRepository:
+def get_related_users_repository() -> IRelatedUsersRepository:
     raise NotImplementedError("must be overridden by bootstrap.container")
 
 
 def get_ticket_repository() -> ITicketRepository:
+    raise NotImplementedError("must be overridden by bootstrap.container")
+
+
+def get_relationship_eligibility_service() -> RelationshipEligibilityService:
     raise NotImplementedError("must be overridden by bootstrap.container")
 
 
@@ -353,13 +354,6 @@ def get_accept_freelancer_use_case(
         clock,
         uow,
     )
-
-
-def get_activate_freelancer_level_use_case(
-    authorization_service: IAuthorizationService = Depends(get_authorization_service),
-    level_repo: IFreelancerLevelRepository = Depends(get_freelancer_level_repository),
-) -> ActivateFreelancerLevelUseCase:
-    return ActivateFreelancerLevelUseCase(authorization_service, level_repo)
 
 
 def get_activate_user_use_case(
@@ -414,7 +408,6 @@ def get_admin_apply_for_project_on_behalf_use_case(
     project_repo: IProjectRepository = Depends(get_project_repository),
     application_repo: IProjectApplicationRepository = Depends(get_project_application_repository),
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
-    level_repo: IFreelancerLevelRepository = Depends(get_freelancer_level_repository),
     id_generator: IIdGenerator = Depends(get_id_generator),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
@@ -424,7 +417,6 @@ def get_admin_apply_for_project_on_behalf_use_case(
         project_repo,
         application_repo,
         profile_repo,
-        level_repo,
         id_generator,
         clock,
         uow,
@@ -453,7 +445,6 @@ def get_admin_create_project_on_behalf_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     user_repo: IUserRepository = Depends(get_user_repository),
     project_repo: IProjectRepository = Depends(get_project_repository),
-    category_repo: ICategoryRepository = Depends(get_category_repository),
     form_template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
     status_history_repo: IProjectStatusHistoryRepository = Depends(get_project_status_history_repository),
     project_code_generator: IProjectCodeGenerator = Depends(get_project_code_generator),
@@ -465,7 +456,6 @@ def get_admin_create_project_on_behalf_use_case(
         authorization_service,
         user_repo,
         project_repo,
-        category_repo,
         form_template_repo,
         status_history_repo,
         project_code_generator,
@@ -479,21 +469,21 @@ def get_admin_create_ticket_on_behalf_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     user_repo: IUserRepository = Depends(get_user_repository),
     ticket_repo: ITicketRepository = Depends(get_ticket_repository),
-    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
     ticket_code_generator: ITicketCodeGenerator = Depends(get_ticket_code_generator),
     id_generator: IIdGenerator = Depends(get_id_generator),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
+    relationship_service: RelationshipEligibilityService = Depends(get_relationship_eligibility_service),
 ) -> AdminCreateTicketOnBehalfUseCase:
     return AdminCreateTicketOnBehalfUseCase(
         authorization_service,
         user_repo,
         ticket_repo,
-        participant_repo,
         ticket_code_generator,
         id_generator,
         clock,
         uow,
+        relationship_service,
     )
 
 
@@ -561,7 +551,6 @@ def get_apply_for_project_use_case(
     project_repo: IProjectRepository = Depends(get_project_repository),
     application_repo: IProjectApplicationRepository = Depends(get_project_application_repository),
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
-    level_repo: IFreelancerLevelRepository = Depends(get_freelancer_level_repository),
     id_generator: IIdGenerator = Depends(get_id_generator),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
@@ -571,7 +560,6 @@ def get_apply_for_project_use_case(
         project_repo,
         application_repo,
         profile_repo,
-        level_repo,
         id_generator,
         clock,
         uow,
@@ -607,27 +595,15 @@ def get_approve_delivery_use_case(
 def get_approve_freelancer_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
-    level_repo: IFreelancerLevelRepository = Depends(get_freelancer_level_repository),
-    level_history_repo: IFreelancerLevelHistoryRepository = Depends(get_freelancer_level_history_repository),
-    id_generator: IIdGenerator = Depends(get_id_generator),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> ApproveFreelancerUseCase:
-    return ApproveFreelancerUseCase(
-        authorization_service,
-        profile_repo,
-        level_repo,
-        level_history_repo,
-        id_generator,
-        clock,
-        uow,
-    )
+    return ApproveFreelancerUseCase(authorization_service, profile_repo, clock, uow)
 
 
 def get_assign_freelancer_level_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
-    level_repo: IFreelancerLevelRepository = Depends(get_freelancer_level_repository),
     level_history_repo: IFreelancerLevelHistoryRepository = Depends(get_freelancer_level_history_repository),
     id_generator: IIdGenerator = Depends(get_id_generator),
     clock: IClock = Depends(get_clock),
@@ -636,7 +612,6 @@ def get_assign_freelancer_level_use_case(
     return AssignFreelancerLevelUseCase(
         authorization_service,
         profile_repo,
-        level_repo,
         level_history_repo,
         id_generator,
         clock,
@@ -684,24 +659,6 @@ def get_assign_supervisor_use_case(
     )
 
 
-def get_assign_ticket_use_case(
-    authorization_service: IAuthorizationService = Depends(get_authorization_service),
-    ticket_repo: ITicketRepository = Depends(get_ticket_repository),
-    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
-    id_generator: IIdGenerator = Depends(get_id_generator),
-    clock: IClock = Depends(get_clock),
-    uow: IUnitOfWork = Depends(get_unit_of_work),
-) -> AssignTicketUseCase:
-    return AssignTicketUseCase(
-        authorization_service,
-        ticket_repo,
-        participant_repo,
-        id_generator,
-        clock,
-        uow,
-    )
-
-
 def get_block_user_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     user_repo: IUserRepository = Depends(get_user_repository),
@@ -709,6 +666,24 @@ def get_block_user_use_case(
     uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> BlockUserUseCase:
     return BlockUserUseCase(authorization_service, user_repo, clock, uow)
+
+
+def get_update_project_use_case(
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    project_repo: IProjectRepository = Depends(get_project_repository),
+    form_template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
+) -> UpdateProjectUseCase:
+    return UpdateProjectUseCase(authorization_service, project_repo, form_template_repo, uow)
+
+
+def get_delete_project_use_case(
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    project_repo: IProjectRepository = Depends(get_project_repository),
+    clock: IClock = Depends(get_clock),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
+) -> DeleteProjectUseCase:
+    return DeleteProjectUseCase(authorization_service, project_repo, clock, uow)
 
 
 def get_cancel_project_use_case(
@@ -755,11 +730,10 @@ def get_close_project_revision_request_use_case(
 def get_close_ticket_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     ticket_repo: ITicketRepository = Depends(get_ticket_repository),
-    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> CloseTicketUseCase:
-    return CloseTicketUseCase(authorization_service, ticket_repo, participant_repo, clock, uow)
+    return CloseTicketUseCase(authorization_service, ticket_repo, clock, uow)
 
 
 def get_complete_project_use_case(
@@ -800,15 +774,6 @@ def get_create_form_template_use_case(
     return CreateFormTemplateUseCase(authorization_service, template_repo, id_generator, clock, uow)
 
 
-def get_create_freelancer_level_use_case(
-    authorization_service: IAuthorizationService = Depends(get_authorization_service),
-    level_repo: IFreelancerLevelRepository = Depends(get_freelancer_level_repository),
-    id_generator: IIdGenerator = Depends(get_id_generator),
-    clock: IClock = Depends(get_clock),
-) -> CreateFreelancerLevelUseCase:
-    return CreateFreelancerLevelUseCase(authorization_service, level_repo, id_generator, clock)
-
-
 def get_create_freelancer_profile_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
@@ -828,7 +793,6 @@ def get_create_freelancer_profile_use_case(
 def get_create_project_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     project_repo: IProjectRepository = Depends(get_project_repository),
-    category_repo: ICategoryRepository = Depends(get_category_repository),
     form_template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
     status_history_repo: IProjectStatusHistoryRepository = Depends(get_project_status_history_repository),
     project_code_generator: IProjectCodeGenerator = Depends(get_project_code_generator),
@@ -839,7 +803,6 @@ def get_create_project_use_case(
     return CreateProjectUseCase(
         authorization_service,
         project_repo,
-        category_repo,
         form_template_repo,
         status_history_repo,
         project_code_generator,
@@ -851,27 +814,20 @@ def get_create_project_use_case(
 
 def get_create_ticket_use_case(
     ticket_repo: ITicketRepository = Depends(get_ticket_repository),
-    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
     ticket_code_generator: ITicketCodeGenerator = Depends(get_ticket_code_generator),
     id_generator: IIdGenerator = Depends(get_id_generator),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
+    relationship_service: RelationshipEligibilityService = Depends(get_relationship_eligibility_service),
 ) -> CreateTicketUseCase:
     return CreateTicketUseCase(
         ticket_repo,
-        participant_repo,
         ticket_code_generator,
         id_generator,
         clock,
         uow,
+        relationship_service,
     )
-
-
-def get_deactivate_freelancer_level_use_case(
-    authorization_service: IAuthorizationService = Depends(get_authorization_service),
-    level_repo: IFreelancerLevelRepository = Depends(get_freelancer_level_repository),
-) -> DeactivateFreelancerLevelUseCase:
-    return DeactivateFreelancerLevelUseCase(authorization_service, level_repo)
 
 
 def get_delete_category_use_case(
@@ -902,23 +858,19 @@ def get_delete_form_template_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
     project_repo: IProjectRepository = Depends(get_project_repository),
+    clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> DeleteFormTemplateUseCase:
-    return DeleteFormTemplateUseCase(authorization_service, template_repo, project_repo, uow)
-
-
-def get_delete_freelancer_level_use_case(
-    authorization_service: IAuthorizationService = Depends(get_authorization_service),
-    level_repo: IFreelancerLevelRepository = Depends(get_freelancer_level_repository),
-) -> DeleteFreelancerLevelUseCase:
-    return DeleteFreelancerLevelUseCase(authorization_service, level_repo)
+    return DeleteFormTemplateUseCase(authorization_service, template_repo, project_repo, clock, uow)
 
 
 def get_delete_portfolio_item_use_case(
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
     portfolio_item_repo: IPortfolioItemRepository = Depends(get_portfolio_item_repository),
+    clock: IClock = Depends(get_clock),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> DeletePortfolioItemUseCase:
-    return DeletePortfolioItemUseCase(profile_repo, portfolio_item_repo)
+    return DeletePortfolioItemUseCase(profile_repo, portfolio_item_repo, clock, uow)
 
 
 def get_delete_rating_use_case(
@@ -941,7 +893,6 @@ def get_delete_resume_use_case(
 def get_delete_ticket_message_use_case(
     ticket_repo: ITicketRepository = Depends(get_ticket_repository),
     message_repo: ITicketMessageRepository = Depends(get_ticket_message_repository),
-    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
@@ -949,7 +900,6 @@ def get_delete_ticket_message_use_case(
     return DeleteTicketMessageUseCase(
         ticket_repo,
         message_repo,
-        participant_repo,
         authorization_service,
         clock,
         uow,
@@ -967,9 +917,8 @@ def get_forgot_password_use_case(
 def get_get_available_projects_use_case(
     project_repo: IProjectRepository = Depends(get_project_repository),
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
-    level_repo: IFreelancerLevelRepository = Depends(get_freelancer_level_repository),
 ) -> GetAvailableProjectsUseCase:
-    return GetAvailableProjectsUseCase(project_repo, profile_repo, level_repo)
+    return GetAvailableProjectsUseCase(project_repo, profile_repo)
 
 
 def get_get_categories_use_case(
@@ -1170,17 +1119,15 @@ def get_get_system_analytics_use_case(
 def get_get_ticket_messages_use_case(
     ticket_repo: ITicketRepository = Depends(get_ticket_repository),
     message_repo: ITicketMessageRepository = Depends(get_ticket_message_repository),
-    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
 ) -> GetTicketMessagesUseCase:
-    return GetTicketMessagesUseCase(ticket_repo, message_repo, participant_repo)
+    return GetTicketMessagesUseCase(ticket_repo, message_repo)
 
 
 def get_get_ticket_use_case(
     ticket_repo: ITicketRepository = Depends(get_ticket_repository),
-    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
 ) -> GetTicketUseCase:
-    return GetTicketUseCase(ticket_repo, participant_repo, authorization_service)
+    return GetTicketUseCase(ticket_repo, authorization_service)
 
 
 def get_get_user_statistics_use_case(
@@ -1195,6 +1142,13 @@ def get_get_user_tickets_use_case(
     ticket_repo: ITicketRepository = Depends(get_ticket_repository),
 ) -> GetUserTicketsUseCase:
     return GetUserTicketsUseCase(authorization_service, ticket_repo)
+
+
+def get_list_related_users_use_case(
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    related_users_repo: IRelatedUsersRepository = Depends(get_related_users_repository),
+) -> ListRelatedUsersUseCase:
+    return ListRelatedUsersUseCase(authorization_service, related_users_repo)
 
 
 def get_grant_permission_use_case(
@@ -1232,6 +1186,12 @@ def get_list_customer_reviews_use_case(
     return ListCustomerReviewsUseCase(project_repo, customer_review_repo, authorization_service)
 
 
+def get_list_form_templates_use_case(
+    template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
+) -> ListFormTemplatesUseCase:
+    return ListFormTemplatesUseCase(template_repo)
+
+
 def get_list_form_template_versions_use_case(
     template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
 ) -> ListFormTemplateVersionsUseCase:
@@ -1248,13 +1208,6 @@ def get_list_freelancer_level_history_use_case(
         profile_repo,
         level_history_repo,
     )
-
-
-def get_list_freelancer_levels_use_case(
-    authorization_service: IAuthorizationService = Depends(get_authorization_service),
-    level_repo: IFreelancerLevelRepository = Depends(get_freelancer_level_repository),
-) -> ListFreelancerLevelsUseCase:
-    return ListFreelancerLevelsUseCase(authorization_service, level_repo)
 
 
 def get_list_freelancer_profiles_by_approval_status_use_case(
@@ -1316,14 +1269,6 @@ def get_list_roles_use_case(
     role_repo: IRoleRepository = Depends(get_role_repository),
 ) -> ListRolesUseCase:
     return ListRolesUseCase(authorization_service, role_repo)
-
-
-def get_list_ticket_participants_use_case(
-    ticket_repo: ITicketRepository = Depends(get_ticket_repository),
-    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
-    authorization_service: IAuthorizationService = Depends(get_authorization_service),
-) -> ListTicketParticipantsUseCase:
-    return ListTicketParticipantsUseCase(ticket_repo, participant_repo, authorization_service)
 
 
 def get_login_user_use_case(
@@ -1577,7 +1522,6 @@ def get_revoke_permission_use_case(
 def get_send_message_use_case(
     ticket_repo: ITicketRepository = Depends(get_ticket_repository),
     message_repo: ITicketMessageRepository = Depends(get_ticket_message_repository),
-    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
     file_storage: IFileStorageService = Depends(get_file_storage_service),
     id_generator: IIdGenerator = Depends(get_id_generator),
     clock: IClock = Depends(get_clock),
@@ -1586,7 +1530,6 @@ def get_send_message_use_case(
     return SendMessageUseCase(
         ticket_repo,
         message_repo,
-        participant_repo,
         file_storage,
         id_generator,
         clock,
@@ -1751,13 +1694,6 @@ def get_update_form_template_use_case(
     return UpdateFormTemplateUseCase(authorization_service, template_repo)
 
 
-def get_update_freelancer_level_use_case(
-    authorization_service: IAuthorizationService = Depends(get_authorization_service),
-    level_repo: IFreelancerLevelRepository = Depends(get_freelancer_level_repository),
-) -> UpdateFreelancerLevelUseCase:
-    return UpdateFreelancerLevelUseCase(authorization_service, level_repo)
-
-
 def get_update_freelancer_profile_use_case(
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
 ) -> UpdateFreelancerProfileUseCase:
@@ -1791,7 +1727,6 @@ def get_update_resume_use_case(
 def get_update_ticket_message_use_case(
     ticket_repo: ITicketRepository = Depends(get_ticket_repository),
     message_repo: ITicketMessageRepository = Depends(get_ticket_message_repository),
-    participant_repo: ITicketParticipantRepository = Depends(get_ticket_participant_repository),
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
@@ -1799,7 +1734,6 @@ def get_update_ticket_message_use_case(
     return UpdateTicketMessageUseCase(
         ticket_repo,
         message_repo,
-        participant_repo,
         authorization_service,
         clock,
         uow,

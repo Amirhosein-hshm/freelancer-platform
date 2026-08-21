@@ -16,6 +16,8 @@ _TERMINAL_STATUSES = (
 
 
 class FakeProjectRepository(IProjectRepository):
+    """Mirrors the SQLAlchemy repository: every read excludes soft-deleted projects."""
+
     def __init__(self) -> None:
         self._store: dict[str, Project] = {}
 
@@ -23,14 +25,14 @@ class FakeProjectRepository(IProjectRepository):
         self._store[project.id] = project
 
     async def get_by_id(self, project_id: EntityId) -> Project:
-        try:
-            return self._store[project_id]
-        except KeyError:
-            raise ProjectNotFoundError(f"Project {project_id} not found.") from None
+        project = self._store.get(project_id)
+        if project is None or project.deleted_at is not None:
+            raise ProjectNotFoundError(f"Project {project_id} not found.")
+        return project
 
     async def get_by_code(self, project_code: ProjectCode) -> Project:
         for project in self._store.values():
-            if project.project_code == project_code:
+            if project.project_code == project_code and project.deleted_at is None:
                 return project
         raise ProjectNotFoundError(f"Project with code {project_code.value} not found.")
 

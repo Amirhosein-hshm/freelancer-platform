@@ -9,10 +9,7 @@ from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.freelancer.exceptions import FreelancerNotApprovedError
-from app.domain.freelancer.repositories import (
-    IFreelancerLevelRepository,
-    IFreelancerProfileRepository,
-)
+from app.domain.freelancer.repositories import IFreelancerProfileRepository
 from app.domain.project.entities import ProjectApplication
 from app.domain.project.enums import ProjectApplicationStatus
 from app.domain.project.exceptions import (
@@ -39,7 +36,6 @@ async def _apply_for_project(
     project_repo: IProjectRepository,
     application_repo: IProjectApplicationRepository,
     profile_repo: IFreelancerProfileRepository,
-    level_repo: IFreelancerLevelRepository,
     id_generator: IIdGenerator,
     clock: IClock,
     uow: IUnitOfWork,
@@ -58,13 +54,11 @@ async def _apply_for_project(
     existing = await application_repo.find_by_project_and_freelancer(project.id, profile.id)
     if existing is not None:
         raise DuplicateApplicationError(f"Freelancer {profile.id} already applied to project {project.id}.")
-    if profile.current_level_id is None:
-        raise FreelancerNotEligibleError(f"Freelancer {profile.id} has no assigned level and cannot apply.")
-    level = await level_repo.get_by_id(profile.current_level_id)
     active_count = await application_repo.count_active_for_freelancer(profile.id)
-    if not FreelancerEligibilityPolicy.is_eligible_to_apply(level, project, active_count):
+    if not FreelancerEligibilityPolicy.is_eligible_to_apply(profile.current_level, project, active_count):
         raise FreelancerNotEligibleError(
-            f"Freelancer {profile.id} is not eligible to apply to project {project.id} at level '{{level.level_key}}'."
+            f"Freelancer {profile.id} is not eligible to apply to project {project.id} "
+            f"at level '{(profile.current_level.value if profile.current_level else 'unassigned')}'."
         )
     application = ProjectApplication(
         id=await id_generator.new_id(),
@@ -98,7 +92,6 @@ class ApplyForProjectUseCase(UseCase[ApplyForProjectCommand, ApplyForProjectResu
         project_repo: IProjectRepository,
         application_repo: IProjectApplicationRepository,
         profile_repo: IFreelancerProfileRepository,
-        level_repo: IFreelancerLevelRepository,
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
@@ -107,7 +100,6 @@ class ApplyForProjectUseCase(UseCase[ApplyForProjectCommand, ApplyForProjectResu
         self._project_repo = project_repo
         self._application_repo = application_repo
         self._profile_repo = profile_repo
-        self._level_repo = level_repo
         self._id_generator = id_generator
         self._clock = clock
         self._uow = uow
@@ -125,7 +117,6 @@ class ApplyForProjectUseCase(UseCase[ApplyForProjectCommand, ApplyForProjectResu
             project_repo=self._project_repo,
             application_repo=self._application_repo,
             profile_repo=self._profile_repo,
-            level_repo=self._level_repo,
             id_generator=self._id_generator,
             clock=self._clock,
             uow=self._uow,

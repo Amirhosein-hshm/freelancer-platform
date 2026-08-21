@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from app.application.shared.pagination import DEFAULT_PAGE_SIZE
 from app.domain.shared.types import EntityId
 from app.domain.ticketing.enums import (
     TicketMessageType,
-    TicketParticipantRole,
     TicketPriority,
     TicketStatus,
 )
@@ -13,6 +13,7 @@ from app.domain.ticketing.enums import (
 @dataclass(frozen=True)
 class CreateTicketCommand:
     actor_id: EntityId
+    target_user_id: EntityId
     subject: str
     related_project_id: EntityId | None = None
     related_category_id: EntityId | None = None
@@ -29,24 +30,12 @@ class CreateTicketResult:
 @dataclass(frozen=True)
 class CreateTicketOnBehalfCommand:
     actor_id: EntityId
+    requester_user_id: EntityId
     target_user_id: EntityId
     subject: str
     related_project_id: EntityId | None = None
     related_category_id: EntityId | None = None
     priority: TicketPriority = TicketPriority.NORMAL
-
-
-@dataclass(frozen=True)
-class AssignTicketCommand:
-    actor_id: EntityId
-    ticket_id: EntityId
-    assignee_user_id: EntityId
-
-
-@dataclass(frozen=True)
-class AssignTicketResult:
-    ticket_id: EntityId
-    assigned_to_user_id: EntityId
 
 
 @dataclass(frozen=True)
@@ -68,6 +57,8 @@ class SendMessageResult:
 class GetTicketMessagesQuery:
     actor_id: EntityId
     ticket_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True)
@@ -85,12 +76,17 @@ class TicketMessageResult:
 @dataclass(frozen=True)
 class GetTicketMessagesResult:
     messages: list[TicketMessageResult]
+    total_items: int
+    page: int
+    page_size: int
 
 
 @dataclass(frozen=True)
 class GetUserTicketsQuery:
     actor_id: EntityId
     user_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True)
@@ -98,7 +94,7 @@ class TicketResult:
     ticket_id: EntityId
     ticket_code: str
     created_by_user_id: EntityId
-    assigned_to_user_id: EntityId | None
+    target_user_id: EntityId
     related_project_id: EntityId | None
     related_category_id: EntityId | None
     subject: str
@@ -111,6 +107,9 @@ class TicketResult:
 @dataclass(frozen=True)
 class GetUserTicketsResult:
     tickets: list[TicketResult]
+    total_items: int
+    page: int
+    page_size: int
 
 
 @dataclass(frozen=True)
@@ -152,26 +151,6 @@ class UpdateTicketResult:
 
 
 @dataclass(frozen=True)
-class ListTicketParticipantsQuery:
-    actor_id: EntityId
-    ticket_id: EntityId
-
-
-@dataclass(frozen=True)
-class TicketParticipantResult:
-    participant_id: EntityId
-    ticket_id: EntityId
-    user_id: EntityId
-    participant_role: TicketParticipantRole
-    joined_at: datetime
-
-
-@dataclass(frozen=True)
-class ListTicketParticipantsResult:
-    participants: list[TicketParticipantResult]
-
-
-@dataclass(frozen=True)
 class UpdateTicketMessageCommand:
     actor_id: EntityId
     ticket_id: EntityId
@@ -194,3 +173,27 @@ class DeleteTicketMessageCommand:
 @dataclass(frozen=True)
 class DeleteTicketMessageResult:
     message_id: EntityId
+
+
+@dataclass(frozen=True)
+class ListRelatedUsersQuery:
+    actor_id: EntityId
+    user_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True)
+class RelatedUserResult:
+    user_id: EntityId
+    email: str
+    first_name: str
+    last_name: str
+
+
+@dataclass(frozen=True)
+class ListRelatedUsersResult:
+    users: list[RelatedUserResult]
+    total_items: int
+    page: int
+    page_size: int

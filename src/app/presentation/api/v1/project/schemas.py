@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
+from app.domain.freelancer.enums import FreelancerLevelEnum
 from app.domain.project.enums import (
     BudgetType,
     DeliveryStatus,
@@ -19,12 +20,15 @@ class FormValueInputRequest(BaseModel):
 
 
 class CreateProjectRequest(BaseModel):
-    category_id: str
+    """``category_id`` is derived server-side from the template, so it is not accepted here."""
+
+    form_template_id: str
     title: str
     description: str
     visibility: ProjectVisibility
     budget_type: BudgetType
     currency_code: str
+    required_level: FreelancerLevelEnum | None = None
     fixed_budget: Decimal | None = None
     budget_min: Decimal | None = None
     budget_max: Decimal | None = None
@@ -35,12 +39,13 @@ class CreateProjectRequest(BaseModel):
 
 class AdminCreateProjectRequest(BaseModel):
     target_customer_user_id: str
-    category_id: str
+    form_template_id: str
     title: str
     description: str
     visibility: ProjectVisibility
     budget_type: BudgetType
     currency_code: str
+    required_level: FreelancerLevelEnum | None = None
     fixed_budget: Decimal | None = None
     budget_min: Decimal | None = None
     budget_max: Decimal | None = None
@@ -51,6 +56,27 @@ class AdminCreateProjectRequest(BaseModel):
 
 class CancelProjectRequest(BaseModel):
     reason: str
+
+
+class UpdateProjectRequest(BaseModel):
+    """DRAFT-only edit; every field is replaced, so send the full desired state.
+
+    ``category_id`` is derived from ``form_template_id`` and is not accepted here.
+    """
+
+    form_template_id: str
+    title: str
+    description: str
+    visibility: ProjectVisibility
+    budget_type: BudgetType
+    currency_code: str
+    required_level: FreelancerLevelEnum | None = None
+    fixed_budget: Decimal | None = None
+    budget_min: Decimal | None = None
+    budget_max: Decimal | None = None
+    priority: ProjectPriority = ProjectPriority.NORMAL
+    application_deadline: datetime | None = None
+    form_values: list[FormValueInputRequest] = Field(default_factory=list)
 
 
 class ApplyForProjectRequest(BaseModel):
@@ -92,6 +118,7 @@ class ProjectResponse(BaseModel):
     project_code: str
     customer_user_id: str
     category_id: str
+    required_level: FreelancerLevelEnum | None
     title: str
     description: str
     status: ProjectStatus
@@ -151,6 +178,16 @@ class PublishProjectResponse(BaseModel):
 class CancelProjectResponse(BaseModel):
     project_id: str
     status: ProjectStatus
+
+
+class UpdateProjectResponse(BaseModel):
+    project_id: str
+    status: ProjectStatus
+
+
+class DeleteProjectResponse(BaseModel):
+    project_id: str
+    deleted_at: datetime
 
 
 class ApplyForProjectResponse(BaseModel):

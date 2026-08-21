@@ -8,7 +8,6 @@ from app.application.shared.use_case import UseCase
 from app.domain.freelancer.entities import FreelancerLevelHistory
 from app.domain.freelancer.repositories import (
     IFreelancerLevelHistoryRepository,
-    IFreelancerLevelRepository,
     IFreelancerProfileRepository,
 )
 
@@ -18,7 +17,6 @@ class AssignFreelancerLevelUseCase(UseCase[AssignFreelancerLevelCommand, AssignF
         self,
         authorization_service: IAuthorizationService,
         profile_repo: IFreelancerProfileRepository,
-        level_repo: IFreelancerLevelRepository,
         level_history_repo: IFreelancerLevelHistoryRepository,
         id_generator: IIdGenerator,
         clock: IClock,
@@ -26,7 +24,6 @@ class AssignFreelancerLevelUseCase(UseCase[AssignFreelancerLevelCommand, AssignF
     ) -> None:
         self._authorization_service = authorization_service
         self._profile_repo = profile_repo
-        self._level_repo = level_repo
         self._level_history_repo = level_history_repo
         self._id_generator = id_generator
         self._clock = clock
@@ -35,16 +32,15 @@ class AssignFreelancerLevelUseCase(UseCase[AssignFreelancerLevelCommand, AssignF
     async def execute(self, request: AssignFreelancerLevelCommand) -> AssignFreelancerLevelResult:
         await self._authorization_service.require_permission(request.actor_id, "freelancer.assign_level")
         profile = await self._profile_repo.get_by_id(request.profile_id)
-        level = await self._level_repo.get_by_id(request.new_level_id)
-        old_level_id = profile.current_level_id
+        old_level = profile.current_level
         now = await self._clock.now()
         async with self._uow:
-            profile.change_level(level.id)
+            profile.change_level(request.new_level)
             history = FreelancerLevelHistory(
                 id=await self._id_generator.new_id(),
                 freelancer_profile_id=profile.id,
-                old_level_id=old_level_id,
-                new_level_id=level.id,
+                old_level=old_level,
+                new_level=request.new_level,
                 assigned_by_user_id=request.actor_id,
                 reason=request.reason,
                 assigned_at=now,
@@ -55,6 +51,6 @@ class AssignFreelancerLevelUseCase(UseCase[AssignFreelancerLevelCommand, AssignF
             await self._uow.commit()
         return AssignFreelancerLevelResult(
             profile_id=profile.id,
-            old_level_id=old_level_id,
-            new_level_id=level.id,
+            old_level=old_level,
+            new_level=request.new_level,
         )

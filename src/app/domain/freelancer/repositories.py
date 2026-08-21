@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
 
 from app.domain.freelancer.entities import (
-    FreelancerLevel,
     FreelancerLevelHistory,
     FreelancerProfile,
     PortfolioItem,
     Resume,
 )
-from app.domain.freelancer.enums import FreelancerApprovalStatus
+from app.domain.freelancer.enums import FreelancerApprovalStatus, FreelancerLevelEnum
 from app.domain.shared.types import EntityId
 
 
@@ -27,35 +26,18 @@ class IFreelancerProfileRepository(ABC):
     async def update(self, profile: FreelancerProfile) -> None: ...
 
     @abstractmethod
-    async def list_by_approval_status(self, status: FreelancerApprovalStatus) -> list[FreelancerProfile]: ...
+    async def list_by_approval_status(
+        self,
+        status: FreelancerApprovalStatus,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[FreelancerProfile]: ...
 
     @abstractmethod
-    async def list_available_for_level(self, level_id: EntityId) -> list[FreelancerProfile]: ...
-
-
-class IFreelancerLevelRepository(ABC):
-    @abstractmethod
-    async def add(self, level: FreelancerLevel) -> None: ...
+    async def count_by_approval_status(self, status: FreelancerApprovalStatus) -> int: ...
 
     @abstractmethod
-    async def get_by_id(self, level_id: EntityId) -> FreelancerLevel:
-        """Raise ``FreelancerLevelNotFoundError`` if absent."""
-
-    @abstractmethod
-    async def get_by_key(self, level_key: str) -> FreelancerLevel:
-        """Raise ``FreelancerLevelNotFoundError`` if absent."""
-
-    @abstractmethod
-    async def list_all(self) -> list[FreelancerLevel]: ...
-
-    @abstractmethod
-    async def list_active(self) -> list[FreelancerLevel]: ...
-
-    @abstractmethod
-    async def update(self, level: FreelancerLevel) -> None: ...
-
-    @abstractmethod
-    async def delete(self, level_id: EntityId) -> None: ...
+    async def list_available_for_level(self, level: FreelancerLevelEnum) -> list[FreelancerProfile]: ...
 
 
 class IFreelancerLevelHistoryRepository(ABC):
@@ -63,7 +45,15 @@ class IFreelancerLevelHistoryRepository(ABC):
     async def add(self, history: FreelancerLevelHistory) -> None: ...
 
     @abstractmethod
-    async def list_by_profile(self, profile_id: EntityId) -> list[FreelancerLevelHistory]: ...
+    async def list_by_profile(
+        self,
+        profile_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[FreelancerLevelHistory]: ...
+
+    @abstractmethod
+    async def count_by_profile(self, profile_id: EntityId) -> int: ...
 
 
 class IResumeRepository(ABC):
@@ -81,7 +71,15 @@ class IResumeRepository(ABC):
     async def delete(self, resume_id: EntityId) -> None: ...
 
     @abstractmethod
-    async def list_by_profile(self, profile_id: EntityId) -> list[Resume]: ...
+    async def list_by_profile(
+        self,
+        profile_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[Resume]: ...
+
+    @abstractmethod
+    async def count_by_profile(self, profile_id: EntityId) -> int: ...
 
     @abstractmethod
     async def get_current(self, profile_id: EntityId) -> Resume | None: ...
@@ -91,21 +89,29 @@ class IResumeRepository(ABC):
 
 
 class IPortfolioItemRepository(ABC):
+    """All read methods exclude soft-deleted items (``deleted_at IS NULL``)."""
+
     @abstractmethod
     async def add(self, item: PortfolioItem) -> None: ...
 
     @abstractmethod
     async def get_by_id(self, item_id: EntityId) -> PortfolioItem:
-        """Raise ``PortfolioItemNotFoundError`` if absent."""
+        """Raise ``PortfolioItemNotFoundError`` if absent or soft-deleted."""
 
     @abstractmethod
-    async def list_by_profile(self, profile_id: EntityId) -> list[PortfolioItem]: ...
+    async def list_by_profile(
+        self,
+        profile_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[PortfolioItem]: ...
+
+    @abstractmethod
+    async def count_by_profile(self, profile_id: EntityId) -> int: ...
 
     @abstractmethod
     async def get_by_file_asset_id(self, file_asset_id: EntityId) -> PortfolioItem | None: ...
 
     @abstractmethod
-    async def update(self, item: PortfolioItem) -> None: ...
-
-    @abstractmethod
-    async def delete(self, item_id: EntityId) -> None: ...
+    async def update(self, item: PortfolioItem) -> None:
+        """Also the persistence path for soft deletion (``PortfolioItem.soft_delete``)."""

@@ -1,7 +1,8 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.db.base import Base, TimestampMixin
@@ -15,6 +16,7 @@ class ProjectModel(TimestampMixin, Base):
     customer_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
     category_id: Mapped[str] = mapped_column(ForeignKey("categories.id"), index=True, nullable=False)
     form_template_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    required_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
     assigned_supervisor_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     selected_application_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -68,7 +70,9 @@ class ProjectDeliveryModel(TimestampMixin, Base):
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     reviewer_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     superseded_by_delivery_id: Mapped[str | None] = mapped_column(ForeignKey("project_deliveries.id"), nullable=True)
-    file_asset_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    # JSONB (not JSON): list_by_file_asset_id relies on the containment operator, which
+    # plain JSON does not support (it degrades to a LIKE that Postgres rejects).
+    file_asset_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
 
 
 class ProjectRevisionRequestModel(TimestampMixin, Base):

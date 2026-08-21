@@ -14,7 +14,9 @@ from app.domain.project.exceptions import (
     InvalidProjectStatusTransitionError,
     ProjectAlreadyAssignedError,
     ProjectLockedError,
+    ProjectNotDraftError,
 )
+from app.domain.shared.exceptions import InvalidStateTransitionError
 from app.domain.project.value_objects import Budget, ProjectCode
 
 NOW = datetime(2026, 8, 2, tzinfo=UTC)
@@ -222,3 +224,89 @@ class TestHelpers:
         assert make_project(status=ProjectStatus.PUBLISHED).can_accept_applications() is True
         assert make_project(status=ProjectStatus.COLLECTING_APPLICATIONS).can_accept_applications() is True
         assert make_project(status=ProjectStatus.ASSIGNED).can_accept_applications() is False
+
+
+class TestRequireDraft:
+    def test_draft_passes(self):
+        make_project(status=ProjectStatus.DRAFT).require_draft("be edited")
+
+    @pytest.mark.parametrize(
+        "status",
+        [
+            ProjectStatus.PUBLISHED,
+            ProjectStatus.COLLECTING_APPLICATIONS,
+            ProjectStatus.ASSIGNED,
+            ProjectStatus.IN_PROGRESS,
+            ProjectStatus.COMPLETED,
+            ProjectStatus.CANCELLED,
+        ],
+    )
+    def test_past_draft_raises_and_points_at_cancel(self, status):
+        project = make_project(status=status)
+        with pytest.raises(ProjectNotDraftError) as exc:
+            project.require_draft("be edited")
+        assert "Cancel the project instead" in str(exc.value)
+
+
+class TestSoftDelete:
+    def test_soft_delete_draft(self):
+        project = make_project(status=ProjectStatus.DRAFT)
+        project.soft_delete(NOW)
+        assert project.deleted_at == NOW
+
+    def test_soft_delete_past_draft_raises(self):
+        project = make_project(status=ProjectStatus.PUBLISHED)
+        with pytest.raises(ProjectNotDraftError):
+            project.soft_delete(NOW)
+        assert project.deleted_at is None
+
+    def test_double_soft_delete_raises(self):
+        project = make_project(status=ProjectStatus.DRAFT)
+        project.soft_delete(NOW)
+        with pytest.raises(InvalidStateTransitionError):
+            project.soft_delete(NOW)
+
+
+class TestUpdateDetails:
+    def _budget(self) -> Budget:
+        return Budget(
+            budget_type=BudgetType.RANGE,
+            fixed_amount=None,
+            min_amount=Decimal("500"),
+            max_amount=Decimal("1500"),
+            currency_code="EUR",
+        )
+
+    def test_update_draft_replaces_fields(self):
+        project = make_project(status=ProjectStatus.DRAFT)
+        deadline = datetime(2026, 9, 1, tzinfo=UTC)
+
+        project.update_details(
+            title="New title",
+            description="New description",
+            visibility=ProjectVisibility.PRIVATE,
+            priority=ProjectPriority.URGENT,
+            budget=self._budget(),
+            application_deadline=deadline,
+        )
+
+        assert project.title == "New title"
+        assert project.description == "New description"
+        assert project.visibility == ProjectVisibility.PRIVATE
+        assert project.priority == ProjectPriority.URGENT
+        assert project.budget.min_amount == Decimal("500")
+        assert project.application_deadline == deadline
+        assert project.status == ProjectStatus.DRAFT
+
+    def test_update_past_draft_raises(self):
+        project = make_project(status=ProjectStatus.PUBLISHED)
+        with pytest.raises(ProjectNotDraftError):
+            project.update_details(
+                title="New title",
+                description="New description",
+                visibility=ProjectVisibility.PRIVATE,
+                priority=ProjectPriority.URGENT,
+                budget=self._budget(),
+                application_deadline=None,
+            )
+        assert project.title == "Build an API"

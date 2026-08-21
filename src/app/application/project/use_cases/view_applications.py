@@ -11,6 +11,7 @@ from app.application.shared.authorization import (
     IAuthorizationService,
     authorize_owned_action,
 )
+from app.application.shared.pagination import limit_offset
 from app.application.shared.use_case import UseCase
 from app.domain.project.repositories import (
     IProjectApplicationRepository,
@@ -38,8 +39,17 @@ class ViewApplicationsUseCase(UseCase[ViewApplicationsQuery, ViewApplicationsRes
             PERMISSION_PROJECT_MANAGE_OWN,
             PERMISSION_PROJECT_MANAGE_ANY,
         )
-        applications = await self._application_repo.list_by_project(project.id)
+        limit, offset = limit_offset(request.page, request.page_size)
+        applications = await self._application_repo.list_by_project(
+            project.id,
+            limit=limit,
+            offset=offset,
+        )
+        total_items = await self._application_repo.count_by_project(project.id)
         return ViewApplicationsResult(
             project_id=project.id,
             applications=[to_application_result(a) for a in applications],
+            total_items=total_items,
+            page=request.page,
+            page_size=request.page_size,
         )

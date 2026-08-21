@@ -17,8 +17,10 @@ from app.application.shared.ports import (
     IUnitOfWork,
 )
 from app.application.shared.use_case import UseCase
-from app.domain.category.repositories import ICategoryRepository
+from app.domain.form.enums import FormTemplateStatus
+from app.domain.form.exceptions import FormTemplateNotPublishedError
 from app.domain.form.repositories import IFormTemplateRepository
+from app.domain.freelancer.enums import FreelancerLevelEnum
 from app.domain.project.entities import Project
 from app.domain.project.enums import (
     BudgetType,
@@ -38,12 +40,13 @@ async def _create_project(
     *,
     customer_user_id: EntityId,
     created_by_user_id: EntityId,
-    category_id: EntityId,
+    form_template_id: EntityId,
     title: str,
     description: str,
     visibility: ProjectVisibility,
     budget_type: BudgetType,
     currency_code: str,
+    required_level: FreelancerLevelEnum | None,
     fixed_budget: Decimal | None,
     budget_min: Decimal | None,
     budget_max: Decimal | None,
@@ -51,7 +54,6 @@ async def _create_project(
     application_deadline: datetime | None,
     form_values: list[FormValueInput],
     project_repo: IProjectRepository,
-    category_repo: ICategoryRepository,
     form_template_repo: IFormTemplateRepository,
     status_history_repo: IProjectStatusHistoryRepository,
     project_code_generator: IProjectCodeGenerator,
@@ -59,8 +61,14 @@ async def _create_project(
     clock: IClock,
     uow: IUnitOfWork,
 ) -> CreateProjectResult:
-    category = await category_repo.get_by_id(category_id)
-    template = await form_template_repo.get_published_for_category(category.id)
+    # The client picks the template (see ListFormTemplates); the category is DERIVED from it
+    # so the two can never disagree. Raises FormTemplateNotFoundError when absent/soft-deleted.
+    template = await form_template_repo.get_by_id(form_template_id)
+    if template.status != FormTemplateStatus.PUBLISHED:
+        raise FormTemplateNotPublishedError(
+            f"Form template {template.id} is '{template.status.value}'; projects can only be "
+            "created against a PUBLISHED template."
+        )
     validate_form_values(template, form_values)
     now = await clock.now()
     code_value = await project_code_generator.next_code(now.year)
@@ -76,8 +84,9 @@ async def _create_project(
         project_code=ProjectCode(code_value),
         customer_user_id=customer_user_id,
         created_by_user_id=created_by_user_id,
-        category_id=category.id,
+        category_id=template.category_id,
         form_template_id=template.id,
+        required_level=required_level,
         assigned_supervisor_user_id=None,
         selected_application_id=None,
         title=title,
@@ -120,7 +129,6 @@ class CreateProjectUseCase(UseCase[CreateProjectCommand, CreateProjectResult]):
         self,
         authorization_service: IAuthorizationService,
         project_repo: IProjectRepository,
-        category_repo: ICategoryRepository,
         form_template_repo: IFormTemplateRepository,
         status_history_repo: IProjectStatusHistoryRepository,
         project_code_generator: IProjectCodeGenerator,
@@ -130,7 +138,6 @@ class CreateProjectUseCase(UseCase[CreateProjectCommand, CreateProjectResult]):
     ) -> None:
         self._authorization_service = authorization_service
         self._project_repo = project_repo
-        self._category_repo = category_repo
         self._form_template_repo = form_template_repo
         self._status_history_repo = status_history_repo
         self._project_code_generator = project_code_generator
@@ -144,12 +151,13 @@ class CreateProjectUseCase(UseCase[CreateProjectCommand, CreateProjectResult]):
         return await _create_project(
             customer_user_id=request.actor_id,
             created_by_user_id=request.actor_id,
-            category_id=request.category_id,
+            form_template_id=request.form_template_id,
             title=request.title,
             description=request.description,
             visibility=request.visibility,
             budget_type=request.budget_type,
             currency_code=request.currency_code,
+            required_level=request.required_level,
             fixed_budget=request.fixed_budget,
             budget_min=request.budget_min,
             budget_max=request.budget_max,
@@ -157,7 +165,6 @@ class CreateProjectUseCase(UseCase[CreateProjectCommand, CreateProjectResult]):
             application_deadline=request.application_deadline,
             form_values=request.form_values,
             project_repo=self._project_repo,
-            category_repo=self._category_repo,
             form_template_repo=self._form_template_repo,
             status_history_repo=self._status_history_repo,
             project_code_generator=self._project_code_generator,

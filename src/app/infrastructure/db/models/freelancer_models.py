@@ -12,7 +12,7 @@ class FreelancerProfileModel(TimestampMixin, Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
-    current_level_id: Mapped[str | None] = mapped_column(ForeignKey("freelancer_levels.id"), index=True, nullable=True)
+    current_level: Mapped[str | None] = mapped_column(String(20), index=True, nullable=True)
     approval_status: Mapped[str] = mapped_column(String(20), nullable=False)
     approved_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -30,29 +30,13 @@ class FreelancerProfileModel(TimestampMixin, Base):
     created_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
 
-class FreelancerLevelModel(TimestampMixin, Base):
-    __tablename__ = "freelancer_levels"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    level_key: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
-    name: Mapped[str] = mapped_column(String(120), nullable=False)
-    rank_order: Mapped[int] = mapped_column(Integer, nullable=False)
-    access_type: Mapped[str] = mapped_column(String(20), nullable=False)
-    min_completed_projects: Mapped[int] = mapped_column(Integer, nullable=False)
-    min_rating: Mapped[Decimal | None] = mapped_column(Numeric(3, 2), nullable=True)
-    max_active_applications: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    can_apply_public_projects: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    can_apply_private_projects: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False)
-
-
 class FreelancerLevelHistoryModel(TimestampMixin, Base):
     __tablename__ = "freelancer_level_history"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     freelancer_profile_id: Mapped[str] = mapped_column(ForeignKey("freelancer_profiles.id"), index=True, nullable=False)
-    old_level_id: Mapped[str | None] = mapped_column(ForeignKey("freelancer_levels.id"), nullable=True)
-    new_level_id: Mapped[str] = mapped_column(ForeignKey("freelancer_levels.id"), index=True, nullable=False)
+    old_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    new_level: Mapped[str] = mapped_column(String(20), index=True, nullable=False)
     assigned_by_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
     reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

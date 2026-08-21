@@ -4,13 +4,13 @@ from pydantic import BaseModel, Field
 
 from app.domain.ticketing.enums import (
     TicketMessageType,
-    TicketParticipantRole,
     TicketPriority,
     TicketStatus,
 )
 
 
 class CreateTicketRequest(BaseModel):
+    target_user_id: str
     subject: str = Field(..., min_length=1)
     related_project_id: str | None = None
     related_category_id: str | None = None
@@ -18,6 +18,7 @@ class CreateTicketRequest(BaseModel):
 
 
 class AdminCreateTicketRequest(BaseModel):
+    requester_user_id: str
     target_user_id: str
     subject: str = Field(..., min_length=1)
     related_project_id: str | None = None
@@ -29,15 +30,6 @@ class CreateTicketResponse(BaseModel):
     ticket_id: str
     ticket_code: str
     status: TicketStatus
-
-
-class AssignTicketRequest(BaseModel):
-    assignee_user_id: str
-
-
-class AssignTicketResponse(BaseModel):
-    ticket_id: str
-    assigned_to_user_id: str
 
 
 class SendMessageRequest(BaseModel):
@@ -66,7 +58,7 @@ class TicketResponse(BaseModel):
     ticket_id: str
     ticket_code: str
     created_by_user_id: str
-    assigned_to_user_id: str | None
+    target_user_id: str
     related_project_id: str | None
     related_category_id: str | None
     subject: str
@@ -85,14 +77,6 @@ class UpdateTicketRequest(BaseModel):
     subject: str | None = Field(None, min_length=1)
     priority: TicketPriority | None = None
     status: TicketStatus | None = None
-
-
-class TicketParticipantResponse(BaseModel):
-    participant_id: str
-    ticket_id: str
-    user_id: str
-    participant_role: TicketParticipantRole
-    joined_at: datetime
 
 
 class UpdateTicketMessageRequest(BaseModel):

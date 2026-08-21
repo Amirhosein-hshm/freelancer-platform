@@ -57,13 +57,29 @@ class SqlAlchemyProjectApplicationRepository(IProjectApplicationRepository):
         row = result.scalar_one_or_none()
         return to_domain_project_application(row) if row is not None else None
 
-    async def list_by_project(self, project_id: EntityId) -> list[ProjectApplication]:
-        result = await self._session.execute(
+    async def list_by_project(
+        self,
+        project_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[ProjectApplication]:
+        stmt = (
             select(ProjectApplicationModel)
             .where(ProjectApplicationModel.project_id == project_id)
             .order_by(ProjectApplicationModel.applied_at.desc())
         )
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
         return [to_domain_project_application(row) for row in result.scalars().all()]
+
+    async def count_by_project(self, project_id: EntityId) -> int:
+        result = await self._session.execute(
+            select(func.count(ProjectApplicationModel.id)).where(
+                ProjectApplicationModel.project_id == project_id,
+            )
+        )
+        return int(result.scalar_one())
 
     async def count_active_for_freelancer(self, freelancer_profile_id: EntityId) -> int:
         result = await self._session.execute(

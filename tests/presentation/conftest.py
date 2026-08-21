@@ -79,7 +79,8 @@ def _make_overrides() -> dict[object, object]:
     """Wire every leaf provider stub to a fresh fake instance."""
     role_repo = FakeRoleRepository()
     permission_repo = FakePermissionRepository()
-    user_role_repo = FakeUserRoleRepository(role_repo)
+    user_repo = FakeUserRepository()
+    user_role_repo = FakeUserRoleRepository(role_repo, user_repo)
     role_permission_repo = FakeRolePermissionRepository(permission_repo)
 
     file_storage = FakeFileStorageService()
@@ -123,7 +124,7 @@ def _make_overrides() -> dict[object, object]:
         providers.get_ticket_repository: FakeTicketRepository(),
         providers.get_token_service: FakeTokenService(),
         providers.get_unit_of_work: FakeUnitOfWork(),
-        providers.get_user_repository: FakeUserRepository(),
+        providers.get_user_repository: user_repo,
         providers.get_user_role_repository: user_role_repo,
     }
     return overrides

@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.project.entities import ProjectDelivery
@@ -46,13 +46,29 @@ class SqlAlchemyProjectDeliveryRepository(IProjectDeliveryRepository):
         row = result.scalar_one_or_none()
         return to_domain_project_delivery(row) if row is not None else None
 
-    async def list_by_project(self, project_id: EntityId) -> list[ProjectDelivery]:
-        result = await self._session.execute(
+    async def list_by_project(
+        self,
+        project_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[ProjectDelivery]:
+        stmt = (
             select(ProjectDeliveryModel)
             .where(ProjectDeliveryModel.project_id == project_id)
             .order_by(ProjectDeliveryModel.version_no.desc())
         )
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
         return [to_domain_project_delivery(row) for row in result.scalars().all()]
+
+    async def count_by_project(self, project_id: EntityId) -> int:
+        result = await self._session.execute(
+            select(func.count(ProjectDeliveryModel.id)).where(
+                ProjectDeliveryModel.project_id == project_id,
+            )
+        )
+        return int(result.scalar_one())
 
     async def list_by_file_asset_id(self, file_asset_id: EntityId) -> list[ProjectDelivery]:
         result = await self._session.execute(

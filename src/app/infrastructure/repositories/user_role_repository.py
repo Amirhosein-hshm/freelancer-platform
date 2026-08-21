@@ -5,7 +5,7 @@ from app.domain.iam.entities import Role, UserRole
 from app.domain.iam.exceptions import UserRoleNotFoundError
 from app.domain.iam.repositories import IUserRoleRepository
 from app.domain.shared.types import EntityId
-from app.infrastructure.db.models.iam_models import RoleModel, UserRoleModel
+from app.infrastructure.db.models.iam_models import RoleModel, UserModel, UserRoleModel
 from app.infrastructure.repositories.role_repository import to_domain_role
 
 
@@ -60,8 +60,16 @@ class SqlAlchemyUserRoleRepository(IUserRoleRepository):
         return [to_domain_role(row) for row in result.scalars().all()]
 
     async def list_active_user_ids_for_role(self, role_id: EntityId) -> list[EntityId]:
+        """Soft-deleted users are excluded: a deleted admin must not satisfy the
+        last-admin guards in ``RemoveRoleUseCase``/``AdminDeleteUserUseCase``."""
         result = await self._session.execute(
-            select(UserRoleModel.user_id).where(UserRoleModel.role_id == role_id, UserRoleModel.is_active.is_(True))
+            select(UserRoleModel.user_id)
+            .join(UserModel, UserModel.id == UserRoleModel.user_id)
+            .where(
+                UserRoleModel.role_id == role_id,
+                UserRoleModel.is_active.is_(True),
+                UserModel.deleted_at.is_(None),
+            )
         )
         return list(result.scalars().all())
 

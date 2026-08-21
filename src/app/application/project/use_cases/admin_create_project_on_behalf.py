@@ -12,7 +12,6 @@ from app.application.shared.ports import (
     IUnitOfWork,
 )
 from app.application.shared.use_case import UseCase
-from app.domain.category.repositories import ICategoryRepository
 from app.domain.form.repositories import IFormTemplateRepository
 from app.domain.iam.repositories import IUserRepository
 from app.domain.project.repositories import (
@@ -27,7 +26,6 @@ class AdminCreateProjectOnBehalfUseCase(UseCase[CreateProjectOnBehalfCommand, Cr
         authorization_service: IAuthorizationService,
         user_repo: IUserRepository,
         project_repo: IProjectRepository,
-        category_repo: ICategoryRepository,
         form_template_repo: IFormTemplateRepository,
         status_history_repo: IProjectStatusHistoryRepository,
         project_code_generator: IProjectCodeGenerator,
@@ -38,7 +36,6 @@ class AdminCreateProjectOnBehalfUseCase(UseCase[CreateProjectOnBehalfCommand, Cr
         self._authorization_service = authorization_service
         self._user_repo = user_repo
         self._project_repo = project_repo
-        self._category_repo = category_repo
         self._form_template_repo = form_template_repo
         self._status_history_repo = status_history_repo
         self._project_code_generator = project_code_generator
@@ -53,12 +50,13 @@ class AdminCreateProjectOnBehalfUseCase(UseCase[CreateProjectOnBehalfCommand, Cr
         return await _create_project(
             customer_user_id=request.target_customer_user_id,
             created_by_user_id=request.actor_id,
-            category_id=request.category_id,
+            form_template_id=request.form_template_id,
             title=request.title,
             description=request.description,
             visibility=request.visibility,
             budget_type=request.budget_type,
             currency_code=request.currency_code,
+            required_level=request.required_level,
             fixed_budget=request.fixed_budget,
             budget_min=request.budget_min,
             budget_max=request.budget_max,
@@ -66,7 +64,6 @@ class AdminCreateProjectOnBehalfUseCase(UseCase[CreateProjectOnBehalfCommand, Cr
             application_deadline=request.application_deadline,
             form_values=request.form_values,
             project_repo=self._project_repo,
-            category_repo=self._category_repo,
             form_template_repo=self._form_template_repo,
             status_history_repo=self._status_history_repo,
             project_code_generator=self._project_code_generator,

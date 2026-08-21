@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
+from app.domain.freelancer.enums import FreelancerLevelEnum
 from app.domain.project.enums import (
     DeliveryStatus,
     ProjectApplicationStatus,
@@ -15,6 +16,7 @@ from app.domain.project.exceptions import (
     InvalidProjectStatusTransitionError,
     ProjectAlreadyAssignedError,
     ProjectLockedError,
+    ProjectNotDraftError,
 )
 from app.domain.project.value_objects import Budget, ProjectCode
 from app.domain.shared.entity import AggregateRoot, Entity
@@ -40,6 +42,7 @@ class Project(AggregateRoot):
     customer_user_id: EntityId
     category_id: EntityId
     form_template_id: EntityId
+    required_level: FreelancerLevelEnum | None
     assigned_supervisor_user_id: EntityId | None
     selected_application_id: EntityId | None
     title: str
@@ -136,6 +139,54 @@ class Project(AggregateRoot):
 
     def is_locked(self) -> bool:
         return self.status in _LOCKED_STATUSES
+
+    def require_draft(self, action: str) -> None:
+        """Guard for DRAFT-only operations, mirroring ``FormTemplate.require_draft``.
+
+        The message points a caller past DRAFT at ``CancelProject``, which is the supported
+        way to withdraw an already-published project.
+        """
+        if self.status != ProjectStatus.DRAFT:
+            raise ProjectNotDraftError(
+                f"Project {self.id} is '{self.status.value}' and cannot {action}; only DRAFT "
+                "projects can be edited or deleted. Cancel the project instead."
+            )
+
+    def soft_delete(self, at: datetime) -> None:
+        """DRAFT-only soft delete. Past DRAFT the supported path is ``cancel``."""
+        self.require_draft("be deleted")
+        if self.deleted_at is not None:
+            raise InvalidStateTransitionError(f"Project {self.id} is already deleted.")
+        self.deleted_at = at
+
+    def update_details(
+        self,
+        *,
+        category_id: EntityId,
+        form_template_id: EntityId,
+        required_level: FreelancerLevelEnum | None,
+        title: str,
+        description: str,
+        visibility: ProjectVisibility,
+        priority: ProjectPriority,
+        budget: Budget,
+        application_deadline: datetime | None,
+    ) -> None:
+        """DRAFT-only edit of the customer-supplied fields.
+
+        ``category_id`` must always be the category of ``form_template_id`` — the caller
+        derives it from the template rather than accepting it from the client.
+        """
+        self.require_draft("be edited")
+        self.category_id = category_id
+        self.form_template_id = form_template_id
+        self.required_level = required_level
+        self.title = title
+        self.description = description
+        self.visibility = visibility
+        self.priority = priority
+        self.budget = budget
+        self.application_deadline = application_deadline
 
     def can_accept_applications(self) -> bool:
         return self.status in _APPLICATION_OPEN_STATUSES

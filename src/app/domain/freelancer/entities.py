@@ -2,7 +2,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
-from app.domain.freelancer.enums import FreelancerApprovalStatus, FreelancerLevelAccessType
+from app.domain.freelancer.enums import (
+    FreelancerApprovalStatus,
+    FreelancerLevelEnum,
+)
 from app.domain.freelancer.exceptions import (
     FreelancerAlreadyApprovedError,
     InvalidRateRangeError,
@@ -13,29 +16,9 @@ from app.domain.shared.types import EntityId
 
 
 @dataclass(eq=False)
-class FreelancerLevel(Entity):
-    level_key: str
-    name: str
-    rank_order: int
-    access_type: FreelancerLevelAccessType
-    min_completed_projects: int
-    min_rating: Decimal | None
-    max_active_applications: int | None
-    can_apply_public_projects: bool
-    can_apply_private_projects: bool
-    is_active: bool
-
-    def deactivate(self) -> None:
-        self.is_active = False
-
-    def activate(self) -> None:
-        self.is_active = True
-
-
-@dataclass(eq=False)
 class FreelancerProfile(AggregateRoot):
     user_id: EntityId
-    current_level_id: EntityId | None
+    current_level: FreelancerLevelEnum | None
     approval_status: FreelancerApprovalStatus
     approved_by_user_id: EntityId | None
     approved_at: datetime | None
@@ -92,8 +75,8 @@ class FreelancerProfile(AggregateRoot):
         self.approved_at = at
         self.approval_note = note
 
-    def change_level(self, new_level_id: EntityId) -> None:
-        self.current_level_id = new_level_id
+    def change_level(self, new_level: FreelancerLevelEnum) -> None:
+        self.current_level = new_level
 
     def is_approved(self) -> bool:
         return self.approval_status == FreelancerApprovalStatus.APPROVED and self.deleted_at is None
@@ -114,8 +97,8 @@ class FreelancerProfile(AggregateRoot):
 @dataclass(eq=False)
 class FreelancerLevelHistory(Entity):
     freelancer_profile_id: EntityId
-    old_level_id: EntityId | None
-    new_level_id: EntityId
+    old_level: FreelancerLevelEnum | None
+    new_level: FreelancerLevelEnum
     assigned_by_user_id: EntityId
     reason: str | None
     assigned_at: datetime
@@ -143,3 +126,8 @@ class PortfolioItem(Entity):
     display_order: int
     is_featured: bool
     deleted_at: datetime | None
+
+    def soft_delete(self, at: datetime) -> None:
+        if self.deleted_at is not None:
+            raise InvalidStateTransitionError(f"Portfolio item {self.id} is already deleted.")
+        self.deleted_at = at

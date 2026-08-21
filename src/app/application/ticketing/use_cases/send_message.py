@@ -1,14 +1,13 @@
 from app.application.shared.exceptions import ValidationError
 from app.application.shared.ports import IClock, IFileStorageService, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
-from app.application.ticketing.access import ensure_participant
+from app.application.ticketing.access import ensure_party
 from app.application.ticketing.dto import SendMessageCommand, SendMessageResult
 from app.domain.ticketing.entities import TicketMessage
 from app.domain.ticketing.enums import TicketMessageType
 from app.domain.ticketing.exceptions import TicketClosedError
 from app.domain.ticketing.repositories import (
     ITicketMessageRepository,
-    ITicketParticipantRepository,
     ITicketRepository,
 )
 
@@ -18,7 +17,6 @@ class SendMessageUseCase(UseCase[SendMessageCommand, SendMessageResult]):
         self,
         ticket_repo: ITicketRepository,
         message_repo: ITicketMessageRepository,
-        participant_repo: ITicketParticipantRepository,
         file_storage: IFileStorageService,
         id_generator: IIdGenerator,
         clock: IClock,
@@ -26,7 +24,6 @@ class SendMessageUseCase(UseCase[SendMessageCommand, SendMessageResult]):
     ) -> None:
         self._ticket_repo = ticket_repo
         self._message_repo = message_repo
-        self._participant_repo = participant_repo
         self._file_storage = file_storage
         self._id_generator = id_generator
         self._clock = clock
@@ -41,7 +38,7 @@ class SendMessageUseCase(UseCase[SendMessageCommand, SendMessageResult]):
         ticket = await self._ticket_repo.get_by_id(request.ticket_id)
         if ticket.is_closed():
             raise TicketClosedError(f"Ticket {ticket.id} is closed and accepts no new messages.")
-        await ensure_participant(self._participant_repo, ticket.id, request.actor_id)
+        await ensure_party(ticket, request.actor_id)
         now = await self._clock.now()
         message = TicketMessage(
             id=await self._id_generator.new_id(),

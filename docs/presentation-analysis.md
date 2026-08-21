@@ -150,6 +150,7 @@ Read-only surfacing of the seeded role and permission catalogs. Both require `us
 
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|---|
+| 27a | GET | `/form-templates` | `list_form_templates` | auth | `ListFormTemplatesQuery` → `ListFormTemplatesUseCase` — `?category_id=&status=&search=` + page/page_size, SQL-level filters, `PaginationMeta` |
 | 28 | POST | `/form-templates` | `create_form_template` | auth | `CreateFormTemplateCommand` → `CreateFormTemplateUseCase` (201) |
 | 29 | **GET** | `/form-templates/{template_id}` | `get_form_template` | auth | `GetFormTemplateByIdQuery` → `GetFormTemplateByIdUseCase` |
 | 30 | PATCH | `/form-templates/{template_id}` | `update_form_template` | auth | `UpdateFormTemplateCommand` → `UpdateFormTemplateUseCase` |
@@ -203,25 +204,24 @@ Read-only surfacing of the seeded role and permission catalogs. Both require `us
 | 53c | GET | `/admin/freelancers` | `list_freelancer_profiles_by_approval_status` | auth (admin) | `ListFreelancerProfilesByApprovalStatusQuery` → `ListFreelancerProfilesByApprovalStatusUseCase` |
 | 53d | DELETE | `/admin/freelancers/{profile_id}` | `soft_delete_freelancer_profile` | auth (admin) | `SoftDeleteFreelancerProfileCommand` → `SoftDeleteFreelancerProfileUseCase` |
 
-### 3.5b Admin Freelancer Levels — `/api/v1/admin/freelancer-levels`
+### 3.5b Removed — Admin Freelancer Levels
 
-| # | Method | Path | op_id | Auth | Request → Response |
-|---|---|---|---|---|---|
-| 53e | GET | `/admin/freelancer-levels` | `list_freelancer_levels` | auth (admin) | `ListFreelancerLevelsQuery` → `ListFreelancerLevelsUseCase` |
-| 53f | POST | `/admin/freelancer-levels` | `create_freelancer_level` | auth (admin) | `CreateFreelancerLevelCommand` → `CreateFreelancerLevelUseCase` (201) |
-| 53g | PATCH | `/admin/freelancer-levels/{level_id}` | `update_freelancer_level` | auth (admin) | `UpdateFreelancerLevelCommand` → `UpdateFreelancerLevelUseCase` |
-| 53h | DELETE | `/admin/freelancer-levels/{level_id}` | `delete_freelancer_level` | auth (admin) | `DeleteFreelancerLevelCommand` → `DeleteFreelancerLevelUseCase` |
-| 53i | POST | `/admin/freelancer-levels/{level_id}/activate` | `activate_freelancer_level` | auth (admin) | `ActivateFreelancerLevelCommand` → `ActivateFreelancerLevelUseCase` |
-| 53j | POST | `/admin/freelancer-levels/{level_id}/deactivate` | `deactivate_freelancer_level` | auth (admin) | `DeactivateFreelancerLevelCommand` → `DeactivateFreelancerLevelUseCase` |
+> 7d removed the configurable `freelancer_levels` table and its CRUD/activate/deactivate
+> routes (`53e`–`53j` under `/admin/freelancer-levels`) in favor of the fixed
+> `FreelancerLevelEnum` (JUNIOR / MID_LEVEL / SENIOR). Level assignment remains at
+> `POST /freelancers/{profile_id}/level` (row 48, now takes `new_level: FreelancerLevelEnum`)
+> and history listing at row 53a.
 
 ### 3.6 Project (core) — `/api/v1/projects`
 
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|
-| 54 | POST | `/projects` | `create_project` | auth | `CreateProjectCommand` → `CreateProjectUseCase` (201) |
-| 55 | GET | `/projects` | `get_available_projects` | auth (freelancer) | `GetAvailableProjectsQuery` → `GetAvailableProjectsUseCase` `total_pages` meta built from returned list length |
+| 54 | POST | `/projects` | `create_project` | auth | `CreateProjectCommand` → `CreateProjectUseCase` (201) — `form_template_id` + optional `required_level` |
+| 55 | GET | `/projects` | `get_available_projects` | auth (freelancer) | `GetAvailableProjectsQuery` → `GetAvailableProjectsUseCase` — hierarchical level filter at SQL level; DB-level `limit`/`offset` + `count_available_for_freelancer` |
 | 56 | GET | `/projects/my` | `get_my_projects` | auth | `GetMyProjectsQuery` → `GetMyProjectsUseCase` |
 | 57 | GET | `/projects/{project_id}` | `get_project_details` | auth | `GetProjectDetailsQuery` → `GetProjectDetailsUseCase` |
+| 57a | PATCH | `/projects/{project_id}` | `update_project` | auth | `UpdateProjectCommand` → `UpdateProjectUseCase` — DRAFT-only, 409 `PROJECT_NOT_DRAFT` past DRAFT; `form_template_id` + optional `required_level` |
+| 57b | DELETE | `/projects/{project_id}` | `delete_project` | auth | `DeleteProjectCommand` → `DeleteProjectUseCase` — DRAFT-only soft delete, 409 `PROJECT_NOT_DRAFT` past DRAFT |
 | 58 | POST | `/projects/{project_id}/publish` | `publish_project` | auth | `PublishProjectCommand` → `PublishProjectUseCase` |
 | 59 | POST | `/projects/{project_id}/cancel` | `cancel_project` | auth | `CancelProjectCommand` → `CancelProjectUseCase` |
 | 60 | POST | `/projects/{project_id}/complete` | `complete_project` | auth | `CompleteProjectCommand` → `CompleteProjectUseCase` |
@@ -242,7 +242,7 @@ Read-only surfacing of the seeded role and permission catalogs. Both require `us
 
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|
-| 68a | POST | `/admin/projects` | `admin_create_project` | auth (admin) | `CreateProjectOnBehalfCommand` → `AdminCreateProjectOnBehalfUseCase` (201) |
+| 68a | POST | `/admin/projects` | `admin_create_project` | auth (admin) | `CreateProjectOnBehalfCommand` → `AdminCreateProjectOnBehalfUseCase` (201) — `target_customer_user_id` + `form_template_id` + optional `required_level` |
 | 68b | POST | `/admin/projects/{project_id}/applications` | `admin_apply_for_project` | auth (admin) | `AdminApplyForProjectOnBehalfCommand` → `AdminApplyForProjectOnBehalfUseCase` (201) |
 
 ### 3.7 Review — `/api/v1/reviews` + `/api/v1/deliveries`
@@ -283,23 +283,38 @@ Read-only surfacing of the seeded role and permission catalogs. Both require `us
 
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|
-| 79 | POST | `/tickets` | `create_ticket` | auth | `CreateTicketCommand` → `CreateTicketUseCase` (201) |
+| 79 | POST | `/tickets` | `create_ticket` | auth | `CreateTicketCommand` (requires `target_user_id`) → `CreateTicketUseCase` (201) |
 | 80 | GET | `/tickets` | `get_user_tickets` | auth | `GetUserTicketsQuery` → `GetUserTicketsUseCase` |
 | 81 | GET | `/tickets/{ticket_id}/messages` | `get_ticket_messages` | auth | `GetTicketMessagesQuery` → `GetTicketMessagesUseCase` |
 | 82 | POST | `/tickets/{ticket_id}/messages` | `send_message` | auth | `SendMessageCommand` → `SendMessageUseCase` (201) |
-| 83 | POST | `/tickets/{ticket_id}/assign` | `assign_ticket` | auth | `AssignTicketCommand` → `AssignTicketUseCase` |
 | 84 | POST | `/tickets/{ticket_id}/close` | `close_ticket` | auth | `CloseTicketCommand` → `CloseTicketUseCase` |
 | 84b | GET | `/tickets/{ticket_id}` | `get_ticket` | auth | `GetTicketQuery` → `GetTicketUseCase` |
 | 84c | PATCH | `/tickets/{ticket_id}` | `update_ticket` | auth | `UpdateTicketCommand` → `UpdateTicketUseCase` |
-| 84d | GET | `/tickets/{ticket_id}/participants` | `list_ticket_participants` | auth | `ListTicketParticipantsQuery` → `ListTicketParticipantsUseCase` |
 | 84e | PATCH | `/tickets/{ticket_id}/messages/{message_id}` | `update_ticket_message` | auth | `UpdateTicketMessageCommand` → `UpdateTicketMessageUseCase` |
 | 84f | DELETE | `/tickets/{ticket_id}/messages/{message_id}` | `delete_ticket_message` | auth | `DeleteTicketMessageCommand` → `DeleteTicketMessageUseCase` |
+
+> **7e:** `POST /tickets/{ticket_id}/assign` (#83) and `GET /tickets/{ticket_id}/participants`
+> (#84d) were removed along with the participant model and the `ticket.assign` permission.
+> `TicketResponse.assigned_to_user_id` became `target_user_id` (the second party, required);
+> `CreateTicketRequest` now requires `target_user_id`.
+
+> **7f:** `GET /users/related` (`list_related_users`) — the "other party" picker for ticket
+> creation — enumerates the users the actor has an eligible two-party relationship with
+> (`ticket.read_own` self / `ticket.read_any` on-behalf), via `IRelatedUsersRepository`
+> (DB-level pagination). Registered **before** the IAM `/users/{user_id}` route so the literal
+> `related` segment wins the route match.
+
+> **7g:** DB-level pagination on every remaining list endpoint. All 18 list endpoints pass
+> `page`/`page_size` into their Query; use cases use `limit_offset(page, page_size)` and return
+> `total_items`/`page`/`page_size`; routers build `PaginationMeta` via
+> `total_pages(total_items, page_size)`. The in-memory `paginate()` helper in
+> `core/pagination.py` was deleted (no callers remain; `PageQuery` kept).
 
 ### 3.9a Admin Ticketing (on-behalf) — `/api/v1/admin/tickets`
 
 | # | Method | Path | op_id | Auth | Request → Response |
 |---|---|---|---|---|---|
-| 84a | POST | `/admin/tickets` | `admin_create_ticket` | auth (admin) | `CreateTicketOnBehalfCommand` → `AdminCreateTicketOnBehalfUseCase` (201) |
+| 84a | POST | `/admin/tickets` | `admin_create_ticket` | auth (admin) | `CreateTicketOnBehalfCommand` (now `requester_user_id` + `target_user_id`) → `AdminCreateTicketOnBehalfUseCase` (201) |
 
 ### 3.10 Reporting — `/api/v1/reporting`
 
@@ -333,10 +348,10 @@ maps the `Result` → Pydantic response. Consistent pattern: **one handler = one
 | `POST /projects/{id}/applications` | `ApplyForProjectUseCase` | Self-service only; `target_freelancer_profile_id` removed from request body. |
 | `POST /admin/projects/{id}/applications` | `AdminApplyForProjectOnBehalfUseCase` | Dedicated admin on-behalf route; `target_freelancer_profile_id` is required in body. |
 | `POST /admin/freelancers` | `AdminCreateFreelancerProfileOnBehalfUseCase` | Dedicated admin on-behalf route. |
-| `POST /admin/tickets` | `AdminCreateTicketOnBehalfUseCase` | Dedicated admin on-behalf route. |
+| `POST /admin/tickets` | `AdminCreateTicketOnBehalfUseCase` | Dedicated admin on-behalf route; both `requester_user_id` and `target_user_id` required in body. |
 | `GET /auth/me` | none — direct repo + authz reads | Only endpoint calling `user_repo` + `list_permissions_for_user` directly. |
-| `GET /projects` | `GetAvailableProjectsUseCase` | Requires a freelancer profile; returns projects per level. Client-side pagination via shared `paginate()` — **no real DB pagination** (see §7). |
-| `GET /users` | `AdminListUsersUseCase` | Only list endpoint (currently) with **real DB offset/limit + `count_all` total** — the reference fix for §7 item 2. |
+| `GET /projects` | `GetAvailableProjectsUseCase` | Requires a freelancer profile; returns projects per level. DB-level pagination (`limit`/`offset` + count) since 7g. |
+| `GET /users` | `AdminListUsersUseCase` | Real DB offset/limit + `count_all` total — the reference fix that 7g extended to every other list endpoint. |
 | `GET /projects/{id}/applications/{application_id}` | `GetProjectApplicationUseCase` | Ownership check via project customer. |
 | `GET /projects/{id}/deliveries` | `ListProjectDeliveriesUseCase` | Ownership check via project customer. |
 | `GET /deliveries/{delivery_id}` | `GetProjectDeliveryUseCase` | Ownership check via project customer. |
@@ -351,9 +366,8 @@ maps the `Result` → Pydantic response. Consistent pattern: **one handler = one
 | `DELETE /feedback/reviews/{review_id}` | `DeleteCustomerReviewUseCase` | Project owner/admin. |
 | `PATCH /feedback/ratings/{rating_id}` | `UpdateRatingUseCase` | Project owner/admin. |
 | `DELETE /feedback/ratings/{rating_id}` | `DeleteRatingUseCase` | Project owner/admin. |
-| `GET /tickets/{ticket_id}` | `GetTicketUseCase` | Participant or `ticket.read_any`. |
-| `PATCH /tickets/{ticket_id}` | `UpdateTicketUseCase` | Ticket owner/admin; subject, priority, status transitions. |
-| `GET /tickets/{ticket_id}/participants` | `ListTicketParticipantsUseCase` | Participant or `ticket.read_any`. |
+| `GET /tickets/{ticket_id}` | `GetTicketUseCase` | Party of the two-party ticket, or `ticket.read_any`. |
+| `PATCH /tickets/{ticket_id}` | `UpdateTicketUseCase` | Ticket creator/admin; subject, priority, status transitions (close/archive/reopen). |
 | `PATCH /tickets/{ticket_id}/messages/{message_id}` | `UpdateTicketMessageUseCase` | Sender or admin. |
 | `DELETE /tickets/{ticket_id}/messages/{message_id}` | `DeleteTicketMessageUseCase` | Sender or admin; soft delete. |
 | All reporting GETs | `GetXStatisticsUseCase` | `ReportingQuery(actor_id)` reused for all — coarse (no filters). |
@@ -432,13 +446,16 @@ documented design deviation (see §7).
 1. ✅ **Resolved in Part 2 — `GET /form-templates/{template_id}` contract**
    (`form/router.py:~146`): now uses `GetFormTemplateByIdQuery(template_id=template_id)`
    and `GetFormTemplateByIdUseCase`. The old path var misinterpretation is fixed.
-2. ⚠️ **Pagination is client-side, not DB-backed** (partial fix 2026-08-09; Part 5
-   2026-08-16): `PageQuery` pages the in-memory list. All 18 bare-list endpoints now use the
-   shared `paginate()` helper (`core/pagination.py`), which slices the list and reports a
-   true `total_items`/`total_pages` from the full list length; out-of-range pages clamp to
-   the last page. `GET /users` (`admin_list_users`, §3.2/17) remains the only endpoint with
-   real `limit`/`offset` passed to the repository. DB-backed offset pagination is still
-   outstanding for the other endpoints (see `DOMAIN.md:193`).
+2. ✅ **Resolved in Part 7g — pagination is now DB-backed on every list endpoint.** The 18
+   bare-list endpoints previously sliced an in-memory list with the shared `paginate()`
+   helper (`core/pagination.py`, now removed); `GET /users` was the only repository-level
+   `limit`/`offset` caller. Since 7g, all list endpoints pass `page`/`page_size` into their
+   Query, use cases call `limit_offset(page, page_size)` and return `total_items`/`page`/
+   `page_size`, and routers build a true `PaginationMeta` with
+   `total_pages(total_items, page_size)`. Note the semantics change: out-of-range pages no
+   longer clamp to the last page — they return the requested page with an empty `data`
+   (see `tests/presentation/test_pagination.py:102`, which encodes the old clamping
+   behaviour).
 3. **401 drops the envelope**: `core/security.py` raises raw `HTTPException(401)`, so
    invalid/expired token responses are `{"detail": "..."}` not `ErrorEnvelope`.
 4. **WebSocket auth/error handling is unguarded** (`websocket/router.py`): if
@@ -446,8 +463,10 @@ documented design deviation (see §7).
    (500-style) instead of a clean close/error frame; token in a query string is a
    security smell (logs/leaks).
 5. ✅ **Resolved in Part 5 — modularity leak**: the copy-pasted `_pagination_meta`
-   helpers were removed; pagination now lives in the single `paginate()` helper in
-   `core/pagination.py`.
+   helpers were removed; pagination was centralized in the single `paginate()` helper in
+   `core/pagination.py`, which 7g subsequently replaced with DB-level pagination
+   (`application/shared/pagination.py` `limit_offset`/`total_pages`); `paginate()` itself
+   was then deleted (no callers remain).
 6. **`GET /auth/me` reads repos directly** instead of a Query UseCase — inconsistent with
    the "one handler = one UseCase" convention.
 7. ✅ **Resolved in Part 4a — on-behalf routes moved to dedicated admin paths.**
@@ -460,7 +479,24 @@ documented design deviation (see §7).
    `summary` from `operation_id` and merges `ErrorEnvelope`-modeled 400/401/403/404/409/422/500
    responses onto every operation. Verified: all 130 operations expose a `summary` and a 400
    response.
-9. ✅ **Resolved in Part 5 — `PageQuery.offset`** is now used by `paginate()`.
+9. ✅ **Resolved in Part 5 — `PageQuery.offset`** was used by `paginate()`; with DB-level
+   pagination the offset math now lives in `application/shared/pagination.py::limit_offset`.
+10. ✅ **Resolved in Part 7a — soft-deleted entities no longer surface through the API.**
+    Every repository read path for the eight entities carrying `deleted_at` now filters
+    `deleted_at IS NULL`, so soft-deleted rows return 404 from single-get endpoints and are
+    absent from every list endpoint. This closed a live auth bypass: **no** `User` read
+    filtered soft-deleted rows, and because login resolves the account via `get_by_email`, a
+    user deleted through `DELETE /users/{user_id}` could still authenticate and still showed
+    up in `GET /users` and its counts. `DELETE /freelancers/me/portfolio/{item_id}` also
+    changed from a hard delete to a true soft delete. See
+    `docs/domain-usecases-documentation.md` §12.6 for the full audit and the two documented
+    exceptions.
+11. ✅ **Resolved in Part 7a — `GET /files/{file_asset_id}` no longer 500s for ticket or
+    delivery attachments.** `DomainFileAccessPolicy` authorizes by calling
+    `list_by_file_asset_id` on ticket messages and project deliveries; both columns were
+    `JSON`, on which SQLAlchemy's containment predicate degrades to `LIKE`, which Postgres
+    rejects (`operator does not exist: json ~~ text`). Both are now `JSONB` (migration
+    `a1c4e77b90d2`), covered by an integration test that asserts a real containment match.
 
 ---
 
@@ -471,7 +507,7 @@ documented design deviation (see §7).
 | Architecture compliance | **Strong** — layering, dependency direction, DI-override seam, envelope/error mapping all respected. |
 | API surface coverage | **Strong** — 130 HTTP endpoints + 1 WebSocket covering all 9 contexts + file upload. |
 | Consistency (bytes/rules) | **Good but leaky** — 2 stale README claims, 401 global exception, WS unguarded. |
-| Correctness risk | **0 confirmed latent bugs**. Remaining: DB-backed pagination, WS close handling. File-attachment existence checks now enforced. |
+| Correctness risk | **0 confirmed latent bugs**. Remaining: WS close handling. Pagination gap (item 2) resolved by 7g — all list endpoints are DB-paginated. File-attachment existence checks now enforced. |
 | Production readiness | **Not yet** — no auth/refresh storage solution verified here, error envelope deviation on 401s, no WS error handling. |
 
 **Readiness to enter public alpha:** the surface area is real and well-formed (Phase-1

@@ -8,6 +8,7 @@ from app.application.project.permissions import (
     PERMISSION_PROJECT_MANAGE_OWN,
 )
 from app.application.shared.authorization import IAuthorizationService, authorize_owned_action
+from app.application.shared.pagination import limit_offset
 from app.application.shared.use_case import UseCase
 from app.domain.project.repositories import (
     IProjectRepository,
@@ -35,7 +36,13 @@ class ListProjectStatusHistoryUseCase(UseCase[ListProjectStatusHistoryQuery, Lis
             PERMISSION_PROJECT_MANAGE_OWN,
             PERMISSION_PROJECT_MANAGE_ANY,
         )
-        history = await self._status_history_repo.list_by_project(request.project_id)
+        limit, offset = limit_offset(request.page, request.page_size)
+        history = await self._status_history_repo.list_by_project(
+            request.project_id,
+            limit=limit,
+            offset=offset,
+        )
+        total_items = await self._status_history_repo.count_by_project(request.project_id)
         return ListProjectStatusHistoryResult(
             history=[
                 ProjectStatusHistoryResult(
@@ -48,5 +55,8 @@ class ListProjectStatusHistoryUseCase(UseCase[ListProjectStatusHistoryQuery, Lis
                     changed_at=h.changed_at,
                 )
                 for h in history
-            ]
+            ],
+            total_items=total_items,
+            page=request.page,
+            page_size=request.page_size,
         )

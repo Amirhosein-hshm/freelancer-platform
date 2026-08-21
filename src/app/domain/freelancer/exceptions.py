@@ -9,9 +9,6 @@ from app.domain.shared.exceptions import (
 class FreelancerProfileNotFoundError(EntityNotFoundError): ...
 
 
-class FreelancerLevelNotFoundError(EntityNotFoundError): ...
-
-
 class ResumeNotFoundError(EntityNotFoundError): ...
 
 

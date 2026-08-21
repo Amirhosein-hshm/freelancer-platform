@@ -3,7 +3,8 @@ from datetime import datetime
 from decimal import Decimal
 
 from app.application.shared.exceptions import ValidationError
-from app.domain.freelancer.enums import FreelancerApprovalStatus
+from app.application.shared.pagination import DEFAULT_PAGE_SIZE
+from app.domain.freelancer.enums import FreelancerApprovalStatus, FreelancerLevelEnum
 from app.domain.shared.types import EntityId
 
 
@@ -20,7 +21,7 @@ class FreelancerProfileResult:
     hourly_rate_min: Decimal | None
     hourly_rate_max: Decimal | None
     is_available: bool
-    current_level_id: EntityId | None
+    current_level: FreelancerLevelEnum | None
     approval_status: FreelancerApprovalStatus
     approved_at: datetime | None
 
@@ -177,7 +178,7 @@ class ApproveFreelancerCommand:
 class ApproveFreelancerResult:
     profile_id: EntityId
     approval_status: FreelancerApprovalStatus
-    current_level_id: EntityId | None
+    current_level: FreelancerLevelEnum | None
 
 
 @dataclass(frozen=True)
@@ -197,15 +198,15 @@ class RejectFreelancerResult:
 class AssignFreelancerLevelCommand:
     actor_id: EntityId
     profile_id: EntityId
-    new_level_id: EntityId
+    new_level: FreelancerLevelEnum
     reason: str | None = None
 
 
 @dataclass(frozen=True)
 class AssignFreelancerLevelResult:
     profile_id: EntityId
-    old_level_id: EntityId | None
-    new_level_id: EntityId
+    old_level: FreelancerLevelEnum | None
+    new_level: FreelancerLevelEnum
 
 
 @dataclass(frozen=True)
@@ -217,6 +218,16 @@ class GetFreelancerProfileQuery:
 class ListFreelancerProfilesByApprovalStatusQuery:
     actor_id: EntityId
     status: FreelancerApprovalStatus
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True)
+class ListFreelancerProfilesByApprovalStatusResult:
+    profiles: list[FreelancerProfileResult]
+    total_items: int
+    page: int
+    page_size: int
 
 
 @dataclass(frozen=True)
@@ -231,117 +242,30 @@ class SoftDeleteFreelancerProfileResult:
 
 
 @dataclass(frozen=True)
-class FreelancerLevelResult:
-    level_id: EntityId
-    level_key: str
-    name: str
-    rank_order: int
-    access_type: str
-    min_completed_projects: int
-    min_rating: Decimal | None
-    max_active_applications: int | None
-    can_apply_public_projects: bool
-    can_apply_private_projects: bool
-    is_active: bool
-
-
-@dataclass(frozen=True)
-class CreateFreelancerLevelCommand:
-    actor_id: EntityId
-    level_key: str
-    name: str
-    rank_order: int
-    access_type: str
-    min_completed_projects: int
-    min_rating: Decimal | None
-    max_active_applications: int | None
-    can_apply_public_projects: bool
-    can_apply_private_projects: bool
-
-    def validate(self) -> None:
-        if not self.level_key.strip() or not self.name.strip():
-            raise ValidationError("level_key and name are required.")
-
-
-@dataclass(frozen=True)
-class CreateFreelancerLevelResult:
-    level_id: EntityId
-
-
-@dataclass(frozen=True)
-class ListFreelancerLevelsQuery:
-    actor_id: EntityId
-
-
-@dataclass(frozen=True)
-class UpdateFreelancerLevelCommand:
-    actor_id: EntityId
-    level_id: EntityId
-    name: str | None = None
-    rank_order: int | None = None
-    access_type: str | None = None
-    min_completed_projects: int | None = None
-    min_rating: Decimal | None = None
-    max_active_applications: int | None = None
-    can_apply_public_projects: bool | None = None
-    can_apply_private_projects: bool | None = None
-
-
-@dataclass(frozen=True)
-class UpdateFreelancerLevelResult:
-    level_id: EntityId
-
-
-@dataclass(frozen=True)
-class DeleteFreelancerLevelCommand:
-    actor_id: EntityId
-    level_id: EntityId
-
-
-@dataclass(frozen=True)
-class DeleteFreelancerLevelResult:
-    level_id: EntityId
-
-
-@dataclass(frozen=True)
-class ActivateFreelancerLevelCommand:
-    actor_id: EntityId
-    level_id: EntityId
-
-
-@dataclass(frozen=True)
-class ActivateFreelancerLevelResult:
-    level_id: EntityId
-    is_active: bool
-
-
-@dataclass(frozen=True)
-class DeactivateFreelancerLevelCommand:
-    actor_id: EntityId
-    level_id: EntityId
-
-
-@dataclass(frozen=True)
-class DeactivateFreelancerLevelResult:
-    level_id: EntityId
-    is_active: bool
-
-
-@dataclass(frozen=True)
 class ListFreelancerLevelHistoryQuery:
     actor_id: EntityId
     profile_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True)
 class FreelancerLevelHistoryResult:
     history_id: EntityId
     freelancer_profile_id: EntityId
-    old_level_id: EntityId | None
-    new_level_id: EntityId
+    old_level: FreelancerLevelEnum | None
+    new_level: FreelancerLevelEnum
     assigned_by_user_id: EntityId
     reason: str | None
     assigned_at: datetime
+
+
+@dataclass(frozen=True)
+class ListFreelancerLevelHistoryResult:
+    history: list[FreelancerLevelHistoryResult]
+    total_items: int
+    page: int
+    page_size: int
 
 
 @dataclass(frozen=True)
@@ -370,6 +294,16 @@ class GetCurrentResumeQuery:
 class ListResumeVersionsQuery:
     actor_id: EntityId
     profile_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True)
+class ListResumeVersionsResult:
+    resumes: list[ResumeResult]
+    total_items: int
+    page: int
+    page_size: int
 
 
 @dataclass(frozen=True)
@@ -419,3 +353,13 @@ class GetPortfolioItemQuery:
 class ListPortfolioItemsQuery:
     actor_id: EntityId
     profile_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True)
+class ListPortfolioItemsResult:
+    items: list[PortfolioItemResult]
+    total_items: int
+    page: int
+    page_size: int

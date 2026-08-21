@@ -158,24 +158,47 @@ class TestUpdatePortfolioItemUseCase:
 
 
 class TestDeletePortfolioItemUseCase:
-    async def test_delete_item_succeeds(self, profile_repo, portfolio_item_repo, make_profile, make_portfolio_item):
+    async def test_delete_item_soft_deletes_and_hides_it(
+        self, profile_repo, portfolio_item_repo, clock, uow, make_profile, make_portfolio_item
+    ):
         await make_profile(user_id="user-1")
-        await make_portfolio_item()
-        use_case = DeletePortfolioItemUseCase(profile_repo=profile_repo, portfolio_item_repo=portfolio_item_repo)
+        await make_portfolio_item(file_asset_id="file-1")
+        use_case = DeletePortfolioItemUseCase(
+            profile_repo=profile_repo, portfolio_item_repo=portfolio_item_repo, clock=clock, uow=uow
+        )
 
         result = await use_case.execute(DeletePortfolioItemCommand(user_id="user-1", item_id="item-1"))
 
         assert result.item_id == "item-1"
+        assert uow.committed is True
+        # Soft-deleted: gone from every read path, single-get included.
         with pytest.raises(PortfolioItemNotFoundError):
             await portfolio_item_repo.get_by_id("item-1")
+        assert await portfolio_item_repo.list_by_profile("profile-1") == []
+        assert await portfolio_item_repo.get_by_file_asset_id("file-1") is None
+
+    async def test_delete_item_twice_raises_not_found(
+        self, profile_repo, portfolio_item_repo, clock, uow, make_profile, make_portfolio_item
+    ):
+        await make_profile(user_id="user-1")
+        await make_portfolio_item()
+        use_case = DeletePortfolioItemUseCase(
+            profile_repo=profile_repo, portfolio_item_repo=portfolio_item_repo, clock=clock, uow=uow
+        )
+        await use_case.execute(DeletePortfolioItemCommand(user_id="user-1", item_id="item-1"))
+
+        with pytest.raises(PortfolioItemNotFoundError):
+            await use_case.execute(DeletePortfolioItemCommand(user_id="user-1", item_id="item-1"))
 
     async def test_delete_item_of_another_profile_raises(
-        self, profile_repo, portfolio_item_repo, make_profile, make_portfolio_item
+        self, profile_repo, portfolio_item_repo, clock, uow, make_profile, make_portfolio_item
     ):
         await make_profile(user_id="user-1", profile_id="profile-1")
         await make_profile(user_id="user-2", profile_id="profile-2")
         await make_portfolio_item(profile_id="profile-2")
-        use_case = DeletePortfolioItemUseCase(profile_repo=profile_repo, portfolio_item_repo=portfolio_item_repo)
+        use_case = DeletePortfolioItemUseCase(
+            profile_repo=profile_repo, portfolio_item_repo=portfolio_item_repo, clock=clock, uow=uow
+        )
 
         with pytest.raises(PortfolioItemNotFoundError):
             await use_case.execute(DeletePortfolioItemCommand(user_id="user-1", item_id="item-1"))

@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.review.entities import SupervisorReview
@@ -38,8 +38,13 @@ class SqlAlchemySupervisorReviewRepository(ISupervisorReviewRepository):
         row = await self._find_row_by_delivery(project_delivery_id)
         return to_domain_supervisor_review(row) if row is not None else None
 
-    async def list_pending_for_supervisor(self, supervisor_user_id: EntityId) -> list[SupervisorReview]:
-        result = await self._session.execute(
+    async def list_pending_for_supervisor(
+        self,
+        supervisor_user_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[SupervisorReview]:
+        stmt = (
             select(SupervisorReviewModel)
             .where(
                 SupervisorReviewModel.supervisor_user_id == supervisor_user_id,
@@ -47,7 +52,19 @@ class SqlAlchemySupervisorReviewRepository(ISupervisorReviewRepository):
             )
             .order_by(SupervisorReviewModel.created_at.desc())
         )
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
         return [to_domain_supervisor_review(row) for row in result.scalars().all()]
+
+    async def count_pending_for_supervisor(self, supervisor_user_id: EntityId) -> int:
+        result = await self._session.execute(
+            select(func.count(SupervisorReviewModel.id)).where(
+                SupervisorReviewModel.supervisor_user_id == supervisor_user_id,
+                SupervisorReviewModel.decision == ReviewStatus.PENDING.value,
+            )
+        )
+        return int(result.scalar_one())
 
     async def update(self, review: SupervisorReview) -> None:
         row = await self._session.get(SupervisorReviewModel, review.id)

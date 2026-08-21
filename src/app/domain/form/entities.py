@@ -173,3 +173,8 @@ class FormTemplate(AggregateRoot):
     def require_draft(self, action: str) -> None:
         if self.status != FormTemplateStatus.DRAFT:
             raise InvalidStateTransitionError(f"Template {self.id} is '{self.status.value}' and cannot {action}.")
+
+    def soft_delete(self, at: datetime) -> None:
+        if self.deleted_at is not None:
+            raise InvalidStateTransitionError(f"Template {self.id} is already deleted.")
+        self.deleted_at = at

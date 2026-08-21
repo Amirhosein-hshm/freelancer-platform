@@ -30,8 +30,9 @@ class TestDeleteCategoryUseCase:
         result = await use_case.execute(DeleteCategoryCommand(actor_id="admin", category_id="cat-1"))
 
         assert result.category_id == "cat-1"
-        category = await category_repo.get_by_id("cat-1")
-        assert category.deleted_at == await clock.now()
+        # Soft-deleted categories must no longer surface on ANY read path.
+        with pytest.raises(CategoryNotFoundError):
+            await category_repo.get_by_id("cat-1")
         assert await category_repo.list_active() == []
 
     async def test_delete_unknown_category_raises(self, authorization_service, category_repo, project_repo, clock, uow):

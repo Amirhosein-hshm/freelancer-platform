@@ -262,8 +262,9 @@ entities and never mutates the catalog.
 - `AdminListUsersUseCase` — `require_permission("user.read")`; optional `status` filter
   (`list_by_status`) vs. unfiltered (`list_all`), both with real `limit`/`offset` and a true
   `count_all(status)` total. Uses a light `AdminUserSummary` (no per-user role lookup, so no
-  N+1). This is the first admin endpoint with real DB pagination (the other list endpoints
-  slice the client-side length).
+  N+1). This was the first admin endpoint with real DB pagination; 7g extended the same
+  `limit`/`offset` + `count_*` pattern to every other list endpoint via
+  `application/shared/pagination.py` (`limit_offset`/`total_pages`).
 
 > **Verify before relying on this section**: confirm the actual current signatures of these
 > three use cases and their DTOs in the codebase before building `presentation` endpoints
