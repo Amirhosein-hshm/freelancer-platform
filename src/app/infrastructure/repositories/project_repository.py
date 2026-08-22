@@ -19,7 +19,6 @@ _OPEN_STATUSES = (
 _TERMINAL_STATUSES = (
     ProjectStatus.COMPLETED.value,
     ProjectStatus.CANCELLED.value,
-    ProjectStatus.REJECTED.value,
     ProjectStatus.ARCHIVED.value,
 )
 

@@ -18,8 +18,6 @@ class Ticket(AggregateRoot):
     ticket_code: str
     created_by_user_id: EntityId
     target_user_id: EntityId
-    related_project_id: EntityId | None
-    related_category_id: EntityId | None
     subject: str
     status: TicketStatus
     priority: TicketPriority

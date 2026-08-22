@@ -10,7 +10,7 @@ from app.domain.ticketing.read_models import RelatedUser
 from app.domain.ticketing.repositories import IRelatedUsersRepository
 from app.infrastructure.db.models.category_models import CategorySupervisorModel
 from app.infrastructure.db.models.freelancer_models import FreelancerProfileModel
-from app.infrastructure.db.models.iam_models import UserModel
+from app.infrastructure.db.models.iam_models import RoleModel, UserModel, UserRoleModel
 from app.infrastructure.db.models.project_models import (
     ProjectApplicationModel,
     ProjectModel,
@@ -40,6 +40,10 @@ class SqlAlchemyRelatedUsersRepository(IRelatedUsersRepository):
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def are_related(self, user_a: EntityId, user_b: EntityId) -> bool:
+        rows = await self.list_related_users(user_a, limit=10000, offset=0)
+        return any(row.user_id == user_b for row in rows)
 
     async def list_related_users(self, user_id: EntityId, limit: int, offset: int) -> list[RelatedUser]:
         ids = self._related_user_ids_subquery(user_id)
@@ -92,6 +96,32 @@ class SqlAlchemyRelatedUsersRepository(IRelatedUsersRepository):
         )
 
         parts: list[Any] = [
+            # Admins may message any other active user.
+            select(UserModel.id.label("related_user_id"))
+            .select_from(UserModel)
+            .join(UserRoleModel, UserRoleModel.user_id == UserModel.id)
+            .join(RoleModel, RoleModel.id == UserRoleModel.role_id)
+            .where(
+                RoleModel.role_key == "admin",
+                UserRoleModel.is_active.is_(True),
+                UserRoleModel.revoked_at.is_(None),
+                UserModel.deleted_at.is_(None),
+                UserModel.id != user_id,
+            ),
+            # An admin can target every other active user.
+            select(UserModel.id.label("related_user_id")).where(
+                UserModel.deleted_at.is_(None), UserModel.id != user_id
+            ).where(
+                select(UserRoleModel.id)
+                .join(RoleModel, RoleModel.id == UserRoleModel.role_id)
+                .where(
+                    UserRoleModel.user_id == user_id,
+                    UserRoleModel.is_active.is_(True),
+                    UserRoleModel.revoked_at.is_(None),
+                    RoleModel.role_key == "admin",
+                )
+                .exists()
+            ),
             # --- Project anchor: user as customer ---
             select(project.assigned_supervisor_user_id.label("related_user_id")).where(
                 project.customer_user_id == user_id,

@@ -14,9 +14,11 @@ from app.application.shared.use_case import UseCase
 from app.domain.feedback.entities import CustomerReview
 from app.domain.feedback.exceptions import ProjectNotCompletedError
 from app.domain.feedback.repositories import ICustomerReviewRepository
+from app.domain.freelancer.repositories import IFreelancerProfileRepository
 from app.domain.project.entities import ProjectRevisionRequest
 from app.domain.project.enums import ProjectStatus, RevisionRequestStatus
 from app.domain.project.repositories import (
+    IProjectApplicationRepository,
     IProjectDeliveryRepository,
     IProjectRepository,
     IProjectRevisionRequestRepository,
@@ -38,6 +40,8 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
+        application_repo: IProjectApplicationRepository | None = None,
+        profile_repo: IFreelancerProfileRepository | None = None,
     ) -> None:
         self._authorization_service = authorization_service
         self._project_repo = project_repo
@@ -48,6 +52,8 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
         self._id_generator = id_generator
         self._clock = clock
         self._uow = uow
+        self._application_repo = application_repo
+        self._profile_repo = profile_repo
 
     async def execute(self, request: SubmitReviewCommand) -> SubmitReviewResult:
         project = await self._project_repo.get_by_id(request.project_id)
@@ -93,7 +99,17 @@ class SubmitReviewUseCase(UseCase[SubmitReviewCommand, SubmitReviewResult]):
                     project_id=project.id,
                     project_delivery_id=latest.id,
                     requested_by_user_id=request.actor_id,
-                    requested_to_user_id=None,
+                    requested_to_user_id=(
+                        await self._profile_repo.get_by_id(
+                            (
+                                await self._application_repo.get_by_id(project.selected_application_id)
+                            ).freelancer_profile_id
+                        )
+                    ).user_id
+                    if project.selected_application_id is not None
+                    and self._application_repo
+                    and self._profile_repo
+                    else None,
                     round_no=len(existing) + 1,
                     status=RevisionRequestStatus.OPEN,
                     reason=request.comment or "Delivery rejected by customer.",

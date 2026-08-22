@@ -10,6 +10,7 @@ from app.domain.shared.types import EntityId
 
 @dataclass(frozen=True)
 class GetSupervisorProjectsQuery:
+    actor_id: EntityId
     supervisor_user_id: EntityId
     page: int = 1
     page_size: int = DEFAULT_PAGE_SIZE
@@ -25,6 +26,7 @@ class GetSupervisorProjectsResult:
 
 @dataclass(frozen=True)
 class GetPendingReviewsQuery:
+    actor_id: EntityId
     supervisor_user_id: EntityId
     page: int = 1
     page_size: int = DEFAULT_PAGE_SIZE

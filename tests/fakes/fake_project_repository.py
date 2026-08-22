@@ -10,7 +10,6 @@ _OPEN_STATUSES = (ProjectStatus.PUBLISHED, ProjectStatus.COLLECTING_APPLICATIONS
 _TERMINAL_STATUSES = (
     ProjectStatus.COMPLETED,
     ProjectStatus.CANCELLED,
-    ProjectStatus.REJECTED,
     ProjectStatus.ARCHIVED,
 )
 

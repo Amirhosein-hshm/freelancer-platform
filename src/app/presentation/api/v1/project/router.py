@@ -4,7 +4,6 @@ from app.application.project.dto import (
     AcceptFreelancerCommand,
     ApplyForProjectCommand,
     CancelProjectCommand,
-    CompleteProjectCommand,
     CreateProjectCommand,
     DeleteProjectCommand,
     FormValueInput,
@@ -17,7 +16,6 @@ from app.application.project.dto import (
     ListProjectStatusHistoryQuery,
     PublishProjectCommand,
     RejectFreelancerCommand,
-    RequestRevisionCommand,
     StartProjectCommand,
     SubmitDeliveryCommand,
     UpdateProjectCommand,
@@ -27,7 +25,6 @@ from app.application.project.dto import (
 from app.application.project.use_cases.accept_freelancer import AcceptFreelancerUseCase
 from app.application.project.use_cases.apply_for_project import ApplyForProjectUseCase
 from app.application.project.use_cases.cancel_project import CancelProjectUseCase
-from app.application.project.use_cases.complete_project import CompleteProjectUseCase
 from app.application.project.use_cases.create_project import CreateProjectUseCase
 from app.application.project.use_cases.delete_project import DeleteProjectUseCase
 from app.application.project.use_cases.get_available_projects import GetAvailableProjectsUseCase
@@ -47,7 +44,6 @@ from app.application.project.use_cases.list_project_status_history import (
 )
 from app.application.project.use_cases.publish_project import PublishProjectUseCase
 from app.application.project.use_cases.reject_freelancer import RejectFreelancerUseCase
-from app.application.project.use_cases.request_revision import RequestRevisionUseCase
 from app.application.project.use_cases.start_project import StartProjectUseCase
 from app.application.project.use_cases.submit_delivery import SubmitDeliveryUseCase
 from app.application.project.use_cases.update_project import UpdateProjectUseCase
@@ -66,7 +62,6 @@ from app.presentation.api.v1.project.schemas import (
     ApplyForProjectResponse,
     CancelProjectRequest,
     CancelProjectResponse,
-    CompleteProjectResponse,
     CreateProjectRequest,
     CreateProjectResponse,
     DeleteProjectResponse,
@@ -78,8 +73,6 @@ from app.presentation.api.v1.project.schemas import (
     PublishProjectResponse,
     RejectFreelancerRequest,
     RejectFreelancerResponse,
-    RequestRevisionRequest,
-    RequestRevisionResponse,
     StartProjectResponse,
     SubmitDeliveryRequest,
     SubmitDeliveryResponse,
@@ -93,7 +86,6 @@ from app.presentation.core.providers import (
     get_accept_freelancer_use_case,
     get_apply_for_project_use_case,
     get_cancel_project_use_case,
-    get_complete_project_use_case,
     get_create_project_use_case,
     get_delete_project_use_case,
     get_get_available_projects_use_case,
@@ -105,7 +97,6 @@ from app.presentation.core.providers import (
     get_list_project_status_history_use_case,
     get_publish_project_use_case,
     get_reject_freelancer_use_case,
-    get_request_revision_use_case,
     get_start_project_use_case,
     get_submit_delivery_use_case,
     get_update_project_use_case,
@@ -230,7 +221,7 @@ async def get_project_details(
     current_user=Depends(get_current_user),
     use_case: GetProjectDetailsUseCase = Depends(get_get_project_details_use_case),
 ) -> SuccessEnvelope[ProjectDetailsResponse]:
-    result = await use_case.execute(GetProjectDetailsQuery(project_id=project_id))
+    result = await use_case.execute(GetProjectDetailsQuery(actor_id=current_user.user_id, project_id=project_id))
     return SuccessEnvelope(
         message="Project details.",
         data=ProjectDetailsResponse(
@@ -339,22 +330,6 @@ async def cancel_project(
         data=CancelProjectResponse(project_id=result.project_id, status=result.status),
     )
 
-
-@router.post(
-    "/{project_id}/complete",
-    response_model=SuccessEnvelope[CompleteProjectResponse],
-    operation_id="complete_project",
-)
-async def complete_project(
-    project_id: str,
-    current_user=Depends(get_current_user),
-    use_case: CompleteProjectUseCase = Depends(get_complete_project_use_case),
-) -> SuccessEnvelope[CompleteProjectResponse]:
-    result = await use_case.execute(CompleteProjectCommand(actor_id=current_user.user_id, project_id=project_id))
-    return SuccessEnvelope(
-        message="Project completed.",
-        data=CompleteProjectResponse(project_id=result.project_id, status=result.status),
-    )
 
 
 @router.post(
@@ -540,33 +515,6 @@ async def submit_delivery(
         ),
     )
 
-
-@router.post(
-    "/{project_id}/revisions",
-    response_model=SuccessEnvelope[RequestRevisionResponse],
-    operation_id="request_revision",
-)
-async def request_revision(
-    project_id: str,
-    payload: RequestRevisionRequest,
-    current_user=Depends(get_current_user),
-    use_case: RequestRevisionUseCase = Depends(get_request_revision_use_case),
-) -> SuccessEnvelope[RequestRevisionResponse]:
-    result = await use_case.execute(
-        RequestRevisionCommand(
-            actor_id=current_user.user_id,
-            project_id=project_id,
-            reason=payload.reason,
-        )
-    )
-    return SuccessEnvelope(
-        message="Revision requested.",
-        data=RequestRevisionResponse(
-            revision_id=result.revision_id,
-            round_no=result.round_no,
-            project_status=result.project_status,
-        ),
-    )
 
 
 def _to_revision_response(revision: ProjectRevisionRequestResponse) -> ProjectRevisionRequestResponse:

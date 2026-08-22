@@ -4,7 +4,7 @@ from app.application.project.dto import (
 )
 from app.application.project.status_history import record_status_history
 from app.application.shared.exceptions import PermissionDeniedError, ValidationError
-from app.application.shared.ports import IClock, IFileStorageService, IIdGenerator, IUnitOfWork
+from app.application.shared.ports import IClock, IFileStorageService, IIdGenerator, IUnitOfWork, IRealtimeNotifier, publish_project_event
 from app.application.shared.use_case import UseCase
 from app.domain.freelancer.repositories import IFreelancerProfileRepository
 from app.domain.project.entities import ProjectDelivery
@@ -13,6 +13,7 @@ from app.domain.project.repositories import (
     IProjectApplicationRepository,
     IProjectDeliveryRepository,
     IProjectRepository,
+    IProjectRevisionRequestRepository,
     IProjectStatusHistoryRepository,
 )
 from app.domain.review.entities import SupervisorReview
@@ -29,10 +30,12 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
         status_history_repo: IProjectStatusHistoryRepository,
         profile_repo: IFreelancerProfileRepository,
         review_repo: ISupervisorReviewRepository,
+        revision_repo: IProjectRevisionRequestRepository,
         file_storage: IFileStorageService,
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
+        notifier: IRealtimeNotifier | None = None,
     ) -> None:
         self._project_repo = project_repo
         self._application_repo = application_repo
@@ -40,10 +43,12 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
         self._status_history_repo = status_history_repo
         self._profile_repo = profile_repo
         self._review_repo = review_repo
+        self._revision_repo = revision_repo
         self._file_storage = file_storage
         self._id_generator = id_generator
         self._clock = clock
         self._uow = uow
+        self._notifier = notifier
 
     async def execute(self, request: SubmitDeliveryCommand) -> SubmitDeliveryResult:
         for file_asset_id in request.file_asset_ids:
@@ -83,7 +88,15 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
             if previous is not None and was_revision_requested:
                 previous.supersede(delivery.id)
                 await self._delivery_repo.update(previous)
-            project.mark_delivery_submitted()
+            if was_revision_requested:
+                project.mark_revision_delivery_submitted()
+                revisions = await self._revision_repo.list_by_project(project.id)
+                open_revisions = [r for r in revisions if r.status.value == "open"]
+                if open_revisions:
+                    open_revisions[-1].close(request.actor_id, now)
+                    await self._revision_repo.update(open_revisions[-1])
+            else:
+                project.mark_delivery_submitted()
             await record_status_history(
                 self._status_history_repo,
                 self._id_generator,
@@ -128,6 +141,16 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
             )
             await self._project_repo.update(project)
             await self._uow.commit()
+        if self._notifier is not None:
+            recipients = [project.customer_user_id]
+            if project.assigned_supervisor_user_id is not None:
+                recipients.append(project.assigned_supervisor_user_id)
+            await publish_project_event(
+                self._notifier,
+                recipients,
+                "project.delivery_submitted",
+                {"project_id": project.id, "delivery_id": delivery.id, "status": project.status.value},
+            )
         return SubmitDeliveryResult(
             delivery_id=delivery.id,
             version_no=delivery.version_no,

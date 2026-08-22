@@ -20,8 +20,6 @@ class SqlAlchemyTicketRepository(ITicketRepository):
                 ticket_code=ticket.ticket_code,
                 created_by_user_id=ticket.created_by_user_id,
                 target_user_id=ticket.target_user_id,
-                related_project_id=ticket.related_project_id,
-                related_category_id=ticket.related_category_id,
                 subject=ticket.subject,
                 status=ticket.status.value,
                 priority=ticket.priority.value,
@@ -87,8 +85,6 @@ class SqlAlchemyTicketRepository(ITicketRepository):
         row.ticket_code = ticket.ticket_code
         row.created_by_user_id = ticket.created_by_user_id
         row.target_user_id = ticket.target_user_id
-        row.related_project_id = ticket.related_project_id
-        row.related_category_id = ticket.related_category_id
         row.subject = ticket.subject
         row.status = ticket.status.value
         row.priority = ticket.priority.value

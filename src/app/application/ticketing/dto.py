@@ -15,8 +15,6 @@ class CreateTicketCommand:
     actor_id: EntityId
     target_user_id: EntityId
     subject: str
-    related_project_id: EntityId | None = None
-    related_category_id: EntityId | None = None
     priority: TicketPriority = TicketPriority.NORMAL
 
 
@@ -33,8 +31,6 @@ class CreateTicketOnBehalfCommand:
     requester_user_id: EntityId
     target_user_id: EntityId
     subject: str
-    related_project_id: EntityId | None = None
-    related_category_id: EntityId | None = None
     priority: TicketPriority = TicketPriority.NORMAL
 
 
@@ -95,8 +91,6 @@ class TicketResult:
     ticket_code: str
     created_by_user_id: EntityId
     target_user_id: EntityId
-    related_project_id: EntityId | None
-    related_category_id: EntityId | None
     subject: str
     status: TicketStatus
     priority: TicketPriority

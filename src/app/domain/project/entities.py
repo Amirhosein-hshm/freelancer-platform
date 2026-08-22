@@ -23,7 +23,7 @@ from app.domain.shared.entity import AggregateRoot, Entity
 from app.domain.shared.exceptions import InvalidStateTransitionError
 from app.domain.shared.types import EntityId
 
-_LOCKED_STATUSES = (ProjectStatus.COMPLETED, ProjectStatus.CANCELLED)
+_LOCKED_STATUSES = (ProjectStatus.COMPLETED, ProjectStatus.CANCELLED, ProjectStatus.ARCHIVED)
 _APPLICATION_OPEN_STATUSES = (ProjectStatus.PUBLISHED, ProjectStatus.COLLECTING_APPLICATIONS)
 
 
@@ -91,6 +91,10 @@ class Project(AggregateRoot):
                 "submitted from IN_PROGRESS or REVISION_REQUESTED."
             )
         self.status = ProjectStatus.DELIVERY_SUBMITTED
+
+    def mark_revision_delivery_submitted(self) -> None:
+        self._ensure_unlocked()
+        self._transition(ProjectStatus.REVISION_REQUESTED, ProjectStatus.DELIVERY_SUBMITTED)
 
     def move_to_supervisor_review(self) -> None:
         self._ensure_unlocked()

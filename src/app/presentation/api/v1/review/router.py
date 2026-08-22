@@ -3,40 +3,32 @@ from fastapi import APIRouter, Depends
 from app.application.project.dto import BudgetResult, GetProjectDeliveryQuery, ProjectResult
 from app.application.project.use_cases.get_project_delivery import GetProjectDeliveryUseCase
 from app.application.review.dto import (
-    ApproveDeliveryCommand,
     GetPendingReviewsQuery,
     GetSupervisorProjectsQuery,
     GetSupervisorReviewQuery,
-    RejectDeliveryCommand,
     ReviewDeliveryCommand,
     ReviewDeliveryResult,
     ReviewResult,
 )
-from app.application.review.use_cases.approve_delivery import ApproveDeliveryUseCase
 from app.application.review.use_cases.get_pending_reviews import GetPendingReviewsUseCase
 from app.application.review.use_cases.get_supervisor_projects import GetSupervisorProjectsUseCase
 from app.application.review.use_cases.get_supervisor_review import GetSupervisorReviewUseCase
-from app.application.review.use_cases.reject_delivery import RejectDeliveryUseCase
 from app.application.review.use_cases.review_delivery import ReviewDeliveryUseCase
 from app.application.shared.pagination import total_pages
 from app.presentation.api.v1.project.mappers import to_delivery_response
 from app.presentation.api.v1.project.schemas import BudgetResponse, DeliveryResponse, ProjectResponse
 from app.presentation.api.v1.review.schemas import (
-    ApproveDeliveryRequest,
     DeliveryReviewResponse,
-    RejectDeliveryRequest,
     ReviewDeliveryRequest,
     ReviewResponse,
 )
 from app.presentation.core.envelope import PaginationMeta, SuccessEnvelope
 from app.presentation.core.pagination import PageQuery
 from app.presentation.core.providers import (
-    get_approve_delivery_use_case,
     get_get_pending_reviews_use_case,
     get_get_project_delivery_use_case,
     get_get_supervisor_projects_use_case,
     get_get_supervisor_review_use_case,
-    get_reject_delivery_use_case,
     get_review_delivery_use_case,
 )
 from app.presentation.core.routes import DocumentedAPIRoute
@@ -110,6 +102,7 @@ async def get_pending_reviews(
 ) -> SuccessEnvelope[list[ReviewResponse]]:
     result = await use_case.execute(
         GetPendingReviewsQuery(
+            actor_id=current_user.user_id,
             supervisor_user_id=current_user.user_id,
             page=pagination.page,
             page_size=pagination.page_size,
@@ -140,6 +133,7 @@ async def get_supervisor_projects(
 ) -> SuccessEnvelope[list[ProjectResponse]]:
     result = await use_case.execute(
         GetSupervisorProjectsQuery(
+            actor_id=current_user.user_id,
             supervisor_user_id=current_user.user_id,
             page=pagination.page,
             page_size=pagination.page_size,
@@ -216,53 +210,5 @@ async def review_delivery(
     )
     return SuccessEnvelope(
         message="Delivery reviewed.",
-        data=_to_delivery_review_response(result),
-    )
-
-
-@deliveries_router.post(
-    "/{delivery_id}/approve",
-    response_model=SuccessEnvelope[DeliveryReviewResponse],
-    operation_id="approve_delivery",
-)
-async def approve_delivery(
-    delivery_id: str,
-    payload: ApproveDeliveryRequest,
-    current_user=Depends(get_current_user),
-    use_case: ApproveDeliveryUseCase = Depends(get_approve_delivery_use_case),
-) -> SuccessEnvelope[DeliveryReviewResponse]:
-    result = await use_case.execute(
-        ApproveDeliveryCommand(
-            actor_id=current_user.user_id,
-            project_delivery_id=delivery_id,
-            notes=payload.notes,
-        )
-    )
-    return SuccessEnvelope(
-        message="Delivery approved.",
-        data=_to_delivery_review_response(result),
-    )
-
-
-@deliveries_router.post(
-    "/{delivery_id}/reject",
-    response_model=SuccessEnvelope[DeliveryReviewResponse],
-    operation_id="reject_delivery",
-)
-async def reject_delivery(
-    delivery_id: str,
-    payload: RejectDeliveryRequest,
-    current_user=Depends(get_current_user),
-    use_case: RejectDeliveryUseCase = Depends(get_reject_delivery_use_case),
-) -> SuccessEnvelope[DeliveryReviewResponse]:
-    result = await use_case.execute(
-        RejectDeliveryCommand(
-            actor_id=current_user.user_id,
-            project_delivery_id=delivery_id,
-            reason=payload.reason,
-        )
-    )
-    return SuccessEnvelope(
-        message="Delivery rejected.",
         data=_to_delivery_review_response(result),
     )

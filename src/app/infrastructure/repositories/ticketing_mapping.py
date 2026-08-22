@@ -13,8 +13,6 @@ def to_domain_ticket(row: object) -> Ticket:
         ticket_code=row.ticket_code,
         created_by_user_id=row.created_by_user_id,
         target_user_id=row.target_user_id,
-        related_project_id=row.related_project_id,
-        related_category_id=row.related_category_id,
         subject=row.subject,
         status=TicketStatus(row.status),
         priority=TicketPriority(row.priority),

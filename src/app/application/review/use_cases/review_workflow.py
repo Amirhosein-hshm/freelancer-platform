@@ -2,11 +2,13 @@ from app.application.project.status_history import record_status_history
 from app.application.review.dto import ReviewDeliveryResult
 from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.exceptions import ValidationError
-from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
+from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork, IRealtimeNotifier, publish_project_event
 from app.domain.category.repositories import ICategorySupervisorRepository
+from app.domain.freelancer.repositories import IFreelancerProfileRepository
 from app.domain.project.entities import ProjectRevisionRequest
 from app.domain.project.enums import ProjectStatus, RevisionRequestStatus
 from app.domain.project.repositories import (
+    IProjectApplicationRepository,
     IProjectDeliveryRepository,
     IProjectRepository,
     IProjectRevisionRequestRepository,
@@ -41,6 +43,9 @@ async def decide_delivery_review(
     decision: ReviewStatus,
     notes: str | None,
     reject_reason: str | None,
+    application_repo: IProjectApplicationRepository | None = None,
+    profile_repo: IFreelancerProfileRepository | None = None,
+    notifier: IRealtimeNotifier | None = None,
 ) -> ReviewDeliveryResult:
     delivery = await delivery_repo.get_by_id(delivery_id)
     project = await project_repo.get_by_id(delivery.project_id)
@@ -90,7 +95,13 @@ async def decide_delivery_review(
                 project_id=project.id,
                 project_delivery_id=delivery.id,
                 requested_by_user_id=actor_id,
-                requested_to_user_id=None,
+                requested_to_user_id=(
+                    await profile_repo.get_by_id(
+                        (await application_repo.get_by_id(project.selected_application_id)).freelancer_profile_id
+                    )
+                ).user_id
+                if project.selected_application_id is not None and application_repo and profile_repo
+                else None,
                 round_no=len(existing_revisions) + 1,
                 status=RevisionRequestStatus.OPEN,
                 reason=reject_reason or "Delivery rejected by supervisor.",
@@ -122,6 +133,16 @@ async def decide_delivery_review(
         await delivery_repo.update(delivery)
         await project_repo.update(project)
         await uow.commit()
+    if notifier is not None:
+        recipients = [project.customer_user_id]
+        if project.assigned_supervisor_user_id is not None:
+            recipients.append(project.assigned_supervisor_user_id)
+        await publish_project_event(
+            notifier,
+            recipients,
+            "project.delivery_reviewed",
+            {"project_id": project.id, "delivery_id": delivery.id, "decision": review.decision.value},
+        )
     return ReviewDeliveryResult(
         delivery_id=delivery.id,
         project_id=project.id,

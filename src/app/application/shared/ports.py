@@ -137,6 +137,17 @@ class IRealtimeNotifier(ABC):
     async def notify_user(self, user_id: EntityId, event_type: str, payload: dict[str, object]) -> None: ...
 
 
+async def publish_project_event(
+    notifier: IRealtimeNotifier,
+    recipients: list[EntityId],
+    event_type: str,
+    payload: dict[str, object],
+) -> None:
+    """Publish a project workflow event to each stakeholder."""
+    for user_id in dict.fromkeys(recipients):
+        await notifier.notify_user(user_id, event_type, payload)
+
+
 class IFileStorageService(ABC):
     @abstractmethod
     async def get_metadata(self, file_asset_id: EntityId) -> FileAssetMetadata: ...

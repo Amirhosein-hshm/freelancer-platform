@@ -33,8 +33,6 @@ async def admin_create_ticket(
             requester_user_id=payload.requester_user_id,
             target_user_id=payload.target_user_id,
             subject=payload.subject,
-            related_project_id=payload.related_project_id,
-            related_category_id=payload.related_category_id,
             priority=payload.priority,
         )
     )

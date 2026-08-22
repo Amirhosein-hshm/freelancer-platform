@@ -6,6 +6,8 @@ from app.domain.ticketing.read_models import RelatedUser
 
 
 class IRelatedUsersRepository(ABC):
+    @abstractmethod
+    async def are_related(self, user_a: EntityId, user_b: EntityId) -> bool: ...
     """Enumerate the users an actor has an eligible ticket relationship with.
 
     Mirrors :class:`RelationshipEligibilityService`: users are related when they

@@ -12,8 +12,6 @@ from app.domain.ticketing.enums import (
 class CreateTicketRequest(BaseModel):
     target_user_id: str
     subject: str = Field(..., min_length=1)
-    related_project_id: str | None = None
-    related_category_id: str | None = None
     priority: TicketPriority = TicketPriority.NORMAL
 
 
@@ -21,8 +19,6 @@ class AdminCreateTicketRequest(BaseModel):
     requester_user_id: str
     target_user_id: str
     subject: str = Field(..., min_length=1)
-    related_project_id: str | None = None
-    related_category_id: str | None = None
     priority: TicketPriority = TicketPriority.NORMAL
 
 
@@ -59,8 +55,6 @@ class TicketResponse(BaseModel):
     ticket_code: str
     created_by_user_id: str
     target_user_id: str
-    related_project_id: str | None
-    related_category_id: str | None
     subject: str
     status: TicketStatus
     priority: TicketPriority

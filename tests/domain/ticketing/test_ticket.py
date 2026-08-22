@@ -14,9 +14,7 @@ def make_ticket(status: TicketStatus = TicketStatus.OPEN, **overrides: object) -
         "id": "ticket-1",
         "ticket_code": "TCK-2026-001",
         "created_by_user_id": "user-1",
-        "assigned_to_user_id": None,
-        "related_project_id": None,
-        "related_category_id": None,
+        "target_user_id": "user-2",
         "subject": "Problem with payment",
         "status": status,
         "priority": TicketPriority.NORMAL,
@@ -31,10 +29,9 @@ def make_ticket(status: TicketStatus = TicketStatus.OPEN, **overrides: object) -
 
 
 class TestTicket:
-    def test_assign_sets_assignee(self):
+    def test_target_is_party(self):
         ticket = make_ticket()
-        ticket.assign("agent-1")
-        assert ticket.assigned_to_user_id == "agent-1"
+        assert ticket.is_party("user-2") is True
 
     def test_close_sets_status_and_timestamp(self):
         ticket = make_ticket()

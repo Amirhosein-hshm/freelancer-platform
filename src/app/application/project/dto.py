@@ -347,6 +347,7 @@ class CompleteProjectResult:
 
 @dataclass(frozen=True)
 class GetProjectDetailsQuery:
+    actor_id: EntityId
     project_id: EntityId
 
 

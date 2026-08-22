@@ -42,9 +42,25 @@ def upgrade() -> None:
     op.drop_index("ix_ticket_participants_user_id", table_name="ticket_participants")
     op.drop_index("ix_ticket_participants_ticket_id", table_name="ticket_participants")
     op.drop_table("ticket_participants")
+    op.drop_index("ix_tickets_related_project_id", table_name="tickets")
+    op.drop_index("ix_tickets_related_category_id", table_name="tickets")
+    op.drop_constraint("fk_tickets_related_project_id_projects", "tickets", type_="foreignkey")
+    op.drop_constraint("fk_tickets_related_category_id_categories", "tickets", type_="foreignkey")
+    op.drop_column("tickets", "related_project_id")
+    op.drop_column("tickets", "related_category_id")
 
 
 def downgrade() -> None:
+    op.add_column("tickets", sa.Column("related_project_id", sa.String(length=36), nullable=True))
+    op.add_column("tickets", sa.Column("related_category_id", sa.String(length=36), nullable=True))
+    op.create_foreign_key(
+        "fk_tickets_related_project_id_projects", "tickets", "projects", ["related_project_id"], ["id"]
+    )
+    op.create_foreign_key(
+        "fk_tickets_related_category_id_categories", "tickets", "categories", ["related_category_id"], ["id"]
+    )
+    op.create_index("ix_tickets_related_project_id", "tickets", ["related_project_id"], unique=False)
+    op.create_index("ix_tickets_related_category_id", "tickets", ["related_category_id"], unique=False)
     op.create_table(
         "ticket_participants",
         sa.Column("id", sa.String(length=36), nullable=False),

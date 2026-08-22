@@ -46,8 +46,6 @@ class AdminCreateTicketOnBehalfUseCase(UseCase[CreateTicketOnBehalfCommand, Crea
             requester_user_id=request.requester_user_id,
             target_user_id=request.target_user_id,
             submitted_by_user_id=request.actor_id,
-            related_project_id=request.related_project_id,
-            related_category_id=request.related_category_id,
             subject=request.subject,
             priority=request.priority,
             ticket_repo=self._ticket_repo,

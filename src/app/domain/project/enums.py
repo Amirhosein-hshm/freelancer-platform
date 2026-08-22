@@ -33,7 +33,6 @@ class ProjectStatus(Enum):
     AWAITING_CUSTOMER_REVIEW = "awaiting_customer_review"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
-    REJECTED = "rejected"
     ARCHIVED = "archived"
 
 

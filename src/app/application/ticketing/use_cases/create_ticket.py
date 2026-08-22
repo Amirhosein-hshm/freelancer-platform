@@ -17,8 +17,6 @@ async def _create_ticket(
     requester_user_id: str,
     target_user_id: str,
     submitted_by_user_id: str | None,
-    related_project_id: str | None,
-    related_category_id: str | None,
     subject: str,
     priority: TicketPriority,
     ticket_repo: ITicketRepository,
@@ -31,8 +29,6 @@ async def _create_ticket(
     await relationship_service.ensure_related(
         user_a=requester_user_id,
         user_b=target_user_id,
-        related_project_id=related_project_id,
-        related_category_id=related_category_id,
     )
     now = await clock.now()
     code_value = await ticket_code_generator.next_code(now.year)
@@ -41,8 +37,6 @@ async def _create_ticket(
         ticket_code=code_value,
         created_by_user_id=requester_user_id,
         target_user_id=target_user_id,
-        related_project_id=related_project_id,
-        related_category_id=related_category_id,
         subject=subject,
         status=TicketStatus.OPEN,
         priority=priority,
@@ -85,8 +79,6 @@ class CreateTicketUseCase(UseCase[CreateTicketCommand, CreateTicketResult]):
             requester_user_id=request.actor_id,
             target_user_id=request.target_user_id,
             submitted_by_user_id=request.actor_id,
-            related_project_id=request.related_project_id,
-            related_category_id=request.related_category_id,
             subject=request.subject,
             priority=request.priority,
             ticket_repo=self._ticket_repo,

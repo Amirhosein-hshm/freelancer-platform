@@ -62,8 +62,6 @@ def _to_ticket_response(result: TicketResult) -> TicketResponse:
         ticket_code=result.ticket_code,
         created_by_user_id=result.created_by_user_id,
         target_user_id=result.target_user_id,
-        related_project_id=result.related_project_id,
-        related_category_id=result.related_category_id,
         subject=result.subject,
         status=result.status,
         priority=result.priority,
@@ -101,8 +99,6 @@ async def create_ticket(
             actor_id=current_user.user_id,
             target_user_id=payload.target_user_id,
             subject=payload.subject,
-            related_project_id=payload.related_project_id,
-            related_category_id=payload.related_category_id,
             priority=payload.priority,
         )
     )
@@ -271,8 +267,6 @@ async def update_ticket(
                 ticket_code="",
                 created_by_user_id="",
                 target_user_id="",
-                related_project_id=None,
-                related_category_id=None,
                 subject=payload.subject or "",
                 status=result.status,
                 priority=payload.priority or TicketPriority.NORMAL,

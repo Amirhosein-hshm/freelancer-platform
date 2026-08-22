@@ -8,8 +8,6 @@ def to_ticket_result(ticket: Ticket) -> TicketResult:
         ticket_code=ticket.ticket_code,
         created_by_user_id=ticket.created_by_user_id,
         target_user_id=ticket.target_user_id,
-        related_project_id=ticket.related_project_id,
-        related_category_id=ticket.related_category_id,
         subject=ticket.subject,
         status=ticket.status,
         priority=ticket.priority,

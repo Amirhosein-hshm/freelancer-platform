@@ -120,6 +120,7 @@ def build_app() -> FastAPI:
     app.dependency_overrides[providers.get_clock] = lambda: clock
     app.dependency_overrides[providers.get_token_service] = lambda: token_service
     app.dependency_overrides[providers.get_notification_service] = lambda: notification_service
+    app.dependency_overrides[providers.get_realtime_notifier] = lambda: notification_service
     app.dependency_overrides[providers.get_file_storage_service] = lambda: file_storage_service
 
     app.dependency_overrides[providers.get_file_access_policy] = lambda session=Depends(get_db_session): (
@@ -223,10 +224,7 @@ def build_app() -> FastAPI:
     )
     app.dependency_overrides[providers.get_relationship_eligibility_service] = lambda session=Depends(get_db_session): (
         RelationshipEligibilityService(
-            project_repo=SqlAlchemyProjectRepository(session),
-            project_application_repo=SqlAlchemyProjectApplicationRepository(session),
-            profile_repo=SqlAlchemyFreelancerProfileRepository(session),
-            category_supervisor_repo=SqlAlchemyCategorySupervisorRepository(session),
+            related_users_repo=SqlAlchemyRelatedUsersRepository(session),
         )
     )
     app.dependency_overrides[providers.get_related_users_repository] = lambda session=Depends(get_db_session): (

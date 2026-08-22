@@ -1,7 +1,7 @@
 from app.application.review.dto import ReviewDeliveryCommand, ReviewDeliveryResult
 from app.application.review.use_cases.review_workflow import decide_delivery_review
 from app.application.shared.authorization import IAuthorizationService
-from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
+from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork, IRealtimeNotifier
 from app.application.shared.use_case import UseCase
 from app.domain.category.repositories import ICategorySupervisorRepository
 from app.domain.project.repositories import (
@@ -26,6 +26,7 @@ class ReviewDeliveryUseCase(UseCase[ReviewDeliveryCommand, ReviewDeliveryResult]
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
+        notifier: IRealtimeNotifier | None = None,
     ) -> None:
         self._authorization_service = authorization_service
         self._delivery_repo = delivery_repo
@@ -37,6 +38,7 @@ class ReviewDeliveryUseCase(UseCase[ReviewDeliveryCommand, ReviewDeliveryResult]
         self._id_generator = id_generator
         self._clock = clock
         self._uow = uow
+        self._notifier = notifier
 
     async def execute(self, request: ReviewDeliveryCommand) -> ReviewDeliveryResult:
         return await decide_delivery_review(
@@ -55,4 +57,5 @@ class ReviewDeliveryUseCase(UseCase[ReviewDeliveryCommand, ReviewDeliveryResult]
             decision=request.decision,
             notes=request.notes,
             reject_reason=request.reject_reason,
+            notifier=self._notifier,
         )

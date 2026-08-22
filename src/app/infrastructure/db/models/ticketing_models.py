@@ -14,8 +14,6 @@ class TicketModel(Base):
     ticket_code: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     created_by_user_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
     target_user_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
-    related_project_id: Mapped[str | None] = mapped_column(ForeignKey("projects.id"), index=True, nullable=True)
-    related_category_id: Mapped[str | None] = mapped_column(ForeignKey("categories.id"), index=True, nullable=True)
     subject: Mapped[str] = mapped_column(String(200), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     priority: Mapped[str] = mapped_column(String(20), nullable=False)

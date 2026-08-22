@@ -136,6 +136,7 @@ from app.application.shared.ports import (
     IFileStorageService,
     IIdGenerator,
     INotificationService,
+    IRealtimeNotifier,
     IPasswordHasher,
     IProjectCodeGenerator,
     ITicketCodeGenerator,
@@ -233,6 +234,10 @@ def get_id_generator() -> IIdGenerator:
 
 
 def get_notification_service() -> INotificationService:
+    raise NotImplementedError("must be overridden by bootstrap.container")
+
+
+def get_realtime_notifier() -> IRealtimeNotifier:
     raise NotImplementedError("must be overridden by bootstrap.container")
 
 
@@ -1015,9 +1020,10 @@ def get_get_my_projects_use_case(
 
 
 def get_get_pending_reviews_use_case(
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
     review_repo: ISupervisorReviewRepository = Depends(get_supervisor_review_repository),
 ) -> GetPendingReviewsUseCase:
-    return GetPendingReviewsUseCase(review_repo)
+    return GetPendingReviewsUseCase(review_repo, authorization_service)
 
 
 def get_get_portfolio_item_use_case(
@@ -1051,11 +1057,13 @@ def get_get_project_delivery_use_case(
 
 
 def get_get_project_details_use_case(
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
     project_repo: IProjectRepository = Depends(get_project_repository),
     application_repo: IProjectApplicationRepository = Depends(get_project_application_repository),
     delivery_repo: IProjectDeliveryRepository = Depends(get_project_delivery_repository),
+    profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
 ) -> GetProjectDetailsUseCase:
-    return GetProjectDetailsUseCase(project_repo, application_repo, delivery_repo)
+    return GetProjectDetailsUseCase(project_repo, application_repo, delivery_repo, authorization_service, profile_repo)
 
 
 def get_get_project_rating_use_case(
@@ -1068,8 +1076,12 @@ def get_get_project_revision_request_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     project_repo: IProjectRepository = Depends(get_project_repository),
     revision_repo: IProjectRevisionRequestRepository = Depends(get_project_revision_request_repository),
+    application_repo: IProjectApplicationRepository = Depends(get_project_application_repository),
+    profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
 ) -> GetProjectRevisionRequestUseCase:
-    return GetProjectRevisionRequestUseCase(authorization_service, project_repo, revision_repo)
+    return GetProjectRevisionRequestUseCase(
+        authorization_service, project_repo, revision_repo, application_repo, profile_repo
+    )
 
 
 def get_get_project_statistics_use_case(
@@ -1088,9 +1100,10 @@ def get_get_resume_use_case(
 
 
 def get_get_supervisor_projects_use_case(
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
     project_repo: IProjectRepository = Depends(get_project_repository),
 ) -> GetSupervisorProjectsUseCase:
-    return GetSupervisorProjectsUseCase(project_repo)
+    return GetSupervisorProjectsUseCase(project_repo, authorization_service)
 
 
 def get_get_supervisor_review_use_case(
@@ -1236,16 +1249,24 @@ def get_list_project_deliveries_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     project_repo: IProjectRepository = Depends(get_project_repository),
     delivery_repo: IProjectDeliveryRepository = Depends(get_project_delivery_repository),
+    application_repo: IProjectApplicationRepository = Depends(get_project_application_repository),
+    profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
 ) -> ListProjectDeliveriesUseCase:
-    return ListProjectDeliveriesUseCase(authorization_service, project_repo, delivery_repo)
+    return ListProjectDeliveriesUseCase(
+        authorization_service, project_repo, delivery_repo, application_repo, profile_repo
+    )
 
 
 def get_list_project_revision_requests_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     project_repo: IProjectRepository = Depends(get_project_repository),
     revision_repo: IProjectRevisionRequestRepository = Depends(get_project_revision_request_repository),
+    application_repo: IProjectApplicationRepository = Depends(get_project_application_repository),
+    profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
 ) -> ListProjectRevisionRequestsUseCase:
-    return ListProjectRevisionRequestsUseCase(authorization_service, project_repo, revision_repo)
+    return ListProjectRevisionRequestsUseCase(
+        authorization_service, project_repo, revision_repo, application_repo, profile_repo
+    )
 
 
 def get_list_project_status_history_use_case(
@@ -1488,6 +1509,7 @@ def get_review_delivery_use_case(
     id_generator: IIdGenerator = Depends(get_id_generator),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
+    notifier: IRealtimeNotifier = Depends(get_realtime_notifier),
 ) -> ReviewDeliveryUseCase:
     return ReviewDeliveryUseCase(
         authorization_service,
@@ -1500,6 +1522,7 @@ def get_review_delivery_use_case(
         id_generator,
         clock,
         uow,
+        notifier,
     )
 
 
@@ -1578,10 +1601,12 @@ def get_submit_delivery_use_case(
     status_history_repo: IProjectStatusHistoryRepository = Depends(get_project_status_history_repository),
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
     review_repo: ISupervisorReviewRepository = Depends(get_supervisor_review_repository),
+    revision_repo: IProjectRevisionRequestRepository = Depends(get_project_revision_request_repository),
     file_storage: IFileStorageService = Depends(get_file_storage_service),
     id_generator: IIdGenerator = Depends(get_id_generator),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
+    notifier: IRealtimeNotifier = Depends(get_realtime_notifier),
 ) -> SubmitDeliveryUseCase:
     return SubmitDeliveryUseCase(
         project_repo,
@@ -1590,10 +1615,12 @@ def get_submit_delivery_use_case(
         status_history_repo,
         profile_repo,
         review_repo,
+        revision_repo,
         file_storage,
         id_generator,
         clock,
         uow,
+        notifier,
     )
 
 
@@ -1636,6 +1663,8 @@ def get_submit_review_use_case(
     id_generator: IIdGenerator = Depends(get_id_generator),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
+    application_repo: IProjectApplicationRepository = Depends(get_project_application_repository),
+    profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
 ) -> SubmitReviewUseCase:
     return SubmitReviewUseCase(
         authorization_service,
@@ -1647,6 +1676,8 @@ def get_submit_review_use_case(
         id_generator,
         clock,
         uow,
+        application_repo,
+        profile_repo,
     )
 
 
