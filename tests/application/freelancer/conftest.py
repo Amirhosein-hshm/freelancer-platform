@@ -3,11 +3,10 @@ from datetime import UTC, datetime
 import pytest
 
 from app.application.shared.ports import FileAssetContext, FileAssetMetadata
-from app.domain.freelancer.entities import FreelancerLevel, FreelancerProfile, PortfolioItem
-from app.domain.freelancer.enums import FreelancerApprovalStatus, FreelancerLevelAccessType
+from app.domain.freelancer.entities import FreelancerProfile, PortfolioItem
+from app.domain.freelancer.enums import FreelancerApprovalStatus, FreelancerLevelEnum
 from tests.fakes.fake_file_storage import FakeFileStorageService
 from tests.fakes.fake_freelancer_level_history_repository import FakeFreelancerLevelHistoryRepository
-from tests.fakes.fake_freelancer_level_repository import FakeFreelancerLevelRepository
 from tests.fakes.fake_freelancer_profile_repository import FakeFreelancerProfileRepository
 from tests.fakes.fake_portfolio_item_repository import FakePortfolioItemRepository
 from tests.fakes.fake_resume_repository import FakeResumeRepository
@@ -18,11 +17,6 @@ NOW = datetime(2026, 8, 2, tzinfo=UTC)
 @pytest.fixture
 def profile_repo() -> FakeFreelancerProfileRepository:
     return FakeFreelancerProfileRepository()
-
-
-@pytest.fixture
-def level_repo() -> FakeFreelancerLevelRepository:
-    return FakeFreelancerLevelRepository()
 
 
 @pytest.fixture
@@ -72,35 +66,6 @@ def make_asset(file_storage: FakeFileStorageService):
 
 
 @pytest.fixture
-def make_level(level_repo: FakeFreelancerLevelRepository):
-    async def _make(
-        level_id: str = "level-1",
-        level_key: str = "standard",
-        **overrides: object,
-    ) -> FreelancerLevel:
-        fields: dict[str, object] = {
-            "id": level_id,
-            "level_key": level_key,
-            "name": "Standard",
-            "rank_order": 1,
-            "access_type": FreelancerLevelAccessType.STANDARD,
-            "min_completed_projects": 0,
-            "min_rating": None,
-            "max_active_applications": 3,
-            "can_apply_public_projects": True,
-            "can_apply_private_projects": False,
-            "is_active": True,
-            "created_at": NOW,
-        }
-        fields.update(overrides)
-        level = FreelancerLevel(**fields)  # type: ignore[arg-type]
-        await level_repo.add(level)
-        return level
-
-    return _make
-
-
-@pytest.fixture
 def make_profile(profile_repo: FakeFreelancerProfileRepository):
     async def _make(
         profile_id: str = "profile-1",
@@ -110,7 +75,7 @@ def make_profile(profile_repo: FakeFreelancerProfileRepository):
         fields: dict[str, object] = {
             "id": profile_id,
             "user_id": user_id,
-            "current_level_id": None,
+            "current_level": None,
             "approval_status": FreelancerApprovalStatus.PENDING,
             "approved_by_user_id": None,
             "approved_at": None,

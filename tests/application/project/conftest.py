@@ -4,11 +4,8 @@ from decimal import Decimal
 import pytest
 
 from app.domain.category.entities import Category
-from app.domain.freelancer.entities import FreelancerLevel, FreelancerProfile
-from app.domain.freelancer.enums import (
-    FreelancerApprovalStatus,
-    FreelancerLevelAccessType,
-)
+from app.domain.freelancer.entities import FreelancerProfile
+from app.domain.freelancer.enums import FreelancerApprovalStatus, FreelancerLevelEnum
 from app.domain.project.entities import Project
 from app.domain.project.enums import (
     BudgetType,
@@ -19,7 +16,6 @@ from app.domain.project.enums import (
 from app.domain.project.value_objects import Budget, ProjectCode
 from tests.fakes.fake_category_repository import FakeCategoryRepository
 from tests.fakes.fake_form_template_repository import FakeFormTemplateRepository
-from tests.fakes.fake_freelancer_level_repository import FakeFreelancerLevelRepository
 from tests.fakes.fake_freelancer_profile_repository import FakeFreelancerProfileRepository
 from tests.fakes.fake_project_application_repository import FakeProjectApplicationRepository
 from tests.fakes.fake_project_delivery_repository import FakeProjectDeliveryRepository
@@ -74,36 +70,6 @@ def profile_repo() -> FakeFreelancerProfileRepository:
 
 
 @pytest.fixture
-def level_repo() -> FakeFreelancerLevelRepository:
-    return FakeFreelancerLevelRepository()
-
-
-@pytest.fixture
-def make_level(level_repo: FakeFreelancerLevelRepository):
-    async def _make(level_id: str = "level-1", level_key: str = "standard", **overrides: object) -> FreelancerLevel:
-        fields: dict[str, object] = {
-            "id": level_id,
-            "level_key": level_key,
-            "name": "Standard",
-            "rank_order": 1,
-            "access_type": FreelancerLevelAccessType.STANDARD,
-            "min_completed_projects": 0,
-            "min_rating": None,
-            "max_active_applications": 3,
-            "can_apply_public_projects": True,
-            "can_apply_private_projects": False,
-            "is_active": True,
-            "created_at": NOW,
-        }
-        fields.update(overrides)
-        level = FreelancerLevel(**fields)  # type: ignore[arg-type]
-        await level_repo.add(level)
-        return level
-
-    return _make
-
-
-@pytest.fixture
 async def make_profile(profile_repo: FakeFreelancerProfileRepository):
     async def _make(
         profile_id: str = "profile-1",
@@ -113,7 +79,7 @@ async def make_profile(profile_repo: FakeFreelancerProfileRepository):
         fields: dict[str, object] = {
             "id": profile_id,
             "user_id": user_id,
-            "current_level_id": "level-1",
+            "current_level": FreelancerLevelEnum.JUNIOR,
             "approval_status": FreelancerApprovalStatus.APPROVED,
             "approved_by_user_id": "admin-1",
             "approved_at": NOW,

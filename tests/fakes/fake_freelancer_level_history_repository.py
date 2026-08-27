@@ -12,3 +12,6 @@ class FakeFreelancerLevelHistoryRepository(IFreelancerLevelHistoryRepository):
 
     async def list_by_profile(self, profile_id: EntityId) -> list[FreelancerLevelHistory]:
         return [h for h in self._store if h.freelancer_profile_id == profile_id]
+
+    async def count_by_profile(self, profile_id: EntityId) -> int:
+        return len(await self.list_by_profile(profile_id))

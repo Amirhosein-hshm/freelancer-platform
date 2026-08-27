@@ -14,6 +14,7 @@ from app.application.project.dto import (
     ListProjectDeliveriesQuery,
     ListProjectRevisionRequestsQuery,
     ListProjectStatusHistoryQuery,
+    ListVisibleProjectsQuery,
     PublishProjectCommand,
     RejectFreelancerCommand,
     StartProjectCommand,
@@ -42,6 +43,7 @@ from app.application.project.use_cases.list_project_revision_requests import (
 from app.application.project.use_cases.list_project_status_history import (
     ListProjectStatusHistoryUseCase,
 )
+from app.application.project.use_cases.list_visible_projects import ListVisibleProjectsUseCase
 from app.application.project.use_cases.publish_project import PublishProjectUseCase
 from app.application.project.use_cases.reject_freelancer import RejectFreelancerUseCase
 from app.application.project.use_cases.start_project import StartProjectUseCase
@@ -95,6 +97,7 @@ from app.presentation.core.providers import (
     get_list_project_deliveries_use_case,
     get_list_project_revision_requests_use_case,
     get_list_project_status_history_use_case,
+    get_list_visible_projects_use_case,
     get_publish_project_use_case,
     get_reject_freelancer_use_case,
     get_start_project_use_case,
@@ -154,6 +157,36 @@ async def create_project(
 @router.get(
     "",
     response_model=SuccessEnvelope[list[ProjectResponse]],
+    operation_id="list_visible_projects",
+)
+async def list_visible_projects(
+    current_user=Depends(get_current_user),
+    pagination: PageQuery = Depends(),
+    use_case: ListVisibleProjectsUseCase = Depends(get_list_visible_projects_use_case),
+) -> SuccessEnvelope[list[ProjectResponse]]:
+    result = await use_case.execute(
+        ListVisibleProjectsQuery(
+            actor_id=current_user.user_id,
+            page=pagination.page,
+            page_size=pagination.page_size,
+        )
+    )
+    projects = [to_project_response(project) for project in result.projects]
+    return SuccessEnvelope(
+        message="Visible projects.",
+        data=projects,
+        meta=PaginationMeta(
+            page=result.page,
+            page_size=result.page_size,
+            total_items=result.total_items,
+            total_pages=total_pages(result.total_items, result.page_size),
+        ),
+    )
+
+
+@router.get(
+    "/available",
+    response_model=SuccessEnvelope[list[ProjectResponse]],
     operation_id="get_available_projects",
 )
 async def get_available_projects(
@@ -168,10 +201,9 @@ async def get_available_projects(
             page_size=pagination.page_size,
         )
     )
-    projects = [to_project_response(project) for project in result.projects]
     return SuccessEnvelope(
         message="Available projects.",
-        data=projects,
+        data=[to_project_response(project) for project in result.projects],
         meta=PaginationMeta(
             page=result.page,
             page_size=result.page_size,

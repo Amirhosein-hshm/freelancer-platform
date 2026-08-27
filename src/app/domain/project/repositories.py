@@ -29,6 +29,28 @@ class IProjectRepository(ABC):
     async def update(self, project: Project) -> None: ...
 
     @abstractmethod
+    async def list_all(self, limit: int | None = None, offset: int | None = None) -> list[Project]: ...
+
+    @abstractmethod
+    async def count_all(self) -> int: ...
+
+    @abstractmethod
+    async def list_by_freelancer_user(
+        self, user_id: EntityId, limit: int | None = None, offset: int | None = None
+    ) -> list[Project]: ...
+
+    @abstractmethod
+    async def count_by_freelancer_user(self, user_id: EntityId) -> int: ...
+
+    @abstractmethod
+    async def list_related_to_user(
+        self, user_id: EntityId, limit: int | None = None, offset: int | None = None
+    ) -> list[Project]: ...
+
+    @abstractmethod
+    async def count_related_to_user(self, user_id: EntityId) -> int: ...
+
+    @abstractmethod
     async def list_by_customer(
         self,
         customer_user_id: EntityId,

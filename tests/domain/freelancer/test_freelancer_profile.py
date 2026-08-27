@@ -4,7 +4,7 @@ from decimal import Decimal
 import pytest
 
 from app.domain.freelancer.entities import FreelancerProfile
-from app.domain.freelancer.enums import FreelancerApprovalStatus
+from app.domain.freelancer.enums import FreelancerApprovalStatus, FreelancerLevelEnum
 from app.domain.freelancer.exceptions import (
     FreelancerAlreadyApprovedError,
     InvalidRateRangeError,
@@ -18,7 +18,7 @@ def make_profile(**overrides: object) -> FreelancerProfile:
     fields: dict[str, object] = {
         "id": "profile-1",
         "user_id": "user-1",
-        "current_level_id": None,
+        "current_level": None,
         "approval_status": FreelancerApprovalStatus.PENDING,
         "approved_by_user_id": None,
         "approved_at": None,
@@ -133,8 +133,8 @@ class TestAvailabilityAndLevel:
 
     def test_change_level(self):
         profile = make_profile()
-        profile.change_level("level-2")
-        assert profile.current_level_id == "level-2"
+        profile.change_level(FreelancerLevelEnum.MID_LEVEL)
+        assert profile.current_level == FreelancerLevelEnum.MID_LEVEL
 
 
 class TestUpdateRateRange:

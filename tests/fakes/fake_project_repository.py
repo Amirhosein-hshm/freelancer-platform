@@ -38,6 +38,44 @@ class FakeProjectRepository(IProjectRepository):
     async def update(self, project: Project) -> None:
         self._store[project.id] = project
 
+    async def list_all(self, limit=None, offset=None):
+        projects = [p for p in self._store.values() if p.deleted_at is None]
+        return projects[(offset or 0) : (offset or 0) + limit] if limit is not None else projects
+
+    async def count_all(self):
+        return sum(p.deleted_at is None for p in self._store.values())
+
+    async def list_by_freelancer_user(self, user_id, limit=None, offset=None):
+        # Fakes cannot resolve profile/application joins; tests may override this method.
+        return []
+
+    async def count_by_freelancer_user(self, user_id):
+        return 0
+
+    async def list_related_to_user(self, user_id, limit=None, offset=None):
+        projects = [
+            project
+            for project in self._store.values()
+            if project.deleted_at is None
+            and (project.customer_user_id == user_id or project.assigned_supervisor_user_id == user_id)
+        ]
+        return projects[(offset or 0) : (offset or 0) + limit] if limit is not None else projects
+
+    async def count_related_to_user(self, user_id):
+        return len(await self.list_related_to_user(user_id))
+
+    async def count_by_customer(self, customer_user_id, status=None):
+        return len(await self.list_by_customer(customer_user_id, status))
+
+    async def count_available_for_freelancer(self, level_id):
+        return len(await self.list_available_for_freelancer(level_id))
+
+    async def count_by_supervisor(self, supervisor_user_id):
+        return len(await self.list_by_supervisor(supervisor_user_id))
+
+    async def count_open_by_category(self, category_id):
+        return len(await self.list_by_category(category_id))
+
     async def list_by_customer(self, customer_user_id: EntityId, status: ProjectStatus | None = None) -> list[Project]:
         projects = [p for p in self._store.values() if p.customer_user_id == customer_user_id and p.deleted_at is None]
         if status is not None:

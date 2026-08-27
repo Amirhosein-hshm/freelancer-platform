@@ -3,8 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.domain.freelancer.entities import FreelancerLevel
-from app.domain.freelancer.enums import FreelancerLevelAccessType
+from app.domain.freelancer.enums import FreelancerLevelEnum
 from app.domain.project.entities import Project
 from app.domain.project.enums import (
     BudgetType,
@@ -19,23 +18,10 @@ from app.domain.project.value_objects import Budget, ProjectCode
 NOW = datetime(2026, 8, 2, tzinfo=UTC)
 
 
-def make_level(**overrides: object) -> FreelancerLevel:
-    fields: dict[str, object] = {
-        "id": "level-1",
-        "level_key": "standard",
-        "name": "Standard",
-        "rank_order": 1,
-        "access_type": FreelancerLevelAccessType.STANDARD,
-        "min_completed_projects": 0,
-        "min_rating": None,
-        "max_active_applications": 3,
-        "can_apply_public_projects": True,
-        "can_apply_private_projects": False,
-        "is_active": True,
-        "created_at": NOW,
-    }
-    fields.update(overrides)
-    return FreelancerLevel(**fields)  # type: ignore[arg-type]
+def make_level(**overrides: object) -> FreelancerLevelEnum | None:
+    if overrides.get("is_active", True) is False:
+        return None
+    return FreelancerLevelEnum.JUNIOR
 
 
 def make_project(visibility: ProjectVisibility) -> Project:
@@ -44,7 +30,8 @@ def make_project(visibility: ProjectVisibility) -> Project:
         project_code=ProjectCode("PRJ-2026-001"),
         customer_user_id="customer-1",
         category_id="cat-1",
-        form_template_id="template-1",
+            form_template_id="template-1",
+            required_level=None,
         assigned_supervisor_user_id="supervisor-1",
         selected_application_id=None,
         title="Build an API",
@@ -90,48 +77,24 @@ class TestRevisionPolicy:
 
 
 class TestFreelancerEligibilityPolicy:
-    def test_inactive_level_is_ineligible(self):
-        level = make_level(is_active=False)
-        assert (
-            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 0) is False
-        )
-
-    def test_public_project_requires_public_access(self):
-        level = make_level(can_apply_public_projects=False)
-        assert (
-            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 0) is False
-        )
-
-    def test_private_project_requires_private_access(self):
-        level = make_level(can_apply_private_projects=False)
-        assert (
-            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PRIVATE), 0) is False
-        )
-
     def test_invite_only_is_not_self_applyable(self):
-        level = make_level()
+        level = FreelancerLevelEnum.JUNIOR
         assert (
             FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.INVITE_ONLY), 0)
             is False
         )
 
     def test_max_active_applications(self):
-        level = make_level(max_active_applications=3)
+        level = FreelancerLevelEnum.JUNIOR
         assert (
-            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 3) is False
+            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 10) is False
         )
         assert (
-            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 2) is True
-        )
-
-    def test_unlimited_active_applications(self):
-        level = make_level(max_active_applications=None)
-        assert (
-            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 99) is True
+            FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 9) is True
         )
 
     def test_eligible(self):
-        level = make_level()
+        level = FreelancerLevelEnum.JUNIOR
         assert (
             FreelancerEligibilityPolicy.is_eligible_to_apply(level, make_project(ProjectVisibility.PUBLIC), 0) is True
         )

@@ -109,6 +109,7 @@ from app.application.project.use_cases.get_project_revision_request import GetPr
 from app.application.project.use_cases.list_project_deliveries import ListProjectDeliveriesUseCase
 from app.application.project.use_cases.list_project_revision_requests import ListProjectRevisionRequestsUseCase
 from app.application.project.use_cases.list_project_status_history import ListProjectStatusHistoryUseCase
+from app.application.project.use_cases.list_visible_projects import ListVisibleProjectsUseCase
 from app.application.project.use_cases.publish_project import PublishProjectUseCase
 from app.application.project.use_cases.reject_freelancer import RejectFreelancerUseCase
 from app.application.project.use_cases.request_revision import RequestRevisionUseCase
@@ -136,9 +137,9 @@ from app.application.shared.ports import (
     IFileStorageService,
     IIdGenerator,
     INotificationService,
-    IRealtimeNotifier,
     IPasswordHasher,
     IProjectCodeGenerator,
+    IRealtimeNotifier,
     ITicketCodeGenerator,
     ITokenService,
     IUnitOfWork,
@@ -924,6 +925,13 @@ def get_get_available_projects_use_case(
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
 ) -> GetAvailableProjectsUseCase:
     return GetAvailableProjectsUseCase(project_repo, profile_repo)
+
+
+def get_list_visible_projects_use_case(
+    project_repo: IProjectRepository = Depends(get_project_repository),
+    authorization_service: IAuthorizationService = Depends(get_authorization_service),
+) -> ListVisibleProjectsUseCase:
+    return ListVisibleProjectsUseCase(project_repo, authorization_service)
 
 
 def get_get_categories_use_case(

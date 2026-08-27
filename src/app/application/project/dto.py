@@ -389,6 +389,21 @@ class GetAvailableProjectsResult:
 
 
 @dataclass(frozen=True)
+class ListVisibleProjectsQuery:
+    actor_id: EntityId
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True)
+class ListVisibleProjectsResult:
+    projects: list[ProjectResult]
+    total_items: int
+    page: int
+    page_size: int
+
+
+@dataclass(frozen=True)
 class GetProjectApplicationQuery:
     actor_id: EntityId
     application_id: EntityId

@@ -28,7 +28,6 @@ from tests.fakes.fake_form_template_repository import FakeFormTemplateRepository
 from tests.fakes.fake_freelancer_level_history_repository import (
     FakeFreelancerLevelHistoryRepository,
 )
-from tests.fakes.fake_freelancer_level_repository import FakeFreelancerLevelRepository
 from tests.fakes.fake_freelancer_profile_repository import FakeFreelancerProfileRepository
 from tests.fakes.fake_id_generator import FakeIdGenerator
 from tests.fakes.fake_notification_service import FakeNotificationService
@@ -98,7 +97,6 @@ def _make_overrides() -> dict[object, object]:
         providers.get_get_file_asset_use_case: lambda: GetFileAssetUseCase(file_storage, file_access_policy),
         providers.get_form_template_repository: FakeFormTemplateRepository(),
         providers.get_freelancer_level_history_repository: FakeFreelancerLevelHistoryRepository(),
-        providers.get_freelancer_level_repository: FakeFreelancerLevelRepository(),
         providers.get_freelancer_profile_repository: FakeFreelancerProfileRepository(),
         providers.get_id_generator: FakeIdGenerator(),
         providers.get_notification_service: FakeNotificationService(),

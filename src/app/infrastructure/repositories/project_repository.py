@@ -8,7 +8,8 @@ from app.domain.project.exceptions import ProjectNotFoundError
 from app.domain.project.repositories import IProjectRepository
 from app.domain.project.value_objects import ProjectCode
 from app.domain.shared.types import EntityId
-from app.infrastructure.db.models.project_models import ProjectModel
+from app.infrastructure.db.models.freelancer_models import FreelancerProfileModel
+from app.infrastructure.db.models.project_models import ProjectApplicationModel, ProjectModel
 from app.infrastructure.repositories.project_mapping import to_domain_project
 
 _OPEN_STATUSES = (
@@ -109,6 +110,77 @@ class SqlAlchemyProjectRepository(IProjectRepository):
         row.locked_at = project.locked_at
         row.deleted_at = project.deleted_at
         row.created_by_user_id = project.created_by_user_id
+
+    async def list_all(self, limit: int | None = None, offset: int | None = None) -> list[Project]:
+        stmt = select(ProjectModel).where(ProjectModel.deleted_at.is_(None)).order_by(ProjectModel.created_at.desc())
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
+        return [to_domain_project(row) for row in result.scalars().all()]
+
+    async def count_all(self) -> int:
+        result = await self._session.execute(
+            select(func.count()).select_from(ProjectModel).where(ProjectModel.deleted_at.is_(None))
+        )
+        return result.scalar_one()
+
+    async def list_by_freelancer_user(
+        self, user_id: EntityId, limit: int | None = None, offset: int | None = None
+    ) -> list[Project]:
+        stmt = (
+            select(ProjectModel)
+            .join(ProjectApplicationModel, ProjectApplicationModel.id == ProjectModel.selected_application_id)
+            .join(FreelancerProfileModel, FreelancerProfileModel.id == ProjectApplicationModel.freelancer_profile_id)
+            .where(FreelancerProfileModel.user_id == user_id, ProjectModel.deleted_at.is_(None))
+            .order_by(ProjectModel.created_at.desc())
+        )
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
+        return [to_domain_project(row) for row in result.scalars().all()]
+
+    async def count_by_freelancer_user(self, user_id: EntityId) -> int:
+        result = await self._session.execute(
+            select(func.count())
+            .select_from(ProjectModel)
+            .join(ProjectApplicationModel, ProjectApplicationModel.id == ProjectModel.selected_application_id)
+            .join(FreelancerProfileModel, FreelancerProfileModel.id == ProjectApplicationModel.freelancer_profile_id)
+            .where(FreelancerProfileModel.user_id == user_id, ProjectModel.deleted_at.is_(None))
+        )
+        return result.scalar_one()
+
+    def _related_to_user_condition(self, user_id: EntityId):
+        selected_for_user = (
+            select(ProjectApplicationModel.id)
+            .join(FreelancerProfileModel, FreelancerProfileModel.id == ProjectApplicationModel.freelancer_profile_id)
+            .where(FreelancerProfileModel.user_id == user_id)
+        )
+        return or_(
+            ProjectModel.customer_user_id == user_id,
+            ProjectModel.assigned_supervisor_user_id == user_id,
+            ProjectModel.selected_application_id.in_(selected_for_user),
+        )
+
+    async def list_related_to_user(
+        self, user_id: EntityId, limit: int | None = None, offset: int | None = None
+    ) -> list[Project]:
+        stmt = (
+            select(ProjectModel)
+            .where(ProjectModel.deleted_at.is_(None), self._related_to_user_condition(user_id))
+            .order_by(ProjectModel.created_at.desc())
+        )
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
+        return [to_domain_project(row) for row in result.scalars().all()]
+
+    async def count_related_to_user(self, user_id: EntityId) -> int:
+        result = await self._session.execute(
+            select(func.count())
+            .select_from(ProjectModel)
+            .where(ProjectModel.deleted_at.is_(None), self._related_to_user_condition(user_id))
+        )
+        return result.scalar_one()
 
     async def list_by_customer(
         self,

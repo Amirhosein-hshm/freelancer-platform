@@ -38,6 +38,9 @@ class FakeFreelancerProfileRepository(IFreelancerProfileRepository):
     async def list_by_approval_status(self, status: FreelancerApprovalStatus) -> list[FreelancerProfile]:
         return [p for p in self._store.values() if p.approval_status == status and p.deleted_at is None]
 
+    async def count_by_approval_status(self, status: FreelancerApprovalStatus) -> int:
+        return len(await self.list_by_approval_status(status))
+
     async def list_available_for_level(self, level_id: EntityId) -> list[FreelancerProfile]:
         return [
             p

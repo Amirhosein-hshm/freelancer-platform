@@ -6,10 +6,12 @@ from app.application.project.dto import (
     GetAvailableProjectsQuery,
     GetMyProjectsQuery,
     GetProjectDetailsQuery,
+    ListVisibleProjectsQuery,
 )
 from app.application.project.use_cases.get_available_projects import GetAvailableProjectsUseCase
 from app.application.project.use_cases.get_my_projects import GetMyProjectsUseCase
 from app.application.project.use_cases.get_project_details import GetProjectDetailsUseCase
+from app.application.project.use_cases.list_visible_projects import ListVisibleProjectsUseCase
 from app.domain.freelancer.enums import FreelancerApprovalStatus
 from app.domain.freelancer.exceptions import FreelancerNotApprovedError
 from app.domain.project.entities import ProjectApplication, ProjectDelivery
@@ -130,3 +132,45 @@ class TestGetAvailableProjectsUseCase:
 
         with pytest.raises(FreelancerNotApprovedError):
             await use_case.execute(GetAvailableProjectsQuery(actor_id="freelancer-1"))
+
+
+class TestListVisibleProjectsUseCase:
+    async def test_admin_sees_all_projects_without_freelancer_profile(
+        self, project_repo, authorization_service, make_project
+    ):
+        await make_project(project_id="project-1", customer_user_id="customer-1")
+        await make_project(
+            project_id="project-2",
+            customer_user_id="customer-2",
+            project_code=ProjectCode("PRJ-2026-002"),
+        )
+        authorization_service.grant("admin-1", "project.manage_any")
+        use_case = ListVisibleProjectsUseCase(project_repo, authorization_service)
+
+        result = await use_case.execute(ListVisibleProjectsQuery(actor_id="admin-1"))
+
+        assert {project.project_id for project in result.projects} == {"project-1", "project-2"}
+
+    async def test_customer_and_supervisor_see_only_related_projects(
+        self, project_repo, authorization_service, make_project
+    ):
+        await make_project(project_id="owned", customer_user_id="user-1", assigned_supervisor_user_id=None)
+        await make_project(
+            project_id="supervised",
+            customer_user_id="customer-2",
+            assigned_supervisor_user_id="user-1",
+            project_code=ProjectCode("PRJ-2026-002"),
+        )
+        await make_project(
+            project_id="unrelated",
+            customer_user_id="customer-3",
+            assigned_supervisor_user_id=None,
+            project_code=ProjectCode("PRJ-2026-003"),
+        )
+        authorization_service.assign_role("user-1", "customer")
+        authorization_service.assign_role("user-1", "supervisor")
+        use_case = ListVisibleProjectsUseCase(project_repo, authorization_service)
+
+        result = await use_case.execute(ListVisibleProjectsQuery(actor_id="user-1"))
+
+        assert {project.project_id for project in result.projects} == {"owned", "supervised"}
