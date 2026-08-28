@@ -5,13 +5,20 @@ from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.exceptions import PermissionDeniedError
 from app.application.shared.pagination import limit_offset
 from app.application.shared.use_case import UseCase
+from app.domain.category.repositories import ICategorySupervisorRepository
 from app.domain.project.repositories import IProjectRepository
 
 
 class ListVisibleProjectsUseCase(UseCase[ListVisibleProjectsQuery, ListVisibleProjectsResult]):
-    def __init__(self, project_repo: IProjectRepository, authorization_service: IAuthorizationService) -> None:
+    def __init__(
+        self,
+        project_repo: IProjectRepository,
+        authorization_service: IAuthorizationService,
+        category_supervisor_repo: ICategorySupervisorRepository,
+    ) -> None:
         self._project_repo = project_repo
         self._authorization_service = authorization_service
+        self._category_supervisor_repo = category_supervisor_repo
 
     async def execute(self, request: ListVisibleProjectsQuery) -> ListVisibleProjectsResult:
         limit, offset = limit_offset(request.page, request.page_size)
@@ -29,8 +36,15 @@ class ListVisibleProjectsUseCase(UseCase[ListVisibleProjectsQuery, ListVisiblePr
             )
             if not recognized:
                 raise PermissionDeniedError(f"User {request.actor_id} cannot list projects.")
-            projects = await self._project_repo.list_related_to_user(request.actor_id, limit=limit, offset=offset)
-            total_items = await self._project_repo.count_related_to_user(request.actor_id)
+            if await self._authorization_service.has_role(request.actor_id, "supervisor"):
+                category_ids = await self._category_supervisor_repo.list_categories_for_supervisor(request.actor_id)
+                projects = await self._project_repo.list_by_supervised_categories(
+                    request.actor_id, category_ids, limit, offset
+                )
+                total_items = await self._project_repo.count_by_supervised_categories(category_ids)
+            else:
+                projects = await self._project_repo.list_related_to_user(request.actor_id, limit=limit, offset=offset)
+                total_items = await self._project_repo.count_related_to_user(request.actor_id)
 
         return ListVisibleProjectsResult(
             projects=[to_project_result(project) for project in projects],

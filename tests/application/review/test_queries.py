@@ -5,13 +5,20 @@ from app.application.review.dto import (
 from app.application.review.use_cases.get_pending_reviews import GetPendingReviewsUseCase
 from app.application.review.use_cases.get_supervisor_projects import GetSupervisorProjectsUseCase
 from app.domain.review.enums import ReviewStatus
+from tests.fakes.fake_authorization_service import FakeAuthorizationService
 
 
 class TestGetSupervisorProjectsUseCase:
-    async def test_lists_projects_assigned_to_supervisor(self, project_repo, seed_supervisor_flow):
+    async def test_lists_projects_assigned_to_supervisor(
+        self, project_repo, category_supervisor_repo, seed_supervisor_flow
+    ):
         await seed_supervisor_flow(project_id="project-1")
         await seed_supervisor_flow(project_id="project-2", supervisor_user_id="supervisor-2")
-        use_case = GetSupervisorProjectsUseCase(project_repo=project_repo)
+        use_case = GetSupervisorProjectsUseCase(
+            project_repo=project_repo,
+            authorization_service=FakeAuthorizationService(),
+            category_supervisor_repo=category_supervisor_repo,
+        )
 
         result = await use_case.execute(GetSupervisorProjectsQuery(supervisor_user_id="supervisor-1"))
 

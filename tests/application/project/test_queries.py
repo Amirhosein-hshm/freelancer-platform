@@ -21,6 +21,8 @@ from app.domain.project.enums import (
     ProjectStatus,
 )
 from app.domain.project.value_objects import ProjectCode
+from tests.fakes.fake_authorization_service import FakeAuthorizationService
+from tests.fakes.fake_freelancer_profile_repository import FakeFreelancerProfileRepository
 
 
 async def add_application(application_repo, app_id: str, now) -> ProjectApplication:
@@ -45,7 +47,7 @@ async def add_application(application_repo, app_id: str, now) -> ProjectApplicat
 
 class TestGetProjectDetailsUseCase:
     async def test_details_include_applications_and_deliveries(
-        self, project_repo, application_repo, delivery_repo, clock, make_project
+        self, project_repo, application_repo, delivery_repo, category_supervisor_repo, clock, make_project
     ):
         await make_project(project_id="project-1", status=ProjectStatus.IN_PROGRESS)
         await add_application(application_repo, "app-1", await clock.now())
@@ -70,6 +72,9 @@ class TestGetProjectDetailsUseCase:
             project_repo=project_repo,
             application_repo=application_repo,
             delivery_repo=delivery_repo,
+            authorization_service=FakeAuthorizationService(),
+            profile_repo=FakeFreelancerProfileRepository(),
+            category_supervisor_repo=category_supervisor_repo,
         )
 
         result = await use_case.execute(GetProjectDetailsQuery(project_id="project-1"))

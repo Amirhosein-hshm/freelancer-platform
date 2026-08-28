@@ -95,6 +95,14 @@ class IProjectRepository(ABC):
     async def count_by_supervisor(self, supervisor_user_id: EntityId) -> int: ...
 
     @abstractmethod
+    async def list_by_supervised_categories(
+        self, supervisor_user_id: EntityId, category_ids: list[EntityId], limit: int | None = None, offset: int | None = None
+    ) -> list[Project]: ...
+
+    @abstractmethod
+    async def count_by_supervised_categories(self, category_ids: list[EntityId]) -> int: ...
+
+    @abstractmethod
     async def list_by_category(
         self,
         category_id: EntityId,

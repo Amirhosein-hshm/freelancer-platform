@@ -201,12 +201,14 @@ class SqlAlchemyProjectRepository(IProjectRepository):
         result = await self._session.execute(stmt)
         return [to_domain_project(row) for row in result.scalars().all()]
 
-    async def count_by_customer(
-        self, customer_user_id: EntityId, status: ProjectStatus | None = None
-    ) -> int:
-        stmt = select(func.count()).select_from(ProjectModel).where(
-            ProjectModel.customer_user_id == customer_user_id,
-            ProjectModel.deleted_at.is_(None),
+    async def count_by_customer(self, customer_user_id: EntityId, status: ProjectStatus | None = None) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(ProjectModel)
+            .where(
+                ProjectModel.customer_user_id == customer_user_id,
+                ProjectModel.deleted_at.is_(None),
+            )
         )
         if status is not None:
             stmt = stmt.where(ProjectModel.status == status.value)
@@ -225,9 +227,7 @@ class SqlAlchemyProjectRepository(IProjectRepository):
         # is excluded regardless of level.
         level_conditions = [ProjectModel.required_level.is_(None)]
         if current_level is not None:
-            allowed = {
-                level.value for level in FreelancerLevelEnum if level.rank() <= current_level.rank()
-            }
+            allowed = {level.value for level in FreelancerLevelEnum if level.rank() <= current_level.rank()}
             level_conditions.append(ProjectModel.required_level.in_(allowed))
         stmt = (
             select(ProjectModel)
@@ -247,9 +247,7 @@ class SqlAlchemyProjectRepository(IProjectRepository):
     async def count_available_for_freelancer(self, current_level: FreelancerLevelEnum | None) -> int:
         level_conditions = [ProjectModel.required_level.is_(None)]
         if current_level is not None:
-            allowed = {
-                level.value for level in FreelancerLevelEnum if level.rank() <= current_level.rank()
-            }
+            allowed = {level.value for level in FreelancerLevelEnum if level.rank() <= current_level.rank()}
             level_conditions.append(ProjectModel.required_level.in_(allowed))
         result = await self._session.execute(
             select(func.count())
@@ -290,6 +288,25 @@ class SqlAlchemyProjectRepository(IProjectRepository):
                 ProjectModel.assigned_supervisor_user_id == supervisor_user_id,
                 ProjectModel.deleted_at.is_(None),
             )
+        )
+        return result.scalar_one()
+
+    async def list_by_supervised_categories(self, supervisor_user_id, category_ids, limit=None, offset=None):
+        stmt = (
+            select(ProjectModel)
+            .where(ProjectModel.category_id.in_(category_ids), ProjectModel.deleted_at.is_(None))
+            .order_by(ProjectModel.created_at.desc())
+        )
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
+        return [to_domain_project(row) for row in result.scalars().all()]
+
+    async def count_by_supervised_categories(self, category_ids):
+        result = await self._session.execute(
+            select(func.count())
+            .select_from(ProjectModel)
+            .where(ProjectModel.category_id.in_(category_ids), ProjectModel.deleted_at.is_(None))
         )
         return result.scalar_one()
 

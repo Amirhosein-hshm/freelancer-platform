@@ -15,6 +15,7 @@ from app.domain.project.enums import (
 )
 from app.domain.project.value_objects import Budget, ProjectCode
 from tests.fakes.fake_category_repository import FakeCategoryRepository
+from tests.fakes.fake_category_supervisor_repository import FakeCategorySupervisorRepository
 from tests.fakes.fake_form_template_repository import FakeFormTemplateRepository
 from tests.fakes.fake_freelancer_profile_repository import FakeFreelancerProfileRepository
 from tests.fakes.fake_project_application_repository import FakeProjectApplicationRepository
@@ -30,6 +31,10 @@ NOW = datetime(2026, 8, 2, tzinfo=UTC)
 @pytest.fixture
 def category_repo() -> FakeCategoryRepository:
     return FakeCategoryRepository()
+
+@pytest.fixture
+def category_supervisor_repo() -> FakeCategorySupervisorRepository:
+    return FakeCategorySupervisorRepository()
 
 
 @pytest.fixture

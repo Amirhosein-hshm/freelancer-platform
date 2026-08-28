@@ -11,6 +11,7 @@ from app.application.project.permissions import PERMISSION_PROJECT_MANAGE_ANY, P
 from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.exceptions import PermissionDeniedError
 from app.application.shared.use_case import UseCase
+from app.domain.category.repositories import ICategorySupervisorRepository
 from app.domain.freelancer.repositories import IFreelancerProfileRepository
 from app.domain.project.repositories import (
     IProjectApplicationRepository,
@@ -27,12 +28,14 @@ class GetProjectDetailsUseCase(UseCase[GetProjectDetailsQuery, GetProjectDetails
         delivery_repo: IProjectDeliveryRepository,
         authorization_service: IAuthorizationService,
         profile_repo: IFreelancerProfileRepository,
+        category_supervisor_repo: ICategorySupervisorRepository,
     ) -> None:
         self._project_repo = project_repo
         self._application_repo = application_repo
         self._delivery_repo = delivery_repo
         self._authorization_service = authorization_service
         self._profile_repo = profile_repo
+        self._category_supervisor_repo = category_supervisor_repo
 
     async def execute(self, request: GetProjectDetailsQuery) -> GetProjectDetailsResult:
         project = await self._project_repo.get_by_id(request.project_id)
@@ -47,6 +50,8 @@ class GetProjectDetailsUseCase(UseCase[GetProjectDetailsQuery, GetProjectDetails
                 application = await self._application_repo.get_by_id(project.selected_application_id)
                 profile = await self._profile_repo.get_by_id(application.freelancer_profile_id)
                 allowed = profile.user_id == request.actor_id
+            if not allowed:
+                allowed = await self._category_supervisor_repo.is_supervisor_of(request.actor_id, project.category_id)
             if not allowed and project.assigned_supervisor_user_id == request.actor_id:
                 allowed = True
         if not allowed:

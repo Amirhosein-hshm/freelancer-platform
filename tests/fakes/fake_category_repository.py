@@ -27,8 +27,12 @@ class FakeCategoryRepository(ICategoryRepository):
             raise CategoryNotFoundError(f"Category with slug '{slug}' not found.")
         return category
 
-    async def list_active(self) -> list[Category]:
-        return [c for c in self._store.values() if c.is_active and c.deleted_at is None]
+    async def list_active(self, limit=None, offset=None) -> list[Category]:
+        categories = [c for c in self._store.values() if c.is_active and c.deleted_at is None]
+        return categories[(offset or 0) : (offset or 0) + limit] if limit is not None else categories
+
+    async def count_active(self) -> int:
+        return len(await self.list_active())
 
     async def list_by_parent_id(self, parent_category_id: EntityId) -> list[Category]:
         return [c for c in self._store.values() if c.parent_category_id == parent_category_id and c.deleted_at is None]

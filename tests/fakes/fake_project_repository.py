@@ -73,6 +73,13 @@ class FakeProjectRepository(IProjectRepository):
     async def count_by_supervisor(self, supervisor_user_id):
         return len(await self.list_by_supervisor(supervisor_user_id))
 
+    async def list_by_supervised_categories(self, supervisor_user_id, category_ids, limit=None, offset=None):
+        projects = [p for p in self._store.values() if p.deleted_at is None and p.category_id in category_ids]
+        return projects[(offset or 0) : (offset or 0) + limit] if limit is not None else projects
+
+    async def count_by_supervised_categories(self, category_ids):
+        return sum(p.deleted_at is None and p.category_id in category_ids for p in self._store.values())
+
     async def count_open_by_category(self, category_id):
         return len(await self.list_by_category(category_id))
 
