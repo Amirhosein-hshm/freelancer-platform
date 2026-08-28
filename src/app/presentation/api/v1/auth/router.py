@@ -1,3 +1,5 @@
+from contextlib import suppress
+
 from fastapi import APIRouter, Depends
 
 from app.application.iam.dto import (
@@ -15,6 +17,8 @@ from app.application.iam.use_cases.logout_user import LogoutUserUseCase
 from app.application.iam.use_cases.refresh_token import RefreshTokenUseCase
 from app.application.iam.use_cases.register_user import RegisterUserUseCase
 from app.application.shared.authorization import IAuthorizationService
+from app.domain.freelancer.exceptions import FreelancerProfileNotFoundError
+from app.domain.freelancer.repositories import IFreelancerProfileRepository
 from app.domain.iam.repositories import IUserRepository
 from app.presentation.api.v1.auth.schemas import (
     ChangePasswordRequest,
@@ -33,6 +37,7 @@ from app.presentation.core.providers import (
     get_authorization_service,
     get_change_password_use_case,
     get_forgot_password_use_case,
+    get_freelancer_profile_repository,
     get_login_user_use_case,
     get_logout_user_use_case,
     get_refresh_token_use_case,
@@ -115,7 +120,7 @@ async def logout(
     payload: LogoutRequest,
     use_case: LogoutUserUseCase = Depends(get_logout_user_use_case),
 ) -> SuccessEnvelope[dict]:
-    await use_case.execute(LogoutUserCommand(refresh_token_jti=payload.refresh_token))
+    await use_case.execute(LogoutUserCommand(raw_refresh_token=payload.refresh_token))
     return SuccessEnvelope(message="Logged out.", data={})
 
 
@@ -149,9 +154,14 @@ async def get_me(
     current_user=Depends(get_current_user),
     user_repository: IUserRepository = Depends(get_user_repository),
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
+    freelancer_profile_repository: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
 ) -> SuccessEnvelope[UserMeResponse]:
     user = await user_repository.get_by_id(current_user.user_id)
     permissions = await authorization_service.list_permissions_for_user(current_user.user_id)
+    profile = None
+    if "freelancer" in current_user.roles:
+        with suppress(FreelancerProfileNotFoundError):
+            profile = await freelancer_profile_repository.get_by_user_id(current_user.user_id)
     return SuccessEnvelope(
         message="Current user.",
         data=UserMeResponse(
@@ -159,5 +169,9 @@ async def get_me(
             email=user.email.value,
             roles=current_user.roles,
             permissions=permissions,
+            freelancer_profile_id=profile.id if profile else None,
+            freelancer_onboarding_needed="freelancer" in current_user.roles and profile is None,
+            freelancer_approval_status=profile.approval_status.value if profile else None,
+            freelancer_level=profile.current_level.value if profile and profile.current_level else None,
         ),
     )

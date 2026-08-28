@@ -1,4 +1,4 @@
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.iam.entities import User
@@ -7,7 +7,7 @@ from app.domain.iam.exceptions import UserNotFoundError
 from app.domain.iam.repositories import IUserRepository
 from app.domain.iam.value_objects import Email
 from app.domain.shared.types import EntityId
-from app.infrastructure.db.models.iam_models import UserModel
+from app.infrastructure.db.models.iam_models import RoleModel, UserModel, UserRoleModel
 from app.infrastructure.repositories.iam_mapping import to_domain_user
 
 
@@ -92,18 +92,59 @@ class SqlAlchemyUserRepository(IUserRepository):
         )
         return [to_domain_user(row) for row in result.scalars().all()]
 
-    async def list_all(self, limit: int, offset: int) -> list[User]:
+    def _filtered_stmt(
+        self,
+        status: UserStatus | None,
+        role: str | None,
+        search: str | None,
+    ):
+        stmt = select(UserModel).where(UserModel.deleted_at.is_(None))
+        if status is not None:
+            stmt = stmt.where(UserModel.status == status.value)
+        if role:
+            stmt = stmt.where(
+                select(UserRoleModel.id)
+                .join(RoleModel, RoleModel.id == UserRoleModel.role_id)
+                .where(
+                    UserRoleModel.user_id == UserModel.id,
+                    UserRoleModel.is_active.is_(True),
+                    UserRoleModel.revoked_at.is_(None),
+                    RoleModel.role_key == role,
+                )
+                .exists()
+            )
+        if search and (term := search.strip()):
+            pattern = f"%{term}%"
+            stmt = stmt.where(
+                or_(
+                    UserModel.email.ilike(pattern),
+                    UserModel.first_name.ilike(pattern),
+                    UserModel.last_name.ilike(pattern),
+                )
+            )
+        return stmt
+
+    async def list_all(
+        self,
+        limit: int,
+        offset: int,
+        status: UserStatus | None = None,
+        role: str | None = None,
+        search: str | None = None,
+    ) -> list[User]:
         result = await self._session.execute(
-            select(UserModel)
-            .where(UserModel.deleted_at.is_(None))
+            self._filtered_stmt(status, role, search)
             .order_by(UserModel.created_at.desc())
             .limit(limit)
             .offset(offset)
         )
         return [to_domain_user(row) for row in result.scalars().all()]
 
-    async def count_all(self, status: UserStatus | None = None) -> int:
-        stmt = select(func.count()).select_from(UserModel).where(UserModel.deleted_at.is_(None))
-        if status is not None:
-            stmt = stmt.where(UserModel.status == status.value)
-        return int((await self._session.execute(stmt)).scalar_one())
+    async def count_all(
+        self,
+        status: UserStatus | None = None,
+        role: str | None = None,
+        search: str | None = None,
+    ) -> int:
+        filtered = self._filtered_stmt(status, role, search).subquery()
+        return int((await self._session.execute(select(func.count()).select_from(filtered))).scalar_one())

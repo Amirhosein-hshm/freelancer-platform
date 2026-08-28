@@ -75,12 +75,16 @@ async def admin_list_users(
     current_user=Depends(get_current_user),
     pagination: PageQuery = Depends(),
     status: UserStatus | None = Query(default=None),
+    role: str | None = Query(default=None),
+    search: str | None = Query(default=None),
     use_case: AdminListUsersUseCase = Depends(get_admin_list_users_use_case),
 ) -> SuccessEnvelope[AdminListUsersResponse]:
     result = await use_case.execute(
         AdminListUsersQuery(
             actor_id=current_user.user_id,
             status=status,
+            role=role,
+            search=search,
             page=pagination.page,
             page_size=pagination.page_size,
         )

@@ -52,7 +52,7 @@ class LoginUserResult:
 
 @dataclass(frozen=True)
 class LogoutUserCommand:
-    refresh_token_jti: str
+    raw_refresh_token: str
 
 
 @dataclass(frozen=True)
@@ -273,6 +273,8 @@ class AdminUserSummary:
 class AdminListUsersQuery:
     actor_id: EntityId
     status: UserStatus | None = None
+    role: str | None = None
+    search: str | None = None
     page: int = 1
     page_size: int = DEFAULT_PAGE_SIZE
 

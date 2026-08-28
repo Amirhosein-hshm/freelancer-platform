@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.application.shared.pagination import total_pages
 from app.application.ticketing.dto import ListRelatedUsersQuery
@@ -21,6 +21,8 @@ router = APIRouter(prefix="/users", tags=["Users"], route_class=DocumentedAPIRou
 async def list_related_users(
     current_user=Depends(get_current_user),
     pagination: PageQuery = Depends(),
+    search: str | None = Query(default=None),
+    role: str | None = Query(default=None),
     use_case: ListRelatedUsersUseCase = Depends(get_list_related_users_use_case),
 ) -> SuccessEnvelope[list[RelatedUserResponse]]:
     result = await use_case.execute(
@@ -29,6 +31,8 @@ async def list_related_users(
             user_id=current_user.user_id,
             page=pagination.page,
             page_size=pagination.page_size,
+            search=search,
+            role=role,
         )
     )
     return SuccessEnvelope(

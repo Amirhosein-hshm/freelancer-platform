@@ -88,6 +88,21 @@ class TestUploadFileUseCase:
                 )
             )
 
+    async def test_detected_but_disallowed_mime_raises(self, file_storage, clock, monkeypatch):
+        use_case = UploadFileUseCase(file_storage, clock)
+        guess = type("Guess", (), {"mime": "application/x-executable"})()
+        monkeypatch.setattr("app.application.file.use_cases.upload_file.filetype.guess", lambda _: guess)
+
+        with pytest.raises(InvalidFileContentError, match="not allowed"):
+            await use_case.execute(
+                UploadFileCommand(
+                    actor_id="user-1",
+                    file_name="program.bin",
+                    content=_aiter(b"binary"),
+                    context=FileAssetContext.GENERIC,
+                )
+            )
+
     async def test_missing_file_name_raises(self, file_storage, clock):
         use_case = UploadFileUseCase(file_storage, clock)
 

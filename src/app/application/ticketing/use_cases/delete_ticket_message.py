@@ -1,4 +1,3 @@
-from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.exceptions import PermissionDeniedError
 from app.application.shared.ports import IClock, IUnitOfWork
 from app.application.shared.use_case import UseCase
@@ -7,7 +6,6 @@ from app.application.ticketing.dto import (
     DeleteTicketMessageCommand,
     DeleteTicketMessageResult,
 )
-from app.application.ticketing.permissions import PERMISSION_TICKET_MANAGE_ANY
 from app.domain.ticketing.repositories import (
     ITicketMessageRepository,
     ITicketRepository,
@@ -19,13 +17,11 @@ class DeleteTicketMessageUseCase(UseCase[DeleteTicketMessageCommand, DeleteTicke
         self,
         ticket_repo: ITicketRepository,
         message_repo: ITicketMessageRepository,
-        authorization_service: IAuthorizationService,
         clock: IClock,
         uow: IUnitOfWork,
     ) -> None:
         self._ticket_repo = ticket_repo
         self._message_repo = message_repo
-        self._authorization_service = authorization_service
         self._clock = clock
         self._uow = uow
 
@@ -34,10 +30,7 @@ class DeleteTicketMessageUseCase(UseCase[DeleteTicketMessageCommand, DeleteTicke
         message = await self._message_repo.get_by_id(request.message_id)
         if message.ticket_id != ticket.id:
             raise PermissionDeniedError("Message does not belong to the specified ticket.")
-        if not await self._authorization_service.has_permission(request.actor_id, PERMISSION_TICKET_MANAGE_ANY):
-            await ensure_party(ticket, request.actor_id)
-            if message.sender_user_id != request.actor_id:
-                raise PermissionDeniedError("Only the sender or an admin can delete a message.")
+        await ensure_party(ticket, request.actor_id)
         now = await self._clock.now()
         message.soft_delete(now)
         async with self._uow:

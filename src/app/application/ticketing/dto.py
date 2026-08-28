@@ -175,6 +175,8 @@ class ListRelatedUsersQuery:
     user_id: EntityId
     page: int = 1
     page_size: int = DEFAULT_PAGE_SIZE
+    search: str | None = None
+    role: str | None = None
 
 
 @dataclass(frozen=True)

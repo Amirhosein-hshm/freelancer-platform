@@ -20,6 +20,9 @@ _OPEN_STATUSES = (
     ProjectStatus.PUBLISHED.value,
     ProjectStatus.COLLECTING_APPLICATIONS.value,
 )
+_NON_TERMINAL_STATUSES = tuple(
+    status.value for status in ProjectStatus if status not in (ProjectStatus.COMPLETED, ProjectStatus.CANCELLED)
+)
 
 
 class SqlAlchemyRelatedUsersRepository(IRelatedUsersRepository):
@@ -45,17 +48,46 @@ class SqlAlchemyRelatedUsersRepository(IRelatedUsersRepository):
         rows = await self.list_related_users(user_a, limit=10000, offset=0)
         return any(row.user_id == user_b for row in rows)
 
-    async def list_related_users(self, user_id: EntityId, limit: int, offset: int) -> list[RelatedUser]:
+    def _filtered_users_stmt(self, user_id: EntityId, search: str | None, role: str | None):
         ids = self._related_user_ids_subquery(user_id)
-        result = await self._session.execute(
-            select(
-                UserModel.id,
-                UserModel.email,
-                UserModel.first_name,
-                UserModel.last_name,
-            )
+        stmt = (
+            select(UserModel.id, UserModel.email, UserModel.first_name, UserModel.last_name)
             .join(ids, ids.c.related_user_id == UserModel.id)
             .where(UserModel.deleted_at.is_(None))
+        )
+        if search and (term := search.strip()):
+            pattern = f"%{term}%"
+            stmt = stmt.where(
+                or_(
+                    UserModel.email.ilike(pattern),
+                    UserModel.first_name.ilike(pattern),
+                    UserModel.last_name.ilike(pattern),
+                )
+            )
+        if role:
+            stmt = stmt.where(
+                select(UserRoleModel.id)
+                .join(RoleModel, RoleModel.id == UserRoleModel.role_id)
+                .where(
+                    UserRoleModel.user_id == UserModel.id,
+                    UserRoleModel.is_active.is_(True),
+                    UserRoleModel.revoked_at.is_(None),
+                    RoleModel.role_key == role,
+                )
+                .exists()
+            )
+        return stmt
+
+    async def list_related_users(
+        self,
+        user_id: EntityId,
+        limit: int,
+        offset: int,
+        search: str | None = None,
+        role: str | None = None,
+    ) -> list[RelatedUser]:
+        result = await self._session.execute(
+            self._filtered_users_stmt(user_id, search, role)
             .order_by(UserModel.created_at.desc(), UserModel.id)
             .limit(limit)
             .offset(offset)
@@ -70,13 +102,14 @@ class SqlAlchemyRelatedUsersRepository(IRelatedUsersRepository):
             for row in result
         ]
 
-    async def count_related_users(self, user_id: EntityId) -> int:
-        ids = self._related_user_ids_subquery(user_id)
+    async def count_related_users(
+        self,
+        user_id: EntityId,
+        search: str | None = None,
+        role: str | None = None,
+    ) -> int:
         result = await self._session.execute(
-            select(func.count())
-            .select_from(ids)
-            .join(UserModel, UserModel.id == ids.c.related_user_id)
-            .where(UserModel.deleted_at.is_(None))
+            select(func.count()).select_from(self._filtered_users_stmt(user_id, search, role).subquery())
         )
         return int(result.scalar_one())
 
@@ -87,7 +120,9 @@ class SqlAlchemyRelatedUsersRepository(IRelatedUsersRepository):
         cs1 = aliased(CategorySupervisorModel)
         cs2 = aliased(CategorySupervisorModel)
 
-        _selected_freelancer_condition = project.deleted_at.is_(None)
+        _selected_freelancer_condition = (
+            project.deleted_at.is_(None) & project.status.in_(_NON_TERMINAL_STATUSES)
+        )
         _selected_freelancer_join = (
             select(profile.user_id.label("related_user_id"))
             .select_from(project)
@@ -127,6 +162,7 @@ class SqlAlchemyRelatedUsersRepository(IRelatedUsersRepository):
                 project.customer_user_id == user_id,
                 project.assigned_supervisor_user_id.is_not(None),
                 project.deleted_at.is_(None),
+                project.status.in_(_NON_TERMINAL_STATUSES),
             ),
             _selected_freelancer_join.where(
                 project.customer_user_id == user_id,
@@ -136,6 +172,7 @@ class SqlAlchemyRelatedUsersRepository(IRelatedUsersRepository):
             select(project.customer_user_id.label("related_user_id")).where(
                 project.assigned_supervisor_user_id == user_id,
                 project.deleted_at.is_(None),
+                project.status.in_(_NON_TERMINAL_STATUSES),
             ),
             _selected_freelancer_join.where(
                 project.assigned_supervisor_user_id == user_id,
@@ -146,7 +183,11 @@ class SqlAlchemyRelatedUsersRepository(IRelatedUsersRepository):
             .select_from(project)
             .join(application, application.id == project.selected_application_id)
             .join(profile, profile.id == application.freelancer_profile_id)
-            .where(profile.user_id == user_id, project.deleted_at.is_(None)),
+            .where(
+                profile.user_id == user_id,
+                project.deleted_at.is_(None),
+                project.status.in_(_NON_TERMINAL_STATUSES),
+            ),
             select(project.assigned_supervisor_user_id.label("related_user_id"))
             .select_from(project)
             .join(application, application.id == project.selected_application_id)
@@ -155,6 +196,7 @@ class SqlAlchemyRelatedUsersRepository(IRelatedUsersRepository):
                 profile.user_id == user_id,
                 project.assigned_supervisor_user_id.is_not(None),
                 project.deleted_at.is_(None),
+                project.status.in_(_NON_TERMINAL_STATUSES),
             ),
             # --- Category anchor: co-supervisors of categories the user supervises ---
             select(cs2.supervisor_user_id.label("related_user_id"))

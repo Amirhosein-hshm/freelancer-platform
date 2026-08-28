@@ -55,10 +55,22 @@ class IUserRepository(ABC):
     async def list_by_status(self, status: UserStatus, limit: int, offset: int) -> list[User]: ...
 
     @abstractmethod
-    async def list_all(self, limit: int, offset: int) -> list[User]: ...
+    async def list_all(
+        self,
+        limit: int,
+        offset: int,
+        status: UserStatus | None = None,
+        role: str | None = None,
+        search: str | None = None,
+    ) -> list[User]: ...
 
     @abstractmethod
-    async def count_all(self, status: UserStatus | None = None) -> int: ...
+    async def count_all(
+        self,
+        status: UserStatus | None = None,
+        role: str | None = None,
+        search: str | None = None,
+    ) -> int: ...
 
 
 class IRoleRepository(ABC):

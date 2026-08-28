@@ -9,6 +9,21 @@ from app.application.shared.use_case import UseCase
 from app.domain.file.exceptions import InvalidFileContentError
 
 _DETECTION_BUFFER_SIZE = 8192
+ALLOWED_MIME_TYPES = frozenset(
+    {
+        "application/pdf",
+        "application/zip",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "image/gif",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "audio/mpeg",
+        "audio/wav",
+        "video/mp4",
+        "video/webm",
+    }
+)
 
 
 class UploadFileUseCase(UseCase[UploadFileCommand, UploadFileResult]):
@@ -39,6 +54,8 @@ class UploadFileUseCase(UseCase[UploadFileCommand, UploadFileResult]):
         if guess is None:
             raise InvalidFileContentError("Could not determine MIME type from file content.")
         mime_type = guess.mime
+        if mime_type not in ALLOWED_MIME_TYPES:
+            raise InvalidFileContentError(f"MIME type '{mime_type}' is not allowed.")
 
         async def _content_with_buffer() -> AsyncIterator[bytes]:
             yield bytes(detection_buffer)

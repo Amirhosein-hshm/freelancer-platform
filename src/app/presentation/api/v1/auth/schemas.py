@@ -58,3 +58,7 @@ class UserMeResponse(BaseModel):
     email: str
     roles: list[str]
     permissions: list[str]
+    freelancer_profile_id: str | None = None
+    freelancer_onboarding_needed: bool = False
+    freelancer_approval_status: str | None = None
+    freelancer_level: str | None = None

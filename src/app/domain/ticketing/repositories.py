@@ -18,10 +18,22 @@ class IRelatedUsersRepository(ABC):
     """
 
     @abstractmethod
-    async def list_related_users(self, user_id: EntityId, limit: int, offset: int) -> list[RelatedUser]: ...
+    async def list_related_users(
+        self,
+        user_id: EntityId,
+        limit: int,
+        offset: int,
+        search: str | None = None,
+        role: str | None = None,
+    ) -> list[RelatedUser]: ...
 
     @abstractmethod
-    async def count_related_users(self, user_id: EntityId) -> int: ...
+    async def count_related_users(
+        self,
+        user_id: EntityId,
+        search: str | None = None,
+        role: str | None = None,
+    ) -> int: ...
 
 
 class ITicketRepository(ABC):

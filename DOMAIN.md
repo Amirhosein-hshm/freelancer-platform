@@ -855,7 +855,6 @@ TicketStatus: OPEN, IN_PROGRESS, WAITING_CUSTOMER, WAITING_FREELANCER,
               WAITING_SUPERVISOR, CLOSED, ARCHIVED
 TicketPriority: LOW, NORMAL, HIGH, URGENT
 TicketMessageType: TEXT, FILE, SYSTEM
-TicketParticipantRole: REQUESTER, ASSIGNEE, WATCHER, SUPERVISOR, ADMIN, CUSTOMER, FREELANCER
 ```
 
 ### Entities
@@ -865,9 +864,7 @@ TicketParticipantRole: REQUESTER, ASSIGNEE, WATCHER, SUPERVISOR, ADMIN, CUSTOMER
 class Ticket(AggregateRoot):
     ticket_code: str
     created_by_user_id: EntityId
-    assigned_to_user_id: EntityId | None
-    related_project_id: EntityId | None
-    related_category_id: EntityId | None
+    target_user_id: EntityId
     subject: str
     status: TicketStatus
     priority: TicketPriority
@@ -879,18 +876,10 @@ class Ticket(AggregateRoot):
     # ^ on-behalf audit field per AUTHORIZATION.md §3.2 (created_by_user_id holds the
     #   target/requester; this field records the admin when created on their behalf).
 
-    def assign(self, user_id: EntityId) -> None: ...
     def close(self, by_user_id: EntityId, at: datetime) -> None: ...
     def touch_last_message(self, at: datetime) -> None: ...
     def is_closed(self) -> bool: ...
-
-@dataclass
-class TicketParticipant(Entity):
-    ticket_id: EntityId
-    user_id: EntityId
-    participant_role: TicketParticipantRole
-    joined_at: datetime
-    left_at: datetime | None
+    def is_party(self, user_id: EntityId) -> bool: ...
 
 @dataclass
 class TicketMessage(Entity):
@@ -910,7 +899,8 @@ class TicketMessage(Entity):
 ```python
 class TicketNotFoundError(EntityNotFoundError): ...
 class TicketClosedError(BusinessRuleViolationError): ...
-class NotTicketParticipantError(BusinessRuleViolationError): ...
+class NotTicketPartyError(BusinessRuleViolationError): ...
+class TicketRelationshipError(BusinessRuleViolationError): ...
 ```
 
 ### Repository Interfaces

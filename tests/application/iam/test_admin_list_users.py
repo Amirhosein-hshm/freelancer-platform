@@ -75,3 +75,17 @@ class TestAdminListUsersUseCase:
 
         assert [u.user_id for u in result.users] == ["u3", "u4"]
         assert result.total_items == 4
+
+    async def test_role_and_search_filters_are_combined(self, authorization_service, user_repo, make_user):
+        authorization_service.grant("admin", "user.read")
+        await make_user(user_id="u1", email="alice@example.com")
+        await make_user(user_id="u2", email="bob@example.com")
+        user_repo.role_keys_by_user = {"u1": {"freelancer"}, "u2": {"customer"}}
+        use_case = self.build(authorization_service, user_repo)
+
+        result = await use_case.execute(
+            AdminListUsersQuery(actor_id="admin", role="freelancer", search="alice")
+        )
+
+        assert [user.user_id for user in result.users] == ["u1"]
+        assert result.total_items == 1

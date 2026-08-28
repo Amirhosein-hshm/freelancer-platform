@@ -332,3 +332,13 @@ green (tests passing), not just "code written".
     (tests-out-of-scope instruction) — flagged for the final report; `test_pagination.py`
     line 102 (`page=99` clamps to `page: 3`) encodes the old in-memory clamping behaviour and
     will need updating for the new DB-paging semantics.
+
+## Business-Flow Audit Remediation
+
+- [x] Logout resolves and revokes the raw refresh token by hash; rotated/logged-out tokens are unusable.
+- [x] `/auth/me` exposes freelancer profile/onboarding, approval, and level state.
+- [x] Admin user listing supports combined status, role, and name/email search filters in SQL.
+- [x] Uploads enforce a closed content-derived MIME allowlist in addition to size limits.
+- [x] Ticket relationship eligibility excludes completed/cancelled projects on every project anchor.
+- [x] `/users/related` supports role and name/email filters using the same relationship repository.
+- [x] Ticket message edit/delete is restricted to the ticket creator or target, with no non-party bypass.

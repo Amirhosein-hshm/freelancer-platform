@@ -13,6 +13,7 @@ class FakeUserRepository(IUserRepository):
     def __init__(self) -> None:
         self._store: dict[str, User] = {}
         self._by_email: dict[str, User] = {}
+        self.role_keys_by_user: dict[str, set[str]] = {}
 
     async def add(self, user: User) -> None:
         self._store[user.id] = user
@@ -49,12 +50,31 @@ class FakeUserRepository(IUserRepository):
         matches = [u for u in self._store.values() if u.status == status and u.deleted_at is None]
         return matches[offset : offset + limit]
 
-    async def list_all(self, limit: int, offset: int) -> list[User]:
+    async def list_all(
+        self,
+        limit: int,
+        offset: int,
+        status: UserStatus | None = None,
+        role: str | None = None,
+        search: str | None = None,
+    ) -> list[User]:
         matches = [u for u in self._store.values() if u.deleted_at is None]
+        if status is not None:
+            matches = [u for u in matches if u.status == status]
+        if role:
+            matches = [u for u in matches if role in self.role_keys_by_user.get(u.id, set())]
+        if search and (term := search.strip().lower()):
+            matches = [
+                u
+                for u in matches
+                if term in u.email.value.lower() or term in u.first_name.lower() or term in u.last_name.lower()
+            ]
         return matches[offset : offset + limit]
 
-    async def count_all(self, status: UserStatus | None = None) -> int:
-        live = [u for u in self._store.values() if u.deleted_at is None]
-        if status is None:
-            return len(live)
-        return sum(1 for u in live if u.status == status)
+    async def count_all(
+        self,
+        status: UserStatus | None = None,
+        role: str | None = None,
+        search: str | None = None,
+    ) -> int:
+        return len(await self.list_all(len(self._store), 0, status, role, search))

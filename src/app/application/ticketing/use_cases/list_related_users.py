@@ -2,6 +2,7 @@ from app.application.shared.authorization import (
     IAuthorizationService,
     authorize_owned_action,
 )
+from app.application.shared.exceptions import PermissionDeniedError
 from app.application.shared.pagination import limit_offset
 from app.application.shared.use_case import UseCase
 from app.application.ticketing.dto import (
@@ -33,16 +34,36 @@ class ListRelatedUsersUseCase(UseCase[ListRelatedUsersQuery, ListRelatedUsersRes
         self._related_users_repo = related_users_repo
 
     async def execute(self, request: ListRelatedUsersQuery) -> ListRelatedUsersResult:
-        await authorize_owned_action(
-            self._authorization_service,
-            request.actor_id,
-            request.user_id,
-            PERMISSION_TICKET_READ_OWN,
-            PERMISSION_TICKET_READ_ANY,
-        )
+        if request.actor_id == request.user_id:
+            has_access = await self._authorization_service.has_permission(
+                request.actor_id, PERMISSION_TICKET_READ_OWN
+            ) or await self._authorization_service.has_permission(request.actor_id, PERMISSION_TICKET_READ_ANY)
+            if not has_access:
+                raise PermissionDeniedError(
+                    f"User {request.actor_id} needs '{PERMISSION_TICKET_READ_OWN}' or "
+                    f"'{PERMISSION_TICKET_READ_ANY}'."
+                )
+        else:
+            await authorize_owned_action(
+                self._authorization_service,
+                request.actor_id,
+                request.user_id,
+                PERMISSION_TICKET_READ_OWN,
+                PERMISSION_TICKET_READ_ANY,
+            )
         limit, offset = limit_offset(request.page, request.page_size)
-        users = await self._related_users_repo.list_related_users(request.user_id, limit, offset)
-        total_items = await self._related_users_repo.count_related_users(request.user_id)
+        users = await self._related_users_repo.list_related_users(
+            request.user_id,
+            limit,
+            offset,
+            search=request.search,
+            role=request.role,
+        )
+        total_items = await self._related_users_repo.count_related_users(
+            request.user_id,
+            search=request.search,
+            role=request.role,
+        )
         return ListRelatedUsersResult(
             users=[
                 RelatedUserResult(

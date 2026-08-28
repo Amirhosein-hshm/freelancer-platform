@@ -202,7 +202,8 @@ refresh_token_repo.add(...)` → `await user_repo.update` (`record_login`).
 
 ### LogoutUser
 
-Input: `refresh_token_jti`. Flow: find token → `revoke()` → update.
+Input: `raw_refresh_token`. Flow: hash the raw token → find by hash → require a currently
+valid token → `revoke()` → update. The HTTP client never needs to send or persist the JTI.
 
 ### RefreshToken
 
@@ -489,20 +490,18 @@ ReviewStatus.APPROVED` before allowing the rating; one rating per project
 
 ## 11. Communication / Ticketing — Use Cases (Phase 1)
 
-- `CreateTicketUseCase(actor_id, subject, related_project_id, priority)` →
-  `Ticket(status=OPEN)` + `TicketParticipant(role=REQUESTER)` → `add`.
+- `CreateTicketUseCase(actor_id, target_user_id, subject, priority)` creates a strict
+  two-party ticket after `RelationshipEligibilityService` verifies the relationship.
 - `AdminCreateTicketOnBehalfUseCase` (Pattern B) — requires `"ticket.create_on_behalf"`,
-  takes a `target_user_id`, verifies the target exists, shares core logic with
-  `CreateTicketUseCase` via a private helper.
-- `AssignTicketUseCase(actor_id, ticket_id, assignee_user_id)` — requires
-  `"ticket.assign"`.
+  takes requester and target user IDs, verifies both users, and shares core creation logic.
 - `SendMessageUseCase(actor_id, ticket_id, body, attachments)` — `ticket.is_closed()` →
-  `TicketClosedError`, else record message + `touch_last_message`.
+  `TicketClosedError`, then requires the actor to be the creator or target.
 - `GetTicketMessagesUseCase` / `GetUserTicketsUseCase` (latter:
   `authorize_owned_action(authz, actor_id, user_id, "ticket.read_own", "ticket.read_any")`).
-- `CloseTicketUseCase(actor_id, ticket_id)` —
-  `authorize_owned_action(authz, actor_id, ticket.created_by_user_id, "ticket.close_own",
-"ticket.close_any")` + participant check → `ticket.close(actor_id, now)`.
+- `UpdateTicketMessageUseCase` / `DeleteTicketMessageUseCase` require the actor to be exactly
+  one of the ticket's two parties; there is no admin/non-party bypass.
+- `ListRelatedUsersUseCase` uses the identical repository policy as ticket creation and
+  supports role plus name/email search filters.
 
 ---
 

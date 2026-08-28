@@ -17,11 +17,14 @@ class AdminListUsersUseCase(UseCase[AdminListUsersQuery, AdminListUsersResult]):
     async def execute(self, request: AdminListUsersQuery) -> AdminListUsersResult:
         await self._authorization_service.require_permission(request.actor_id, "user.read")
         limit, offset = limit_offset(request.page, request.page_size)
-        if request.status is not None:
-            users = await self._user_repo.list_by_status(request.status, limit, offset)
-        else:
-            users = await self._user_repo.list_all(limit, offset)
-        total_items = await self._user_repo.count_all(request.status)
+        users = await self._user_repo.list_all(
+            limit,
+            offset,
+            status=request.status,
+            role=request.role,
+            search=request.search,
+        )
+        total_items = await self._user_repo.count_all(request.status, request.role, request.search)
         return AdminListUsersResult(
             users=[
                 AdminUserSummary(

@@ -119,13 +119,20 @@ If the repository currently returns all records, real SQL `LIMIT`/`OFFSET` must 
       "user_id": "...",
       "email": "...",
       "roles": ["customer"],
-      "permissions": ["project.create_own", "project.apply", ...]
+      "permissions": ["project.create_own", "project.apply", ...],
+      "freelancer_profile_id": null,
+      "freelancer_onboarding_needed": false,
+      "freelancer_approval_status": null,
+      "freelancer_level": null
     },
     "meta": null
   }
   ```
 
 `permissions` are computed by `IAuthorizationService` (the union of all permissions granted by the user's active roles), not from the JWT. The JWT carries only roles (keeping it lightweight), while permissions may change between token issuance and consumption.
+
+For a freelancer, the four `freelancer_*` fields let the client route a profile-less user
+to onboarding without already knowing a profile ID.
 
 All other endpoints must **never** include `roles` or `permissions` in their `data`. This is exclusive to `/auth/me`.
 

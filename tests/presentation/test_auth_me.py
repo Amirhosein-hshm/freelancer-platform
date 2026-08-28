@@ -52,6 +52,18 @@ def test_get_me_returns_roles_and_permissions(client: TestClient, overrides) -> 
     assert data["email"] == "me@example.com"
     assert data["roles"] == ["customer"]
     assert set(data["permissions"]) == {"project.create_own", "project.apply"}
+    assert data["freelancer_onboarding_needed"] is False
+
+
+def test_get_me_marks_profileless_freelancer_for_onboarding(client: TestClient, overrides) -> None:
+    _seed_user(overrides[providers.get_user_repository])
+    headers = auth_header(None, "user-1", ["freelancer"])
+
+    resp = client.get("/api/v1/auth/me", headers=headers)
+
+    assert resp.status_code == 200
+    assert resp.json()["data"]["freelancer_profile_id"] is None
+    assert resp.json()["data"]["freelancer_onboarding_needed"] is True
 
 
 def test_only_auth_me_endpoint_exposes_roles_and_permissions(client: TestClient, overrides) -> None:

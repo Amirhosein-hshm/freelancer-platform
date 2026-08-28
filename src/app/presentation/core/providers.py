@@ -898,14 +898,12 @@ def get_delete_resume_use_case(
 def get_delete_ticket_message_use_case(
     ticket_repo: ITicketRepository = Depends(get_ticket_repository),
     message_repo: ITicketMessageRepository = Depends(get_ticket_message_repository),
-    authorization_service: IAuthorizationService = Depends(get_authorization_service),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> DeleteTicketMessageUseCase:
     return DeleteTicketMessageUseCase(
         ticket_repo,
         message_repo,
-        authorization_service,
         clock,
         uow,
     )
@@ -1328,10 +1326,11 @@ def get_login_user_use_case(
 
 def get_logout_user_use_case(
     refresh_token_repo: IRefreshTokenRepository = Depends(get_refresh_token_repository),
+    token_service: ITokenService = Depends(get_token_service),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> LogoutUserUseCase:
-    return LogoutUserUseCase(refresh_token_repo, clock, uow)
+    return LogoutUserUseCase(refresh_token_repo, token_service, clock, uow)
 
 
 def get_publish_form_template_use_case(
@@ -1772,14 +1771,12 @@ def get_update_resume_use_case(
 def get_update_ticket_message_use_case(
     ticket_repo: ITicketRepository = Depends(get_ticket_repository),
     message_repo: ITicketMessageRepository = Depends(get_ticket_message_repository),
-    authorization_service: IAuthorizationService = Depends(get_authorization_service),
     clock: IClock = Depends(get_clock),
     uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> UpdateTicketMessageUseCase:
     return UpdateTicketMessageUseCase(
         ticket_repo,
         message_repo,
-        authorization_service,
         clock,
         uow,
     )
