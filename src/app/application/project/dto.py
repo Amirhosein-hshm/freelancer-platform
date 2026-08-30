@@ -37,6 +37,8 @@ class ProjectResult:
     project_code: str
     customer_user_id: EntityId
     category_id: EntityId
+    form_template_id: EntityId
+    form_values: list[FormValueInput]
     required_level: FreelancerLevelEnum | None
     title: str
     description: str

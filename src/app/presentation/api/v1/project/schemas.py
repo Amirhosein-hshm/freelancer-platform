@@ -118,6 +118,8 @@ class ProjectResponse(BaseModel):
     project_code: str
     customer_user_id: str
     category_id: str
+    form_template_id: str
+    form_values: list[FormValueInputRequest] = Field(default_factory=list)
     required_level: FreelancerLevelEnum | None
     title: str
     description: str

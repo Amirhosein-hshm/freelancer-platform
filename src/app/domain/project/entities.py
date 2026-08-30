@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 
@@ -58,6 +58,7 @@ class Project(AggregateRoot):
     cancelled_at: datetime | None
     locked_at: datetime | None
     deleted_at: datetime | None
+    form_values: list[dict[str, str]] = field(default_factory=list)
     created_by_user_id: EntityId | None = None
 
     def publish(self, at: datetime) -> None:

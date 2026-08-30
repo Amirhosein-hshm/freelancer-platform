@@ -76,6 +76,7 @@ class UpdateProjectUseCase(UseCase[UpdateProjectCommand, UpdateProjectResult]):
                 budget=budget,
                 application_deadline=request.application_deadline,
             )
+            project.form_values = [{"field_id": v.field_id, "value": v.value} for v in request.form_values]
             await self._project_repo.update(project)
             await self._uow.commit()
         return UpdateProjectResult(project_id=project.id, status=project.status)

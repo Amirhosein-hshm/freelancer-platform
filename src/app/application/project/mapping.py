@@ -2,6 +2,7 @@ from app.application.project.dto import (
     ApplicationResult,
     BudgetResult,
     DeliveryResult,
+    FormValueInput,
     ProjectResult,
 )
 from app.domain.project.entities import Project, ProjectApplication, ProjectDelivery
@@ -23,6 +24,8 @@ def to_project_result(project: Project) -> ProjectResult:
         project_code=project.project_code.value,
         customer_user_id=project.customer_user_id,
         category_id=project.category_id,
+        form_template_id=project.form_template_id,
+        form_values=[FormValueInput(field_id=v["field_id"], value=v["value"]) for v in project.form_values],
         required_level=project.required_level,
         title=project.title,
         description=project.description,

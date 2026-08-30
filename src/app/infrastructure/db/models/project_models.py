@@ -16,6 +16,7 @@ class ProjectModel(TimestampMixin, Base):
     customer_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
     category_id: Mapped[str] = mapped_column(ForeignKey("categories.id"), index=True, nullable=False)
     form_template_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    form_values: Mapped[list[dict[str, str]]] = mapped_column(JSONB, nullable=False, default=list)
     required_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
     assigned_supervisor_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     selected_application_id: Mapped[str | None] = mapped_column(String(36), nullable=True)

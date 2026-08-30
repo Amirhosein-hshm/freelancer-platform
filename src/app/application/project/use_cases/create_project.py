@@ -86,6 +86,7 @@ async def _create_project(
         created_by_user_id=created_by_user_id,
         category_id=template.category_id,
         form_template_id=template.id,
+        form_values=[{"field_id": v.field_id, "value": v.value} for v in form_values],
         required_level=required_level,
         assigned_supervisor_user_id=None,
         selected_application_id=None,

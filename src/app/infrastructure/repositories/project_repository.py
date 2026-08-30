@@ -36,6 +36,7 @@ class SqlAlchemyProjectRepository(IProjectRepository):
                 customer_user_id=project.customer_user_id,
                 category_id=project.category_id,
                 form_template_id=project.form_template_id,
+                form_values=list(project.form_values),
                 required_level=project.required_level.value if project.required_level else None,
                 assigned_supervisor_user_id=project.assigned_supervisor_user_id,
                 selected_application_id=project.selected_application_id,
@@ -89,6 +90,7 @@ class SqlAlchemyProjectRepository(IProjectRepository):
         row.customer_user_id = project.customer_user_id
         row.category_id = project.category_id
         row.form_template_id = project.form_template_id
+        row.form_values = list(project.form_values)
         row.required_level = project.required_level.value if project.required_level else None
         row.assigned_supervisor_user_id = project.assigned_supervisor_user_id
         row.selected_application_id = project.selected_application_id
