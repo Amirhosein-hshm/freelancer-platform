@@ -3448,10 +3448,11 @@ None.
 ## GetAvailableProjects
 
 ### Purpose
-Lists projects a freelancer is currently allowed to apply to.
+Lists projects a freelancer can discover and consider applying to. Approval is required when
+applying, but not when browsing the marketplace.
 
 ### Actor
-Approved freelancer.
+Freelancer with a profile.
 
 ### Input (`GetAvailableProjectsQuery`)
 - `actor_id`
@@ -3463,13 +3464,13 @@ Approved freelancer.
 `IProjectRepository`, `IFreelancerProfileRepository`.
 
 ### Flow
-1. `profile_repo.get_by_user_id(actor_id)`; `is_approved()` else `FreelancerNotApprovedError`.
+1. `profile_repo.get_by_user_id(actor_id)`.
 2. `list_available_for_freelancer(profile.current_level)` → map. The repository applies the
    same hierarchical `>=` rule as `FreelancerEligibilityPolicy` at the SQL level and always
    includes projects with no `required_level` (open to all).
 
 ### Errors
-`FreelancerProfileNotFoundError`, `FreelancerNotApprovedError`.
+`FreelancerProfileNotFoundError`.
 
 ---
 

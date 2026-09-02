@@ -7,15 +7,15 @@ from app.domain.form.enums import FormTemplateStatus
 from app.domain.shared.exceptions import InvalidStateTransitionError
 
 
-def build_use_case(template_repo, authorization_service) -> UpdateFormTemplateUseCase:
-    return UpdateFormTemplateUseCase(template_repo=template_repo, authorization_service=authorization_service)
+def build_use_case(template_repo, authorization_service, uow) -> UpdateFormTemplateUseCase:
+    return UpdateFormTemplateUseCase(template_repo=template_repo, authorization_service=authorization_service, uow=uow)
 
 
 class TestUpdateFormTemplateUseCase:
-    async def test_update_name_of_draft(self, template_repo, make_template, authorization_service):
+    async def test_update_name_of_draft(self, template_repo, make_template, authorization_service, uow):
         await make_template(template_id="template-1")
         authorization_service.grant("admin", "form.manage")
-        use_case = build_use_case(template_repo, authorization_service)
+        use_case = build_use_case(template_repo, authorization_service, uow)
 
         result = await use_case.execute(
             UpdateFormTemplateCommand(actor_id="admin", template_id="template-1", name="New Name")
@@ -24,20 +24,20 @@ class TestUpdateFormTemplateUseCase:
         assert result.name == "New Name"
         assert (await template_repo.get_by_id("template-1")).name == "New Name"
 
-    async def test_update_published_raises(self, template_repo, make_template, authorization_service):
+    async def test_update_published_raises(self, template_repo, make_template, authorization_service, uow):
         await make_template(template_id="template-1", status=FormTemplateStatus.PUBLISHED)
         authorization_service.grant("admin", "form.manage")
-        use_case = build_use_case(template_repo, authorization_service)
+        use_case = build_use_case(template_repo, authorization_service, uow)
 
         with pytest.raises(InvalidStateTransitionError):
             await use_case.execute(
                 UpdateFormTemplateCommand(actor_id="admin", template_id="template-1", name="New Name")
             )
 
-    async def test_empty_name_raises_validation(self, template_repo, make_template, authorization_service):
+    async def test_empty_name_raises_validation(self, template_repo, make_template, authorization_service, uow):
         await make_template(template_id="template-1")
         authorization_service.grant("admin", "form.manage")
-        use_case = build_use_case(template_repo, authorization_service)
+        use_case = build_use_case(template_repo, authorization_service, uow)
 
         with pytest.raises(ValidationError):
             await use_case.execute(UpdateFormTemplateCommand(actor_id="admin", template_id="template-1", name="  "))

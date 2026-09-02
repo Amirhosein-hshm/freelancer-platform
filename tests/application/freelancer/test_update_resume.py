@@ -7,8 +7,8 @@ from app.domain.freelancer.exceptions import ResumeNotFoundError
 from tests.application.freelancer.conftest import NOW
 
 
-def build_use_case(profile_repo, resume_repo) -> UpdateResumeUseCase:
-    return UpdateResumeUseCase(profile_repo=profile_repo, resume_repo=resume_repo)
+def build_use_case(profile_repo, resume_repo, uow) -> UpdateResumeUseCase:
+    return UpdateResumeUseCase(profile_repo=profile_repo, resume_repo=resume_repo, uow=uow)
 
 
 async def seed_resume(resume_repo, profile_id: str = "profile-1") -> Resume:
@@ -26,10 +26,10 @@ async def seed_resume(resume_repo, profile_id: str = "profile-1") -> Resume:
 
 
 class TestUpdateResumeUseCase:
-    async def test_update_summary(self, profile_repo, resume_repo, make_profile):
+    async def test_update_summary(self, profile_repo, resume_repo, make_profile, uow):
         await make_profile(user_id="user-1")
         await seed_resume(resume_repo)
-        use_case = build_use_case(profile_repo, resume_repo)
+        use_case = build_use_case(profile_repo, resume_repo, uow)
 
         result = await use_case.execute(UpdateResumeCommand(user_id="user-1", summary="new summary"))
 
@@ -37,18 +37,18 @@ class TestUpdateResumeUseCase:
         assert result.summary == "new summary"
         assert (await resume_repo.get_current("profile-1")).summary == "new summary"
 
-    async def test_clear_summary(self, profile_repo, resume_repo, make_profile):
+    async def test_clear_summary(self, profile_repo, resume_repo, make_profile, uow):
         await make_profile(user_id="user-1")
         await seed_resume(resume_repo)
-        use_case = build_use_case(profile_repo, resume_repo)
+        use_case = build_use_case(profile_repo, resume_repo, uow)
 
         result = await use_case.execute(UpdateResumeCommand(user_id="user-1", summary=None))
 
         assert result.summary is None
 
-    async def test_no_current_resume_raises(self, profile_repo, resume_repo, make_profile):
+    async def test_no_current_resume_raises(self, profile_repo, resume_repo, make_profile, uow):
         await make_profile(user_id="user-1")
-        use_case = build_use_case(profile_repo, resume_repo)
+        use_case = build_use_case(profile_repo, resume_repo, uow)
 
         with pytest.raises(ResumeNotFoundError):
             await use_case.execute(UpdateResumeCommand(user_id="user-1", summary="x"))

@@ -723,12 +723,14 @@ def get_close_project_revision_request_use_case(
     project_repo: IProjectRepository = Depends(get_project_repository),
     revision_repo: IProjectRevisionRequestRepository = Depends(get_project_revision_request_repository),
     clock: IClock = Depends(get_clock),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> CloseProjectRevisionRequestUseCase:
     return CloseProjectRevisionRequestUseCase(
         authorization_service,
         project_repo,
         revision_repo,
         clock,
+        uow,
     )
 
 
@@ -891,8 +893,9 @@ def get_delete_resume_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
     resume_repo: IResumeRepository = Depends(get_resume_repository),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> DeleteResumeUseCase:
-    return DeleteResumeUseCase(authorization_service, profile_repo, resume_repo)
+    return DeleteResumeUseCase(authorization_service, profile_repo, resume_repo, uow)
 
 
 def get_delete_ticket_message_use_case(
@@ -1575,16 +1578,18 @@ def get_set_current_resume_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
     resume_repo: IResumeRepository = Depends(get_resume_repository),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> SetCurrentResumeUseCase:
-    return SetCurrentResumeUseCase(authorization_service, profile_repo, resume_repo)
+    return SetCurrentResumeUseCase(authorization_service, profile_repo, resume_repo, uow)
 
 
 def get_soft_delete_freelancer_profile_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
     clock: IClock = Depends(get_clock),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> SoftDeleteFreelancerProfileUseCase:
-    return SoftDeleteFreelancerProfileUseCase(authorization_service, profile_repo, clock)
+    return SoftDeleteFreelancerProfileUseCase(authorization_service, profile_repo, clock, uow)
 
 
 def get_start_project_use_case(
@@ -1727,29 +1732,33 @@ def get_update_field_option_use_case(
 def get_update_field_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> UpdateFieldUseCase:
-    return UpdateFieldUseCase(authorization_service, template_repo)
+    return UpdateFieldUseCase(authorization_service, template_repo, uow)
 
 
 def get_update_form_template_use_case(
     authorization_service: IAuthorizationService = Depends(get_authorization_service),
     template_repo: IFormTemplateRepository = Depends(get_form_template_repository),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> UpdateFormTemplateUseCase:
-    return UpdateFormTemplateUseCase(authorization_service, template_repo)
+    return UpdateFormTemplateUseCase(authorization_service, template_repo, uow)
 
 
 def get_update_freelancer_profile_use_case(
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> UpdateFreelancerProfileUseCase:
-    return UpdateFreelancerProfileUseCase(profile_repo)
+    return UpdateFreelancerProfileUseCase(profile_repo, uow)
 
 
 def get_update_portfolio_item_use_case(
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
     portfolio_item_repo: IPortfolioItemRepository = Depends(get_portfolio_item_repository),
     file_storage: IFileStorageService = Depends(get_file_storage_service),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> UpdatePortfolioItemUseCase:
-    return UpdatePortfolioItemUseCase(profile_repo, portfolio_item_repo, file_storage)
+    return UpdatePortfolioItemUseCase(profile_repo, portfolio_item_repo, file_storage, uow)
 
 
 def get_update_rating_use_case(
@@ -1764,8 +1773,9 @@ def get_update_rating_use_case(
 def get_update_resume_use_case(
     profile_repo: IFreelancerProfileRepository = Depends(get_freelancer_profile_repository),
     resume_repo: IResumeRepository = Depends(get_resume_repository),
+    uow: IUnitOfWork = Depends(get_unit_of_work),
 ) -> UpdateResumeUseCase:
-    return UpdateResumeUseCase(profile_repo, resume_repo)
+    return UpdateResumeUseCase(profile_repo, resume_repo, uow)
 
 
 def get_update_ticket_message_use_case(

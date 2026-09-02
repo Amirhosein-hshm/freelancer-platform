@@ -91,6 +91,7 @@ ROLE_PERMISSIONS = {
     ],
     "freelancer": [
         "freelancer.create_own",
+        "freelancer.read_own",
         "project.apply",
         "project.manage_own",
         "feedback.manage_own",

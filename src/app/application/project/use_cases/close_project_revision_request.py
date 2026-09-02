@@ -7,7 +7,7 @@ from app.application.project.permissions import (
     PERMISSION_PROJECT_MANAGE_OWN,
 )
 from app.application.shared.authorization import IAuthorizationService, authorize_owned_action
-from app.application.shared.ports import IClock
+from app.application.shared.ports import IClock, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.project.repositories import (
     IProjectRepository,
@@ -24,11 +24,13 @@ class CloseProjectRevisionRequestUseCase(
         project_repo: IProjectRepository,
         revision_repo: IProjectRevisionRequestRepository,
         clock: IClock,
+        uow: IUnitOfWork,
     ) -> None:
         self._authorization_service = authorization_service
         self._project_repo = project_repo
         self._revision_repo = revision_repo
         self._clock = clock
+        self._uow = uow
 
     async def execute(self, request: CloseProjectRevisionRequestCommand) -> CloseProjectRevisionRequestResult:
         revision = await self._revision_repo.get_by_id(request.revision_id)
@@ -40,6 +42,8 @@ class CloseProjectRevisionRequestUseCase(
             PERMISSION_PROJECT_MANAGE_OWN,
             PERMISSION_PROJECT_MANAGE_ANY,
         )
-        revision.close(request.actor_id, await self._clock.now())
-        await self._revision_repo.update(revision)
+        async with self._uow:
+            revision.close(request.actor_id, await self._clock.now())
+            await self._revision_repo.update(revision)
+            await self._uow.commit()
         return CloseProjectRevisionRequestResult(revision_id=revision.id, status=revision.status.value)

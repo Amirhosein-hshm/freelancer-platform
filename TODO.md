@@ -32,6 +32,12 @@ green (tests passing), not just "code written".
 
 ## Phase 2, Step 2 — Infrastructure
 
+- [x] Mutating freelancer, form, and revision-request use cases commit repository updates
+      through the request-scoped unit of work, preventing successful-but-stale reads.
+- [x] Marketplace discovery is available to unapproved freelancers; application remains
+      approval-gated by `ApplyForProjectUseCase`.
+- [x] Repository contract regression: completed missing resume `get_by_id`/`delete` and
+      project-revision `get_by_id` implementations; concrete repositories are constructible.
 - [ ] `config.py` (`Settings` via `pydantic-settings`).
 - [ ] `db/base.py`, `db/session.py`, `db/unit_of_work.py`.
 - [ ] `db/models/*.py` — one SQLAlchemy model group per bounded context.
@@ -65,6 +71,7 @@ green (tests passing), not just "code written".
 
 ## Phase 2, Step 4 — Tests
 
+- [x] Added construction-time repository contract and freelancer seed-permission regressions.
 - [ ] Infrastructure tests against a real Postgres (`@pytest.mark.integration`), per
       `TESTING.md` §8, including the RBAC data-source contract test.
 - [ ] Presentation tests via `TestClient` + `dependency_overrides`, per `TESTING.md` §9.

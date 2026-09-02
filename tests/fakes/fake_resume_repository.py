@@ -27,8 +27,18 @@ class FakeResumeRepository(IResumeRepository):
     async def delete(self, resume_id: EntityId) -> None:
         self._store = [r for r in self._store if r.id != resume_id]
 
-    async def list_by_profile(self, profile_id: EntityId) -> list[Resume]:
-        return [r for r in self._store if r.freelancer_profile_id == profile_id]
+    async def list_by_profile(
+        self,
+        profile_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[Resume]:
+        resumes = [r for r in self._store if r.freelancer_profile_id == profile_id]
+        start = offset or 0
+        return resumes[start:] if limit is None else resumes[start : start + limit]
+
+    async def count_by_profile(self, profile_id: EntityId) -> int:
+        return sum(1 for r in self._store if r.freelancer_profile_id == profile_id)
 
     async def get_current(self, profile_id: EntityId) -> Resume | None:
         for r in self._store:

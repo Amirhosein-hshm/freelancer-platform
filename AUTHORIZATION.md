@@ -52,7 +52,9 @@ def authorize_owned_action(
 
 Known pairs: `project.manage_own` / `project.manage_any`,
 `review.decide_own` / `review.decide_any`, `feedback.manage_own` / `feedback.manage_any`,
-`ticket.close_own` / `ticket.close_any`, `ticket.read_own` / `ticket.read_any`.
+`ticket.close_own` / `ticket.close_any`, `ticket.read_own` / `ticket.read_any`, and
+`freelancer.read_own` / `freelancer.read_any`. The seeded `freelancer` role receives
+`freelancer.read_own`; `freelancer.read_any` remains admin-only.
 
 Use this pattern (Pattern A) whenever the owner is read from an already-loaded entity and
 no new "target owner" input is needed.

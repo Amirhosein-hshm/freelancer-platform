@@ -3,7 +3,7 @@ from app.application.freelancer.dto import (
     UpdatePortfolioItemResult,
 )
 from app.application.shared.exceptions import ValidationError
-from app.application.shared.ports import IFileStorageService
+from app.application.shared.ports import IFileStorageService, IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.freelancer.entities import PortfolioItem
 from app.domain.freelancer.exceptions import PortfolioItemNotFoundError
@@ -19,10 +19,12 @@ class UpdatePortfolioItemUseCase(UseCase[UpdatePortfolioItemCommand, UpdatePortf
         profile_repo: IFreelancerProfileRepository,
         portfolio_item_repo: IPortfolioItemRepository,
         file_storage: IFileStorageService,
+        uow: IUnitOfWork,
     ) -> None:
         self._profile_repo = profile_repo
         self._portfolio_item_repo = portfolio_item_repo
         self._file_storage = file_storage
+        self._uow = uow
 
     async def _owned_item(self, profile_id: str, item_id: str) -> PortfolioItem:
         item = await self._portfolio_item_repo.get_by_id(item_id)
@@ -45,5 +47,7 @@ class UpdatePortfolioItemUseCase(UseCase[UpdatePortfolioItemCommand, UpdatePortf
         item.file_asset_id = request.file_asset_id
         item.display_order = request.display_order
         item.is_featured = request.is_featured
-        await self._portfolio_item_repo.update(item)
+        async with self._uow:
+            await self._portfolio_item_repo.update(item)
+            await self._uow.commit()
         return UpdatePortfolioItemResult(item_id=item.id)

@@ -2,6 +2,7 @@ from app.application.freelancer.dto import (
     FreelancerProfileResult,
     UpdateFreelancerProfileCommand,
 )
+from app.application.shared.ports import IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.freelancer.entities import FreelancerProfile
 from app.domain.freelancer.repositories import IFreelancerProfileRepository
@@ -30,8 +31,10 @@ class UpdateFreelancerProfileUseCase(UseCase[UpdateFreelancerProfileCommand, Fre
     def __init__(
         self,
         profile_repo: IFreelancerProfileRepository,
+        uow: IUnitOfWork,
     ) -> None:
         self._profile_repo = profile_repo
+        self._uow = uow
 
     async def execute(self, request: UpdateFreelancerProfileCommand) -> FreelancerProfileResult:
         request.validate()
@@ -53,5 +56,7 @@ class UpdateFreelancerProfileUseCase(UseCase[UpdateFreelancerProfileCommand, Fre
                 request.hourly_rate_min if request.hourly_rate_min is not None else profile.hourly_rate_min,
                 request.hourly_rate_max if request.hourly_rate_max is not None else profile.hourly_rate_max,
             )
-        await self._profile_repo.update(profile)
+        async with self._uow:
+            await self._profile_repo.update(profile)
+            await self._uow.commit()
         return to_profile_result(profile)

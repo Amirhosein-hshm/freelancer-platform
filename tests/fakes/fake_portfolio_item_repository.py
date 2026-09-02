@@ -19,10 +19,24 @@ class FakePortfolioItemRepository(IPortfolioItemRepository):
             raise PortfolioItemNotFoundError(f"Portfolio item {item_id} not found.")
         return item
 
-    async def list_by_profile(self, profile_id: EntityId) -> list[PortfolioItem]:
-        return [
+    async def list_by_profile(
+        self,
+        profile_id: EntityId,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[PortfolioItem]:
+        items = [
             i for i in self._store.values() if i.freelancer_profile_id == profile_id and i.deleted_at is None
         ]
+        start = offset or 0
+        return items[start:] if limit is None else items[start : start + limit]
+
+    async def count_by_profile(self, profile_id: EntityId) -> int:
+        return sum(
+            1
+            for item in self._store.values()
+            if item.freelancer_profile_id == profile_id and item.deleted_at is None
+        )
 
     async def get_by_file_asset_id(self, file_asset_id: EntityId) -> PortfolioItem | None:
         for item in self._store.values():

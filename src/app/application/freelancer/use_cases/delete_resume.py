@@ -4,6 +4,7 @@ from app.application.freelancer.permissions import (
     PERMISSION_FREELANCER_READ_OWN,
 )
 from app.application.shared.authorization import IAuthorizationService, authorize_owned_action
+from app.application.shared.ports import IUnitOfWork
 from app.application.shared.use_case import UseCase
 from app.domain.freelancer.repositories import (
     IFreelancerProfileRepository,
@@ -17,10 +18,12 @@ class DeleteResumeUseCase(UseCase[DeleteResumeCommand, DeleteResumeResult]):
         authorization_service: IAuthorizationService,
         profile_repo: IFreelancerProfileRepository,
         resume_repo: IResumeRepository,
+        uow: IUnitOfWork,
     ) -> None:
         self._authorization_service = authorization_service
         self._profile_repo = profile_repo
         self._resume_repo = resume_repo
+        self._uow = uow
 
     async def execute(self, request: DeleteResumeCommand) -> DeleteResumeResult:
         profile = await self._profile_repo.get_by_id(request.profile_id)
@@ -37,16 +40,18 @@ class DeleteResumeUseCase(UseCase[DeleteResumeCommand, DeleteResumeResult]):
             from app.domain.freelancer.exceptions import ResumeNotFoundError
 
             raise ResumeNotFoundError(f"Resume {request.resume_id} not found.")
-        was_current = target.is_current
-        await self._resume_repo.delete(request.resume_id)
-        if was_current:
-            remaining = sorted(
-                [r for r in versions if r.id != request.resume_id],
-                key=lambda r: r.version_no,
-                reverse=True,
-            )
-            if remaining:
-                latest = remaining[0]
-                latest.is_current = True
-                await self._resume_repo.update(latest)
+        async with self._uow:
+            was_current = target.is_current
+            await self._resume_repo.delete(request.resume_id)
+            if was_current:
+                remaining = sorted(
+                    [r for r in versions if r.id != request.resume_id],
+                    key=lambda r: r.version_no,
+                    reverse=True,
+                )
+                if remaining:
+                    latest = remaining[0]
+                    latest.is_current = True
+                    await self._resume_repo.update(latest)
+            await self._uow.commit()
         return DeleteResumeResult(resume_id=request.resume_id)

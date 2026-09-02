@@ -2,8 +2,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.project.entities import ProjectRevisionRequest
+from app.domain.project.exceptions import RevisionRequestNotFoundError
 from app.domain.project.repositories import IProjectRevisionRequestRepository
-from app.domain.shared.exceptions import EntityNotFoundError
 from app.domain.shared.types import EntityId
 from app.infrastructure.db.models.project_models import ProjectRevisionRequestModel
 from app.infrastructure.repositories.project_mapping import (
@@ -32,6 +32,12 @@ class SqlAlchemyProjectRevisionRequestRepository(IProjectRevisionRequestReposito
             )
         )
 
+    async def get_by_id(self, revision_id: EntityId) -> ProjectRevisionRequest:
+        row = await self._session.get(ProjectRevisionRequestModel, revision_id)
+        if row is None:
+            raise RevisionRequestNotFoundError(f"Revision request {revision_id} not found.")
+        return to_domain_project_revision_request(row)
+
     async def list_by_project(
         self,
         project_id: EntityId,
@@ -59,7 +65,7 @@ class SqlAlchemyProjectRevisionRequestRepository(IProjectRevisionRequestReposito
     async def update(self, revision: ProjectRevisionRequest) -> None:
         row = await self._session.get(ProjectRevisionRequestModel, revision.id)
         if row is None:
-            raise EntityNotFoundError(f"Revision request {revision.id} not found.")
+            raise RevisionRequestNotFoundError(f"Revision request {revision.id} not found.")
         row.project_delivery_id = revision.project_delivery_id
         row.requested_by_user_id = revision.requested_by_user_id
         row.requested_to_user_id = revision.requested_to_user_id

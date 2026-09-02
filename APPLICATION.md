@@ -445,8 +445,9 @@ a supervisor, else `move_to_customer_review()`.
 
 ### GetProjectDetails / GetMyProjects / GetAvailableProjects
 
-Read queries; `GetAvailableProjects` requires the freelancer to be approved and uses
-`list_available_for_freelancer` (level-gated filter implemented in the repository).
+Read queries; `GetAvailableProjects` requires a freelancer profile, not approval, and uses
+`list_available_for_freelancer` (level-gated filter implemented in the repository). Approval
+is enforced by `ApplyForProjectUseCase`.
 
 ---
 

@@ -350,7 +350,7 @@ maps the `Result` → Pydantic response. Consistent pattern: **one handler = one
 | `POST /admin/freelancers` | `AdminCreateFreelancerProfileOnBehalfUseCase` | Dedicated admin on-behalf route. |
 | `POST /admin/tickets` | `AdminCreateTicketOnBehalfUseCase` | Dedicated admin on-behalf route; both `requester_user_id` and `target_user_id` required in body. |
 | `GET /auth/me` | none — direct repo + authz reads | Only endpoint calling `user_repo` + `list_permissions_for_user` directly. |
-| `GET /projects` | `GetAvailableProjectsUseCase` | Requires a freelancer profile; returns projects per level. DB-level pagination (`limit`/`offset` + count) since 7g. |
+| `GET /projects` | `GetAvailableProjectsUseCase` | Requires a freelancer profile, not approval; returns projects per level. DB-level pagination (`limit`/`offset` + count) since 7g. |
 | `GET /users` | `AdminListUsersUseCase` | Real DB offset/limit + `count_all` total — the reference fix that 7g extended to every other list endpoint. |
 | `GET /projects/{id}/applications/{application_id}` | `GetProjectApplicationUseCase` | Ownership check via project customer. |
 | `GET /projects/{id}/deliveries` | `ListProjectDeliveriesUseCase` | Ownership check via project customer. |

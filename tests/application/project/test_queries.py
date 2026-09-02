@@ -13,7 +13,6 @@ from app.application.project.use_cases.get_my_projects import GetMyProjectsUseCa
 from app.application.project.use_cases.get_project_details import GetProjectDetailsUseCase
 from app.application.project.use_cases.list_visible_projects import ListVisibleProjectsUseCase
 from app.domain.freelancer.enums import FreelancerApprovalStatus
-from app.domain.freelancer.exceptions import FreelancerNotApprovedError
 from app.domain.project.entities import ProjectApplication, ProjectDelivery
 from app.domain.project.enums import (
     DeliveryStatus,
@@ -106,11 +105,15 @@ class TestGetMyProjectsUseCase:
 
 
 class TestGetAvailableProjectsUseCase:
-    async def test_returns_open_projects_for_approved_freelancer(
-        self, project_repo, profile_repo, level_repo, make_project, make_profile, make_level
+    async def test_returns_open_projects_for_pending_freelancer(
+        self, project_repo, profile_repo, make_project, make_profile
     ):
-        await make_level(level_id="level-1")
-        await make_profile(profile_id="profile-1", user_id="freelancer-1")
+        await make_profile(
+            profile_id="profile-1",
+            user_id="freelancer-1",
+            approval_status=FreelancerApprovalStatus.PENDING,
+            current_level=None,
+        )
         await make_project(project_id="project-1", status=ProjectStatus.COLLECTING_APPLICATIONS)
         await make_project(
             project_id="project-2",
@@ -118,26 +121,12 @@ class TestGetAvailableProjectsUseCase:
             project_code=ProjectCode("PRJ-2026-002"),
         )
         use_case = GetAvailableProjectsUseCase(
-            project_repo=project_repo, profile_repo=profile_repo, level_repo=level_repo
+            project_repo=project_repo, profile_repo=profile_repo
         )
 
         result = await use_case.execute(GetAvailableProjectsQuery(actor_id="freelancer-1"))
 
         assert [p.project_id for p in result.projects] == ["project-1"]
-
-    async def test_unapproved_freelancer_raises(self, project_repo, profile_repo, level_repo, make_profile):
-        await make_profile(
-            profile_id="profile-1",
-            user_id="freelancer-1",
-            approval_status=FreelancerApprovalStatus.PENDING,
-        )
-        use_case = GetAvailableProjectsUseCase(
-            project_repo=project_repo, profile_repo=profile_repo, level_repo=level_repo
-        )
-
-        with pytest.raises(FreelancerNotApprovedError):
-            await use_case.execute(GetAvailableProjectsQuery(actor_id="freelancer-1"))
-
 
 class TestListVisibleProjectsUseCase:
     async def test_admin_sees_all_projects_without_freelancer_profile(

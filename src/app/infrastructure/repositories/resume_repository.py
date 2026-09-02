@@ -25,6 +25,12 @@ class SqlAlchemyResumeRepository(IResumeRepository):
             )
         )
 
+    async def get_by_id(self, resume_id: EntityId) -> Resume:
+        row = await self._session.get(ResumeModel, resume_id)
+        if row is None:
+            raise ResumeNotFoundError(f"Resume {resume_id} not found.")
+        return to_domain_resume(row)
+
     async def update(self, resume: Resume) -> None:
         row = await self._session.get(ResumeModel, resume.id)
         if row is None:
@@ -33,6 +39,12 @@ class SqlAlchemyResumeRepository(IResumeRepository):
         row.version_no = resume.version_no
         row.summary = resume.summary
         row.is_current = resume.is_current
+
+    async def delete(self, resume_id: EntityId) -> None:
+        row = await self._session.get(ResumeModel, resume_id)
+        if row is None:
+            raise ResumeNotFoundError(f"Resume {resume_id} not found.")
+        await self._session.delete(row)
 
     async def list_by_profile(
         self,
