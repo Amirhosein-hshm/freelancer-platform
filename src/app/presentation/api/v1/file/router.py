@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import StreamingResponse
@@ -20,6 +21,14 @@ router = APIRouter(prefix="/files", tags=["File"], route_class=DocumentedAPIRout
 
 
 CHUNK_SIZE = 64 * 1024
+
+
+def _content_disposition(filename: str) -> str:
+    """Build a Unicode-safe attachment header for all HTTP clients."""
+    safe_name = filename.replace("\r", "").replace("\n", "").replace('"', "'").replace("\\", "_")
+    ascii_fallback = safe_name.encode("ascii", "ignore").decode("ascii").strip() or "download"
+    encoded_name = quote(safe_name, safe="")
+    return f'attachment; filename="{ascii_fallback}"; filename*=UTF-8\'\'{encoded_name}'
 
 
 @router.post(
@@ -81,7 +90,7 @@ async def get_file_asset(
         result.content,
         media_type=result.mime_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{result.file_name}"',
+            "Content-Disposition": _content_disposition(result.file_name),
             "Content-Length": str(result.size_bytes),
         },
     )
