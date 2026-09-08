@@ -74,7 +74,6 @@ def make_project(project_repo: FakeProjectRepository):
             "customer_user_id": "customer-1",
             "category_id": "cat-1",
             "form_template_id": "template-1",
-            "assigned_supervisor_user_id": None,
             "selected_application_id": "app-1",
             "title": "Build an API",
             "description": "REST API for orders",

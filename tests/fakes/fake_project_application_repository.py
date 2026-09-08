@@ -29,6 +29,9 @@ class FakeProjectApplicationRepository(IProjectApplicationRepository):
     async def list_by_project(self, project_id: EntityId) -> list[ProjectApplication]:
         return [a for a in self._store.values() if a.project_id == project_id]
 
+    async def count_by_project(self, project_id: EntityId) -> int:
+        return len(await self.list_by_project(project_id))
+
     async def count_active_for_freelancer(self, freelancer_profile_id: EntityId) -> int:
         active = (
             ProjectApplicationStatus.APPLIED,

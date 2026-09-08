@@ -4,12 +4,17 @@ from app.application.review.use_cases.review_workflow import PERMISSION_REVIEW_D
 from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.pagination import limit_offset
 from app.application.shared.use_case import UseCase
-from app.domain.project.repositories import IProjectRepository
 from app.domain.category.repositories import ICategorySupervisorRepository
+from app.domain.project.repositories import IProjectRepository
 
 
 class GetSupervisorProjectsUseCase(UseCase[GetSupervisorProjectsQuery, GetSupervisorProjectsResult]):
-    def __init__(self, project_repo: IProjectRepository, authorization_service: IAuthorizationService, category_supervisor_repo: ICategorySupervisorRepository) -> None:
+    def __init__(
+        self,
+        project_repo: IProjectRepository,
+        authorization_service: IAuthorizationService,
+        category_supervisor_repo: ICategorySupervisorRepository,
+    ) -> None:
         self._project_repo = project_repo
         self._authorization_service = authorization_service
         self._category_supervisor_repo = category_supervisor_repo
@@ -17,9 +22,8 @@ class GetSupervisorProjectsUseCase(UseCase[GetSupervisorProjectsQuery, GetSuperv
     async def execute(self, request: GetSupervisorProjectsQuery) -> GetSupervisorProjectsResult:
         await self._authorization_service.require_permission(request.actor_id, PERMISSION_REVIEW_DECIDE_OWN)
         limit, offset = limit_offset(request.page, request.page_size)
-        categories = await self._category_supervisor_repo.list_categories_for_supervisor(request.supervisor_user_id)
-        projects = await self._project_repo.list_by_supervised_categories(request.supervisor_user_id, categories, limit, offset)
-        total_items = await self._project_repo.count_by_supervised_categories(categories)
+        projects = await self._project_repo.list_by_supervisor(request.supervisor_user_id, limit, offset)
+        total_items = await self._project_repo.count_by_supervisor(request.supervisor_user_id)
         return GetSupervisorProjectsResult(
             projects=[to_project_result(p) for p in projects],
             total_items=total_items,

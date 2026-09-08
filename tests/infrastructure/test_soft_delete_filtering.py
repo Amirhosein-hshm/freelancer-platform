@@ -308,7 +308,6 @@ class TestProjectRepositorySoftDelete:
                 customer_user_id="cust-1",
                 category_id="cat-1",
                 form_template_id="tpl-1",
-                assigned_supervisor_user_id="cust-1",
                 selected_application_id=None,
                 title="Project",
                 description="Desc",

@@ -1,10 +1,13 @@
+from app.application.project.effective_supervisor import get_effective_supervisor
 from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.ports import IFileAccessPolicy, IFileStorageService
+from app.domain.category.repositories import ICategoryRepository, ICategorySupervisorRepository
 from app.domain.freelancer.repositories import (
     IFreelancerProfileRepository,
     IPortfolioItemRepository,
     IResumeRepository,
 )
+from app.domain.iam.repositories import IUserRepository
 from app.domain.project.repositories import (
     IProjectApplicationRepository,
     IProjectDeliveryRepository,
@@ -43,6 +46,9 @@ class DomainFileAccessPolicy(IFileAccessPolicy):
         project_delivery_repo: IProjectDeliveryRepository,
         ticket_repo: ITicketRepository,
         ticket_message_repo: ITicketMessageRepository,
+        category_repo: ICategoryRepository,
+        category_supervisor_repo: ICategorySupervisorRepository,
+        user_repo: IUserRepository,
     ) -> None:
         self._file_storage = file_storage
         self._authorization_service = authorization_service
@@ -54,6 +60,9 @@ class DomainFileAccessPolicy(IFileAccessPolicy):
         self._project_delivery_repo = project_delivery_repo
         self._ticket_repo = ticket_repo
         self._ticket_message_repo = ticket_message_repo
+        self._category_repo = category_repo
+        self._category_supervisor_repo = category_supervisor_repo
+        self._user_repo = user_repo
 
     async def can_access(self, actor_id: EntityId, file_asset_id: EntityId) -> bool:
         try:
@@ -100,8 +109,6 @@ class DomainFileAccessPolicy(IFileAccessPolicy):
             project = await self._project_repo.get_by_id(delivery.project_id)
             if project.customer_user_id == actor_id:
                 return True
-            if project.assigned_supervisor_user_id == actor_id:
-                return True
             if project.selected_application_id is not None:
                 try:
                     application = await self._project_application_repo.get_by_id(project.selected_application_id)
@@ -110,6 +117,11 @@ class DomainFileAccessPolicy(IFileAccessPolicy):
                         return True
                 except Exception:
                     pass
+            effective = await get_effective_supervisor(
+                project, self._category_repo, self._category_supervisor_repo, self._user_repo
+            )
+            if effective is not None and effective.user.user_id == actor_id:
+                return True
         return False
 
     async def _is_ticket_party(self, actor_id: EntityId, file_asset_id: EntityId) -> bool:

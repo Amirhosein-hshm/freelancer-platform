@@ -228,6 +228,28 @@ class AdminUpdateUserResult:
 
 
 @dataclass(frozen=True)
+class UpdateOwnProfileCommand:
+    actor_id: EntityId
+    first_name: str | None = None
+    last_name: str | None = None
+    phone: str | None = None
+
+    def validate(self) -> None:
+        if self.first_name is not None and not self.first_name.strip():
+            raise ValidationError("first_name cannot be empty.")
+        if self.last_name is not None and not self.last_name.strip():
+            raise ValidationError("last_name cannot be empty.")
+
+
+@dataclass(frozen=True)
+class UpdateOwnProfileResult:
+    user_id: EntityId
+    first_name: str
+    last_name: str
+    phone: str | None
+
+
+@dataclass(frozen=True)
 class AdminDeleteUserCommand:
     actor_id: EntityId
     target_user_id: EntityId

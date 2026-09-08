@@ -4,6 +4,9 @@ from decimal import Decimal
 import pytest
 
 from app.domain.category.entities import Category, CategorySupervisor
+from app.domain.iam.entities import User
+from app.domain.iam.enums import UserStatus
+from app.domain.iam.value_objects import Email, PasswordHash
 from app.domain.project.entities import Project, ProjectDelivery
 from app.domain.project.enums import (
     BudgetType,
@@ -22,6 +25,7 @@ from tests.fakes.fake_project_repository import FakeProjectRepository
 from tests.fakes.fake_project_revision_request_repository import FakeProjectRevisionRequestRepository
 from tests.fakes.fake_project_status_history_repository import FakeProjectStatusHistoryRepository
 from tests.fakes.fake_supervisor_review_repository import FakeSupervisorReviewRepository
+from tests.fakes.fake_user_repository import FakeUserRepository
 
 NOW = datetime(2026, 8, 2, tzinfo=UTC)
 
@@ -39,6 +43,11 @@ def category_repo() -> FakeCategoryRepository:
 @pytest.fixture
 def category_supervisor_repo() -> FakeCategorySupervisorRepository:
     return FakeCategorySupervisorRepository()
+
+
+@pytest.fixture
+def user_repo() -> FakeUserRepository:
+    return FakeUserRepository()
 
 
 @pytest.fixture
@@ -68,6 +77,7 @@ def seed_supervisor_flow(
     project_repo,
     delivery_repo,
     review_repo,
+    user_repo,
 ):
     async def _seed(
         supervisor_user_id: str = "supervisor-1",
@@ -101,6 +111,18 @@ def seed_supervisor_flow(
                 created_at=NOW,
             )
         )
+        await user_repo.add(
+            User(
+                id=supervisor_user_id,
+                email=Email(f"{supervisor_user_id}@example.com"),
+                phone=None,
+                password_hash=PasswordHash("hash"),
+                first_name="Supervisor",
+                last_name="User",
+                status=UserStatus.ACTIVE,
+                created_at=NOW,
+            )
+        )
         await project_repo.add(
             Project(
                 id=project_id,
@@ -108,7 +130,6 @@ def seed_supervisor_flow(
                 customer_user_id="customer-1",
                 category_id=category_id,
                 form_template_id="template-1",
-                assigned_supervisor_user_id=supervisor_user_id,
                 selected_application_id="app-1",
                 title="Build an API",
                 description="REST API for orders",
@@ -122,6 +143,7 @@ def seed_supervisor_flow(
                     currency_code="USD",
                 ),
                 status=ProjectStatus.UNDER_SUPERVISOR_REVIEW,
+                required_level=None,
                 application_deadline=None,
                 start_at=None,
                 due_at=None,

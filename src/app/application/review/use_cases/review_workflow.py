@@ -1,10 +1,12 @@
+from app.application.project.effective_supervisor import get_effective_supervisor
 from app.application.project.status_history import record_status_history
 from app.application.review.dto import ReviewDeliveryResult
 from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.exceptions import ValidationError
-from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork, IRealtimeNotifier, publish_project_event
-from app.domain.category.repositories import ICategorySupervisorRepository
+from app.application.shared.ports import IClock, IIdGenerator, IRealtimeNotifier, IUnitOfWork, publish_project_event
+from app.domain.category.repositories import ICategoryRepository, ICategorySupervisorRepository
 from app.domain.freelancer.repositories import IFreelancerProfileRepository
+from app.domain.iam.repositories import IUserRepository
 from app.domain.project.entities import ProjectRevisionRequest
 from app.domain.project.enums import ProjectStatus, RevisionRequestStatus
 from app.domain.project.repositories import (
@@ -32,6 +34,8 @@ async def decide_delivery_review(
     delivery_repo: IProjectDeliveryRepository,
     project_repo: IProjectRepository,
     category_supervisor_repo: ICategorySupervisorRepository,
+    category_repo: ICategoryRepository | None,
+    user_repo: IUserRepository | None,
     review_repo: ISupervisorReviewRepository,
     revision_repo: IProjectRevisionRequestRepository,
     status_history_repo: IProjectStatusHistoryRepository,
@@ -54,7 +58,8 @@ async def decide_delivery_review(
             f"Project {project.id} is '{project.status.value}'; delivery review is only "
             "allowed while the project is under supervisor review."
         )
-    if await category_supervisor_repo.is_supervisor_of(actor_id, project.category_id):
+    effective = await get_effective_supervisor(project, category_repo, category_supervisor_repo, user_repo)
+    if effective is not None and effective.user.user_id == actor_id:
         await authorization_service.require_permission(actor_id, PERMISSION_REVIEW_DECIDE_OWN)
     else:
         await authorization_service.require_permission(actor_id, PERMISSION_REVIEW_DECIDE_ANY)
@@ -135,8 +140,6 @@ async def decide_delivery_review(
         await uow.commit()
     if notifier is not None:
         recipients = [project.customer_user_id]
-        if project.assigned_supervisor_user_id is not None:
-            recipients.append(project.assigned_supervisor_user_id)
         await publish_project_event(
             notifier,
             recipients,

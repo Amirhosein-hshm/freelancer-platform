@@ -1,9 +1,10 @@
 from app.application.review.dto import ReviewDeliveryCommand, ReviewDeliveryResult
 from app.application.review.use_cases.review_workflow import decide_delivery_review
 from app.application.shared.authorization import IAuthorizationService
-from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork, IRealtimeNotifier
+from app.application.shared.ports import IClock, IIdGenerator, IRealtimeNotifier, IUnitOfWork
 from app.application.shared.use_case import UseCase
-from app.domain.category.repositories import ICategorySupervisorRepository
+from app.domain.category.repositories import ICategoryRepository, ICategorySupervisorRepository
+from app.domain.iam.repositories import IUserRepository
 from app.domain.project.repositories import (
     IProjectDeliveryRepository,
     IProjectRepository,
@@ -27,6 +28,8 @@ class ReviewDeliveryUseCase(UseCase[ReviewDeliveryCommand, ReviewDeliveryResult]
         clock: IClock,
         uow: IUnitOfWork,
         notifier: IRealtimeNotifier | None = None,
+        category_repo: ICategoryRepository | None = None,
+        user_repo: IUserRepository | None = None,
     ) -> None:
         self._authorization_service = authorization_service
         self._delivery_repo = delivery_repo
@@ -39,6 +42,8 @@ class ReviewDeliveryUseCase(UseCase[ReviewDeliveryCommand, ReviewDeliveryResult]
         self._clock = clock
         self._uow = uow
         self._notifier = notifier
+        self._category_repo = category_repo
+        self._user_repo = user_repo
 
     async def execute(self, request: ReviewDeliveryCommand) -> ReviewDeliveryResult:
         return await decide_delivery_review(
@@ -58,4 +63,6 @@ class ReviewDeliveryUseCase(UseCase[ReviewDeliveryCommand, ReviewDeliveryResult]
             notes=request.notes,
             reject_reason=request.reject_reason,
             notifier=self._notifier,
+            category_repo=self._category_repo,
+            user_repo=self._user_repo,
         )

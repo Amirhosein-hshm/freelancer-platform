@@ -40,7 +40,6 @@ def make_project(project_repo: FakeProjectRepository):
             "customer_user_id": "customer-1",
             "category_id": category_id,
             "form_template_id": "template-1",
-            "assigned_supervisor_user_id": None,
             "selected_application_id": None,
             "title": "Build an API",
             "description": "REST API for orders",

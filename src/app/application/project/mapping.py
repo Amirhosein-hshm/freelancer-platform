@@ -33,7 +33,6 @@ def to_project_result(project: Project) -> ProjectResult:
         visibility=project.visibility,
         priority=project.priority,
         budget=to_budget_result(project),
-        assigned_supervisor_user_id=project.assigned_supervisor_user_id,
         selected_application_id=project.selected_application_id,
         application_deadline=project.application_deadline,
         created_by_user_id=project.created_by_user_id,

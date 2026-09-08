@@ -2,6 +2,7 @@ from app.application.project.dto import (
     SubmitDeliveryCommand,
     SubmitDeliveryResult,
 )
+from app.application.project.effective_supervisor import get_effective_supervisor
 from app.application.project.status_history import record_status_history
 from app.application.shared.exceptions import PermissionDeniedError, ValidationError
 from app.application.shared.ports import (
@@ -13,8 +14,9 @@ from app.application.shared.ports import (
     publish_project_event,
 )
 from app.application.shared.use_case import UseCase
-from app.domain.category.repositories import ICategorySupervisorRepository
+from app.domain.category.repositories import ICategoryRepository, ICategorySupervisorRepository
 from app.domain.freelancer.repositories import IFreelancerProfileRepository
+from app.domain.iam.repositories import IUserRepository
 from app.domain.project.entities import ProjectDelivery
 from app.domain.project.enums import DeliveryStatus, ProjectStatus
 from app.domain.project.repositories import (
@@ -45,6 +47,8 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
         uow: IUnitOfWork,
         notifier: IRealtimeNotifier | None = None,
         category_supervisor_repo: ICategorySupervisorRepository | None = None,
+        category_repo: ICategoryRepository | None = None,
+        user_repo: IUserRepository | None = None,
     ) -> None:
         self._project_repo = project_repo
         self._application_repo = application_repo
@@ -59,6 +63,8 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
         self._uow = uow
         self._notifier = notifier
         self._category_supervisor_repo = category_supervisor_repo
+        self._category_repo = category_repo
+        self._user_repo = user_repo
 
     async def execute(self, request: SubmitDeliveryCommand) -> SubmitDeliveryResult:
         for file_asset_id in request.file_asset_ids:
@@ -117,11 +123,15 @@ class SubmitDeliveryUseCase(UseCase[SubmitDeliveryCommand, SubmitDeliveryResult]
                 None,
                 now,
             )
-            supervisor_id = project.assigned_supervisor_user_id
-            if supervisor_id is None and self._category_supervisor_repo is not None:
-                supervisors = await self._category_supervisor_repo.list_active_supervisors(project.category_id)
-                if supervisors:
-                    supervisor_id = supervisors[0].supervisor_user_id
+            supervisor_id = None
+            if (
+                self._category_supervisor_repo is not None
+                and self._category_repo is not None
+            ):
+                effective = await get_effective_supervisor(
+                    project, self._category_repo, self._category_supervisor_repo, self._user_repo
+                )
+                supervisor_id = effective.user.user_id if effective else None
             if supervisor_id is not None:
                 project.move_to_supervisor_review()
                 delivery.mark_under_review()

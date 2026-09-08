@@ -57,7 +57,7 @@ class FakeProjectRepository(IProjectRepository):
             project
             for project in self._store.values()
             if project.deleted_at is None
-            and (project.customer_user_id == user_id or project.assigned_supervisor_user_id == user_id)
+            and project.customer_user_id == user_id
         ]
         return projects[(offset or 0) : (offset or 0) + limit] if limit is not None else projects
 
@@ -93,11 +93,7 @@ class FakeProjectRepository(IProjectRepository):
         return [p for p in self._store.values() if p.status in _OPEN_STATUSES and p.deleted_at is None]
 
     async def list_by_supervisor(self, supervisor_user_id: EntityId) -> list[Project]:
-        return [
-            p
-            for p in self._store.values()
-            if p.assigned_supervisor_user_id == supervisor_user_id and p.deleted_at is None
-        ]
+        return []
 
     async def list_by_category(self, category_id: EntityId) -> list[Project]:
         return [

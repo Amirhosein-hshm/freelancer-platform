@@ -135,6 +135,9 @@ def build_app() -> FastAPI:
             project_delivery_repo=SqlAlchemyProjectDeliveryRepository(session),
             ticket_repo=SqlAlchemyTicketRepository(session),
             ticket_message_repo=SqlAlchemyTicketMessageRepository(session),
+            category_repo=SqlAlchemyCategoryRepository(session),
+            category_supervisor_repo=SqlAlchemyCategorySupervisorRepository(session),
+            user_repo=SqlAlchemyUserRepository(session),
         )
     )
 

@@ -1,5 +1,6 @@
 from typing import Any
 
+import sqlalchemy as sa
 from sqlalchemy import func, or_, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -8,7 +9,7 @@ from app.domain.project.enums import ProjectStatus
 from app.domain.shared.types import EntityId
 from app.domain.ticketing.read_models import RelatedUser
 from app.domain.ticketing.repositories import IRelatedUsersRepository
-from app.infrastructure.db.models.category_models import CategorySupervisorModel
+from app.infrastructure.db.models.category_models import CategoryModel, CategorySupervisorModel
 from app.infrastructure.db.models.freelancer_models import FreelancerProfileModel
 from app.infrastructure.db.models.iam_models import RoleModel, UserModel, UserRoleModel
 from app.infrastructure.db.models.project_models import (
@@ -120,6 +121,47 @@ class SqlAlchemyRelatedUsersRepository(IRelatedUsersRepository):
         cs1 = aliased(CategorySupervisorModel)
         cs2 = aliased(CategorySupervisorModel)
 
+        ancestors = select(
+            CategoryModel.id.label("project_category_id"),
+            CategoryModel.id.label("ancestor_category_id"),
+            sa.literal(0).label("depth"),
+        ).where(CategoryModel.deleted_at.is_(None)).cte("related_category_ancestors", recursive=True)
+        current = CategoryModel.__table__.alias("related_current")
+        parent = CategoryModel.__table__.alias("related_parent")
+        ancestors = ancestors.union_all(
+            select(ancestors.c.project_category_id, parent.c.id, ancestors.c.depth + 1)
+            .select_from(
+                ancestors.join(current, current.c.id == ancestors.c.ancestor_category_id).join(
+                    parent, parent.c.id == current.c.parent_category_id
+                )
+            )
+            .where(parent.c.deleted_at.is_(None))
+        )
+        effective = (
+            select(
+                ancestors.c.project_category_id,
+                CategorySupervisorModel.supervisor_user_id,
+                func.row_number()
+                .over(
+                    partition_by=ancestors.c.project_category_id,
+                    order_by=(
+                        ancestors.c.depth,
+                        CategorySupervisorModel.is_primary.desc(),
+                        CategorySupervisorModel.id,
+                    ),
+                )
+                .label("rn"),
+            )
+            .join(CategorySupervisorModel, CategorySupervisorModel.category_id == ancestors.c.ancestor_category_id)
+            .join(UserModel, UserModel.id == CategorySupervisorModel.supervisor_user_id)
+            .where(
+                CategorySupervisorModel.is_active.is_(True),
+                UserModel.deleted_at.is_(None),
+                UserModel.status == "active",
+            )
+            .subquery("related_effective_supervisors")
+        )
+
         _selected_freelancer_condition = (
             project.deleted_at.is_(None) & project.status.in_(_NON_TERMINAL_STATUSES)
         )
@@ -157,25 +199,8 @@ class SqlAlchemyRelatedUsersRepository(IRelatedUsersRepository):
                 )
                 .exists()
             ),
-            # --- Project anchor: user as customer ---
-            select(project.assigned_supervisor_user_id.label("related_user_id")).where(
-                project.customer_user_id == user_id,
-                project.assigned_supervisor_user_id.is_not(None),
-                project.deleted_at.is_(None),
-                project.status.in_(_NON_TERMINAL_STATUSES),
-            ),
             _selected_freelancer_join.where(
                 project.customer_user_id == user_id,
-                _selected_freelancer_condition,
-            ),
-            # --- Project anchor: user as assigned supervisor ---
-            select(project.customer_user_id.label("related_user_id")).where(
-                project.assigned_supervisor_user_id == user_id,
-                project.deleted_at.is_(None),
-                project.status.in_(_NON_TERMINAL_STATUSES),
-            ),
-            _selected_freelancer_join.where(
-                project.assigned_supervisor_user_id == user_id,
                 _selected_freelancer_condition,
             ),
             # --- Project anchor: user as selected freelancer ---
@@ -188,57 +213,43 @@ class SqlAlchemyRelatedUsersRepository(IRelatedUsersRepository):
                 project.deleted_at.is_(None),
                 project.status.in_(_NON_TERMINAL_STATUSES),
             ),
-            select(project.assigned_supervisor_user_id.label("related_user_id"))
-            .select_from(project)
-            .join(application, application.id == project.selected_application_id)
-            .join(profile, profile.id == application.freelancer_profile_id)
-            .where(
-                profile.user_id == user_id,
-                project.assigned_supervisor_user_id.is_not(None),
-                project.deleted_at.is_(None),
-                project.status.in_(_NON_TERMINAL_STATUSES),
-            ),
             # --- Category anchor: co-supervisors of categories the user supervises ---
             select(cs2.supervisor_user_id.label("related_user_id"))
             .select_from(cs1)
             .join(cs2, cs2.category_id == cs1.category_id)
             .where(
-                cs1.supervisor_user_id == user_id,
                 cs1.is_active.is_(True),
                 cs2.is_active.is_(True),
                 cs2.supervisor_user_id != user_id,
             ),
-            # --- Category anchor: customers of open projects in supervised categories ---
+            # --- Category anchor: customers of non-terminal projects in supervised categories ---
             select(project.customer_user_id.label("related_user_id"))
-            .select_from(CategorySupervisorModel)
-            .join(project, project.category_id == CategorySupervisorModel.category_id)
+            .select_from(project)
+            .join(effective, effective.c.project_category_id == project.category_id)
             .where(
-                CategorySupervisorModel.supervisor_user_id == user_id,
-                CategorySupervisorModel.is_active.is_(True),
-                project.status.in_(_OPEN_STATUSES),
+                effective.c.rn == 1,
+                effective.c.supervisor_user_id == user_id,
+                project.status.in_(_NON_TERMINAL_STATUSES),
                 project.deleted_at.is_(None),
             ),
-            # --- Category anchor: selected freelancers of open projects in supervised categories ---
+            # --- Category anchor: selected freelancers of non-terminal projects in supervised categories ---
             select(profile.user_id.label("related_user_id"))
-            .select_from(CategorySupervisorModel)
-            .join(project, project.category_id == CategorySupervisorModel.category_id)
+            .select_from(project)
+            .join(effective, effective.c.project_category_id == project.category_id)
             .join(application, application.id == project.selected_application_id)
             .join(profile, profile.id == application.freelancer_profile_id)
             .where(
-                CategorySupervisorModel.supervisor_user_id == user_id,
-                CategorySupervisorModel.is_active.is_(True),
-                project.status.in_(_OPEN_STATUSES),
+                effective.c.rn == 1,
+                effective.c.supervisor_user_id == user_id,
+                project.status.in_(_NON_TERMINAL_STATUSES),
                 project.deleted_at.is_(None),
             ),
             # --- Category anchor: active supervisors of categories where the user has an open project ---
-            select(CategorySupervisorModel.supervisor_user_id.label("related_user_id"))
+            select(effective.c.supervisor_user_id.label("related_user_id"))
             .select_from(project)
-            .join(
-                CategorySupervisorModel,
-                CategorySupervisorModel.category_id == project.category_id,
-            )
+            .join(effective, effective.c.project_category_id == project.category_id)
             .where(
-                CategorySupervisorModel.is_active.is_(True),
+                effective.c.rn == 1,
                 project.status.in_(_OPEN_STATUSES),
                 project.deleted_at.is_(None),
                 or_(

@@ -43,7 +43,6 @@ class Project(AggregateRoot):
     category_id: EntityId
     form_template_id: EntityId
     required_level: FreelancerLevelEnum | None
-    assigned_supervisor_user_id: EntityId | None
     selected_application_id: EntityId | None
     title: str
     description: str
@@ -100,10 +99,6 @@ class Project(AggregateRoot):
     def move_to_supervisor_review(self) -> None:
         self._ensure_unlocked()
         self._transition(ProjectStatus.DELIVERY_SUBMITTED, ProjectStatus.UNDER_SUPERVISOR_REVIEW)
-        if self.assigned_supervisor_user_id is None:
-            raise InvalidProjectStatusTransitionError(
-                f"Project {self.id} has no assigned supervisor and cannot move to supervisor review."
-            )
 
     def move_to_customer_review(self) -> None:
         self._ensure_unlocked()
@@ -198,9 +193,6 @@ class Project(AggregateRoot):
 
     def is_application_deadline_passed(self, at: datetime) -> bool:
         return self.application_deadline is not None and at > self.application_deadline
-
-    def has_supervisor(self) -> bool:
-        return self.assigned_supervisor_user_id is not None
 
     def _ensure_unlocked(self) -> None:
         if self.is_locked():

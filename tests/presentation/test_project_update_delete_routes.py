@@ -68,7 +68,6 @@ async def _seed(overrides, status: ProjectStatus = ProjectStatus.DRAFT) -> None:
             customer_user_id=CUSTOMER,
             category_id="cat-1",
             form_template_id="template-1",
-            assigned_supervisor_user_id="supervisor-1",
             selected_application_id=None,
             title="Build an API",
             description="REST API for orders",

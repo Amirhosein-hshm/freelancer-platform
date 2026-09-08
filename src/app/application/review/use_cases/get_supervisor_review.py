@@ -1,3 +1,4 @@
+from app.application.project.effective_supervisor import get_effective_supervisor
 from app.application.project.permissions import (
     PERMISSION_PROJECT_MANAGE_ANY,
     PERMISSION_PROJECT_MANAGE_OWN,
@@ -15,7 +16,8 @@ from app.application.shared.authorization import (
     authorize_owned_action,
 )
 from app.application.shared.use_case import UseCase
-from app.domain.category.repositories import ICategorySupervisorRepository
+from app.domain.category.repositories import ICategoryRepository, ICategorySupervisorRepository
+from app.domain.iam.repositories import IUserRepository
 from app.domain.project.repositories import IProjectDeliveryRepository, IProjectRepository
 from app.domain.review.repositories import ISupervisorReviewRepository
 
@@ -28,11 +30,15 @@ class GetSupervisorReviewUseCase(UseCase[GetSupervisorReviewQuery, GetSupervisor
         review_repo: ISupervisorReviewRepository,
         category_supervisor_repo: ICategorySupervisorRepository,
         authorization_service: IAuthorizationService,
+        category_repo: ICategoryRepository | None = None,
+        user_repo: IUserRepository | None = None,
     ) -> None:
         self._project_repo = project_repo
         self._delivery_repo = delivery_repo
         self._review_repo = review_repo
         self._category_supervisor_repo = category_supervisor_repo
+        self._category_repo = category_repo
+        self._user_repo = user_repo
         self._authorization_service = authorization_service
 
     async def execute(self, request: GetSupervisorReviewQuery) -> GetSupervisorReviewResult:
@@ -40,7 +46,14 @@ class GetSupervisorReviewUseCase(UseCase[GetSupervisorReviewQuery, GetSupervisor
         project = await self._project_repo.get_by_id(delivery.project_id)
         review = await self._review_repo.get_by_delivery(request.project_delivery_id)
 
-        is_supervisor = await self._category_supervisor_repo.is_supervisor_of(request.actor_id, project.category_id)
+        effective = (
+            await get_effective_supervisor(
+                project, self._category_repo, self._category_supervisor_repo, self._user_repo
+            )
+            if self._category_repo is not None and self._user_repo is not None
+            else None
+        )
+        is_supervisor = effective is not None and effective.user.user_id == request.actor_id
         if is_supervisor:
             await self._authorization_service.require_permission(request.actor_id, PERMISSION_REVIEW_DECIDE_OWN)
         else:

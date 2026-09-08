@@ -12,3 +12,6 @@ class FakeProjectStatusHistoryRepository(IProjectStatusHistoryRepository):
 
     async def list_by_project(self, project_id: EntityId) -> list[ProjectStatusHistory]:
         return [h for h in self._store if h.project_id == project_id]
+
+    async def count_by_project(self, project_id: EntityId) -> int:
+        return len([h for h in self._store if h.project_id == project_id])

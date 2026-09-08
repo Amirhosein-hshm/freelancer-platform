@@ -44,6 +44,7 @@ _PERMISSIONS = [
     ("project.create_on_behalf", "project", "create_on_behalf"),
     ("project.apply", "project", "apply"),
     ("project.apply_on_behalf", "project", "apply_on_behalf"),
+    ("project.read_public", "project", "read_public"),
     ("project.manage_own", "project", "manage_own"),
     ("project.manage_any", "project", "manage_any"),
     # Review
@@ -93,6 +94,7 @@ ROLE_PERMISSIONS = {
         "freelancer.create_own",
         "freelancer.read_own",
         "project.apply",
+        "project.read_public",
         "project.manage_own",
         "feedback.manage_own",
         "ticket.read_own",
@@ -102,8 +104,8 @@ ROLE_PERMISSIONS = {
     ],
     "supervisor": [
         "review.decide_own",
-        "ticket.read_any",
-        "ticket.close_any",
+        "ticket.read_own",
+        "ticket.close_own",
     ],
     "admin": ["*"],
 }

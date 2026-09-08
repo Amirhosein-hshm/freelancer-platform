@@ -37,11 +37,8 @@ class ListVisibleProjectsUseCase(UseCase[ListVisibleProjectsQuery, ListVisiblePr
             if not recognized:
                 raise PermissionDeniedError(f"User {request.actor_id} cannot list projects.")
             if await self._authorization_service.has_role(request.actor_id, "supervisor"):
-                category_ids = await self._category_supervisor_repo.list_categories_for_supervisor(request.actor_id)
-                projects = await self._project_repo.list_by_supervised_categories(
-                    request.actor_id, category_ids, limit, offset
-                )
-                total_items = await self._project_repo.count_by_supervised_categories(category_ids)
+                projects = await self._project_repo.list_by_supervisor(request.actor_id, limit, offset)
+                total_items = await self._project_repo.count_by_supervisor(request.actor_id)
             else:
                 projects = await self._project_repo.list_related_to_user(request.actor_id, limit=limit, offset=offset)
                 total_items = await self._project_repo.count_related_to_user(request.actor_id)

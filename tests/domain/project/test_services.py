@@ -32,7 +32,6 @@ def make_project(visibility: ProjectVisibility) -> Project:
         category_id="cat-1",
             form_template_id="template-1",
             required_level=None,
-        assigned_supervisor_user_id="supervisor-1",
         selected_application_id=None,
         title="Build an API",
         description="REST API",

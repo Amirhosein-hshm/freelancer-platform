@@ -37,11 +37,15 @@ def to_project_response(result: ProjectResult) -> ProjectResponse:
         visibility=result.visibility,
         priority=result.priority,
         budget=to_budget_response(result.budget),
-        assigned_supervisor_user_id=result.assigned_supervisor_user_id,
         selected_application_id=result.selected_application_id,
         application_deadline=result.application_deadline,
         created_by_user_id=result.created_by_user_id,
         created_at=result.created_at,
+        supervisor=(
+            {"user_id": result.supervisor.user_id, "email": result.supervisor.email,
+             "first_name": result.supervisor.first_name, "last_name": result.supervisor.last_name}
+            if result.supervisor else None
+        ),
     )
 
 

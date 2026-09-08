@@ -3,6 +3,7 @@ from app.application.project.dto import (
     ListProjectStatusHistoryResult,
     ProjectStatusHistoryResult,
 )
+from app.application.project.effective_supervisor import get_effective_supervisor
 from app.application.project.permissions import (
     PERMISSION_PROJECT_MANAGE_ANY,
     PERMISSION_PROJECT_MANAGE_OWN,
@@ -14,6 +15,8 @@ from app.domain.project.repositories import (
     IProjectRepository,
     IProjectStatusHistoryRepository,
 )
+from app.domain.category.repositories import ICategoryRepository, ICategorySupervisorRepository
+from app.domain.iam.repositories import IUserRepository
 
 
 class ListProjectStatusHistoryUseCase(UseCase[ListProjectStatusHistoryQuery, ListProjectStatusHistoryResult]):
@@ -22,20 +25,32 @@ class ListProjectStatusHistoryUseCase(UseCase[ListProjectStatusHistoryQuery, Lis
         authorization_service: IAuthorizationService,
         project_repo: IProjectRepository,
         status_history_repo: IProjectStatusHistoryRepository,
+        category_repo: ICategoryRepository | None = None,
+        category_supervisor_repo: ICategorySupervisorRepository | None = None,
+        user_repo: IUserRepository | None = None,
     ) -> None:
         self._authorization_service = authorization_service
         self._project_repo = project_repo
         self._status_history_repo = status_history_repo
+        self._category_repo = category_repo
+        self._category_supervisor_repo = category_supervisor_repo
+        self._user_repo = user_repo
 
     async def execute(self, request: ListProjectStatusHistoryQuery) -> ListProjectStatusHistoryResult:
         project = await self._project_repo.get_by_id(request.project_id)
-        await authorize_owned_action(
-            self._authorization_service,
-            request.actor_id,
-            project.customer_user_id,
-            PERMISSION_PROJECT_MANAGE_OWN,
-            PERMISSION_PROJECT_MANAGE_ANY,
-        )
+        effective = None
+        if self._category_supervisor_repo is not None:
+            effective = await get_effective_supervisor(
+                project, self._category_repo, self._category_supervisor_repo, self._user_repo
+            )
+        if not (effective is not None and effective.user.user_id == request.actor_id):
+            await authorize_owned_action(
+                self._authorization_service,
+                request.actor_id,
+                project.customer_user_id,
+                PERMISSION_PROJECT_MANAGE_OWN,
+                PERMISSION_PROJECT_MANAGE_ANY,
+            )
         limit, offset = limit_offset(request.page, request.page_size)
         history = await self._status_history_repo.list_by_project(
             request.project_id,

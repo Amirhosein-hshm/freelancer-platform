@@ -18,7 +18,6 @@ class ProjectModel(TimestampMixin, Base):
     form_template_id: Mapped[str] = mapped_column(String(36), nullable=False)
     form_values: Mapped[list[dict[str, str]]] = mapped_column(JSONB, nullable=False, default=list)
     required_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    assigned_supervisor_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     selected_application_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)

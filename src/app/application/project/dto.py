@@ -46,11 +46,19 @@ class ProjectResult:
     visibility: ProjectVisibility
     priority: ProjectPriority
     budget: BudgetResult
-    assigned_supervisor_user_id: EntityId | None
     selected_application_id: EntityId | None
     application_deadline: datetime | None
     created_by_user_id: EntityId | None
     created_at: datetime
+    supervisor: "SupervisorResult | None" = None
+
+
+@dataclass(frozen=True)
+class SupervisorResult:
+    user_id: EntityId
+    email: str
+    first_name: str
+    last_name: str
 
 
 @dataclass(frozen=True)

@@ -185,7 +185,6 @@ def _project() -> Project:
         customer_user_id="user-1",
         category_id="cat-1",
         form_template_id="tmpl-1",
-        assigned_supervisor_user_id=None,
         selected_application_id=None,
         title="Build a site",
         description="A project.",

@@ -29,6 +29,9 @@ class FakeProjectDeliveryRepository(IProjectDeliveryRepository):
             key=lambda d: d.version_no,
         )
 
+    async def count_by_project(self, project_id: EntityId) -> int:
+        return len([d for d in self._store.values() if d.project_id == project_id])
+
     async def list_by_file_asset_id(self, file_asset_id: EntityId) -> list[ProjectDelivery]:
         return [d for d in self._store.values() if file_asset_id in d.file_asset_ids]
 

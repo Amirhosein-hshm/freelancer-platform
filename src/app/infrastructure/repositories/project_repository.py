@@ -1,3 +1,4 @@
+import sqlalchemy as sa
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,7 +9,9 @@ from app.domain.project.exceptions import ProjectNotFoundError
 from app.domain.project.repositories import IProjectRepository
 from app.domain.project.value_objects import ProjectCode
 from app.domain.shared.types import EntityId
+from app.infrastructure.db.models.category_models import CategoryModel, CategorySupervisorModel
 from app.infrastructure.db.models.freelancer_models import FreelancerProfileModel
+from app.infrastructure.db.models.iam_models import UserModel
 from app.infrastructure.db.models.project_models import ProjectApplicationModel, ProjectModel
 from app.infrastructure.repositories.project_mapping import to_domain_project
 
@@ -38,7 +41,6 @@ class SqlAlchemyProjectRepository(IProjectRepository):
                 form_template_id=project.form_template_id,
                 form_values=list(project.form_values),
                 required_level=project.required_level.value if project.required_level else None,
-                assigned_supervisor_user_id=project.assigned_supervisor_user_id,
                 selected_application_id=project.selected_application_id,
                 title=project.title,
                 description=project.description,
@@ -92,7 +94,6 @@ class SqlAlchemyProjectRepository(IProjectRepository):
         row.form_template_id = project.form_template_id
         row.form_values = list(project.form_values)
         row.required_level = project.required_level.value if project.required_level else None
-        row.assigned_supervisor_user_id = project.assigned_supervisor_user_id
         row.selected_application_id = project.selected_application_id
         row.title = project.title
         row.description = project.description
@@ -159,7 +160,6 @@ class SqlAlchemyProjectRepository(IProjectRepository):
         )
         return or_(
             ProjectModel.customer_user_id == user_id,
-            ProjectModel.assigned_supervisor_user_id == user_id,
             ProjectModel.selected_application_id.in_(selected_for_user),
         )
 
@@ -263,52 +263,63 @@ class SqlAlchemyProjectRepository(IProjectRepository):
         )
         return result.scalar_one()
 
-    async def list_by_supervisor(
-        self,
-        supervisor_user_id: EntityId,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> list[Project]:
-        stmt = (
-            select(ProjectModel)
-            .where(
-                ProjectModel.assigned_supervisor_user_id == supervisor_user_id,
-                ProjectModel.deleted_at.is_(None),
-            )
-            .order_by(ProjectModel.created_at.desc())
-        )
-        if limit is not None:
-            stmt = stmt.limit(limit).offset(offset or 0)
-        result = await self._session.execute(stmt)
-        return [to_domain_project(row) for row in result.scalars().all()]
-
-    async def count_by_supervisor(self, supervisor_user_id: EntityId) -> int:
-        result = await self._session.execute(
-            select(func.count())
-            .select_from(ProjectModel)
-            .where(
-                ProjectModel.assigned_supervisor_user_id == supervisor_user_id,
-                ProjectModel.deleted_at.is_(None),
-            )
-        )
-        return result.scalar_one()
 
     async def list_by_supervised_categories(self, supervisor_user_id, category_ids, limit=None, offset=None):
-        stmt = (
-            select(ProjectModel)
-            .where(ProjectModel.category_id.in_(category_ids), ProjectModel.deleted_at.is_(None))
-            .order_by(ProjectModel.created_at.desc())
-        )
+        stmt = self._effective_supervised_stmt(supervisor_user_id)
         if limit is not None:
             stmt = stmt.limit(limit).offset(offset or 0)
         result = await self._session.execute(stmt)
         return [to_domain_project(row) for row in result.scalars().all()]
+
+    def _effective_supervised_stmt(self, supervisor_user_id):
+        ancestors = select(
+            CategoryModel.id.label("project_category_id"),
+            CategoryModel.id.label("ancestor_category_id"),
+            func.cast(0, sa.Integer).label("depth"),
+        ).where(CategoryModel.deleted_at.is_(None)).cte("category_ancestors", recursive=True)
+        parent = CategoryModel.__table__.alias("parent")
+        current = CategoryModel.__table__.alias("current")
+        ancestors = ancestors.union_all(
+            select(ancestors.c.project_category_id, parent.c.id, ancestors.c.depth + 1)
+            .select_from(
+                ancestors.join(current, current.c.id == ancestors.c.ancestor_category_id).join(
+                    parent, parent.c.id == current.c.parent_category_id
+                )
+            )
+            .where(parent.c.deleted_at.is_(None))
+        )
+        ranked = select(
+            ancestors.c.project_category_id,
+            CategorySupervisorModel.supervisor_user_id,
+            func.row_number()
+            .over(partition_by=ancestors.c.project_category_id, order_by=ancestors.c.depth)
+            .label("rn"),
+        ).join(CategorySupervisorModel, CategorySupervisorModel.category_id == ancestors.c.ancestor_category_id)
+        ranked = ranked.join(UserModel, UserModel.id == CategorySupervisorModel.supervisor_user_id).where(
+            CategorySupervisorModel.is_active.is_(True), UserModel.deleted_at.is_(None), UserModel.status == "active"
+        ).subquery("effective_supervisors")
+        return select(ProjectModel).join(ranked, ranked.c.project_category_id == ProjectModel.category_id).where(
+            ranked.c.rn == 1, ranked.c.supervisor_user_id == supervisor_user_id, ProjectModel.deleted_at.is_(None)
+        ).order_by(ProjectModel.created_at.desc())
 
     async def count_by_supervised_categories(self, category_ids):
         result = await self._session.execute(
             select(func.count())
             .select_from(ProjectModel)
             .where(ProjectModel.category_id.in_(category_ids), ProjectModel.deleted_at.is_(None))
+        )
+        return result.scalar_one()
+
+    async def list_by_supervisor(self, supervisor_user_id, limit=None, offset=None):
+        stmt = self._effective_supervised_stmt(supervisor_user_id)
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset or 0)
+        result = await self._session.execute(stmt)
+        return [to_domain_project(row) for row in result.scalars().all()]
+
+    async def count_by_supervisor(self, supervisor_user_id):
+        result = await self._session.execute(
+            select(func.count()).select_from(self._effective_supervised_stmt(supervisor_user_id).subquery())
         )
         return result.scalar_one()
 

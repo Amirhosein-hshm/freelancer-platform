@@ -29,7 +29,6 @@ def make_project(**overrides: object) -> Project:
         "customer_user_id": "customer-1",
         "category_id": "cat-1",
         "form_template_id": "template-1",
-        "assigned_supervisor_user_id": "supervisor-1",
         "selected_application_id": None,
         "title": "Build an API",
         "description": "REST API for orders",
@@ -135,12 +134,12 @@ class TestDeliveryFlow:
         assert project.status == ProjectStatus.UNDER_SUPERVISOR_REVIEW
 
     def test_move_to_supervisor_review_without_supervisor_raises(self):
-        project = make_project(status=ProjectStatus.DELIVERY_SUBMITTED, assigned_supervisor_user_id=None)
+        project = make_project(status=ProjectStatus.DELIVERY_SUBMITTED,)
         with pytest.raises(InvalidProjectStatusTransitionError):
             project.move_to_supervisor_review()
 
     def test_move_to_customer_review_directly(self):
-        project = make_project(status=ProjectStatus.DELIVERY_SUBMITTED, assigned_supervisor_user_id=None)
+        project = make_project(status=ProjectStatus.DELIVERY_SUBMITTED,)
         project.move_to_customer_review()
         assert project.status == ProjectStatus.AWAITING_CUSTOMER_REVIEW
 
@@ -218,7 +217,7 @@ class TestHelpers:
 
     def test_has_supervisor(self):
         assert make_project().has_supervisor() is True
-        assert make_project(assigned_supervisor_user_id=None).has_supervisor() is False
+        assert make_project().has_supervisor() is False
 
     def test_can_accept_applications_states(self):
         assert make_project(status=ProjectStatus.PUBLISHED).can_accept_applications() is True

@@ -3,6 +3,7 @@ from app.application.project.dto import (
     ListProjectRevisionRequestsResult,
     ProjectRevisionRequestResult,
 )
+from app.application.project.effective_supervisor import get_effective_supervisor
 from app.application.project.permissions import (
     PERMISSION_PROJECT_MANAGE_ANY,
     PERMISSION_PROJECT_MANAGE_OWN,
@@ -12,6 +13,8 @@ from app.application.shared.exceptions import PermissionDeniedError
 from app.application.shared.pagination import limit_offset
 from app.application.shared.use_case import UseCase
 from app.domain.freelancer.repositories import IFreelancerProfileRepository
+from app.domain.category.repositories import ICategoryRepository, ICategorySupervisorRepository
+from app.domain.iam.repositories import IUserRepository
 from app.domain.project.repositories import (
     IProjectApplicationRepository,
     IProjectRepository,
@@ -27,16 +30,29 @@ class ListProjectRevisionRequestsUseCase(UseCase[ListProjectRevisionRequestsQuer
         revision_repo: IProjectRevisionRequestRepository,
         application_repo: IProjectApplicationRepository,
         profile_repo: IFreelancerProfileRepository,
+        category_repo: ICategoryRepository | None = None,
+        category_supervisor_repo: ICategorySupervisorRepository | None = None,
+        user_repo: IUserRepository | None = None,
     ) -> None:
         self._authorization_service = authorization_service
         self._project_repo = project_repo
         self._revision_repo = revision_repo
         self._application_repo = application_repo
         self._profile_repo = profile_repo
+        self._category_repo = category_repo
+        self._category_supervisor_repo = category_supervisor_repo
+        self._user_repo = user_repo
 
     async def execute(self, request: ListProjectRevisionRequestsQuery) -> ListProjectRevisionRequestsResult:
         project = await self._project_repo.get_by_id(request.project_id)
+        effective = None
+        if self._category_supervisor_repo is not None:
+            effective = await get_effective_supervisor(
+                project, self._category_repo, self._category_supervisor_repo, self._user_repo
+            )
         if await self._authorization_service.has_permission(request.actor_id, PERMISSION_PROJECT_MANAGE_ANY):
+            pass
+        elif effective is not None and effective.user.user_id == request.actor_id:
             pass
         elif request.actor_id == project.customer_user_id:
             await self._authorization_service.require_permission(request.actor_id, PERMISSION_PROJECT_MANAGE_OWN)

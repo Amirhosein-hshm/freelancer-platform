@@ -56,6 +56,11 @@ Known pairs: `project.manage_own` / `project.manage_any`,
 `freelancer.read_own` / `freelancer.read_any`. The seeded `freelancer` role receives
 `freelancer.read_own`; `freelancer.read_any` remains admin-only.
 
+Public project details use the separate `project.read_public` permission. It is granted
+to freelancers and applies only to `PUBLIC` projects in `PUBLISHED` or
+`COLLECTING_APPLICATIONS` status. Private, invite-only, draft, and closed projects still
+require an existing owner, selected-freelancer, supervisor, or admin relationship.
+
 Use this pattern (Pattern A) whenever the owner is read from an already-loaded entity and
 no new "target owner" input is needed.
 

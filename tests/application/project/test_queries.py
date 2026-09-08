@@ -12,12 +12,14 @@ from app.application.project.use_cases.get_available_projects import GetAvailabl
 from app.application.project.use_cases.get_my_projects import GetMyProjectsUseCase
 from app.application.project.use_cases.get_project_details import GetProjectDetailsUseCase
 from app.application.project.use_cases.list_visible_projects import ListVisibleProjectsUseCase
+from app.application.shared.exceptions import PermissionDeniedError
 from app.domain.freelancer.enums import FreelancerApprovalStatus
 from app.domain.project.entities import ProjectApplication, ProjectDelivery
 from app.domain.project.enums import (
     DeliveryStatus,
     ProjectApplicationStatus,
     ProjectStatus,
+    ProjectVisibility,
 )
 from app.domain.project.value_objects import ProjectCode
 from tests.fakes.fake_authorization_service import FakeAuthorizationService
@@ -45,6 +47,33 @@ async def add_application(application_repo, app_id: str, now) -> ProjectApplicat
 
 
 class TestGetProjectDetailsUseCase:
+    async def test_freelancer_can_read_public_open_project(
+        self, project_repo, application_repo, delivery_repo, category_supervisor_repo, profile_repo, make_project
+    ):
+        await make_project(project_id="project-1", status=ProjectStatus.PUBLISHED)
+        authorization_service = FakeAuthorizationService()
+        authorization_service.grant("freelancer-1", "project.read_public")
+        use_case = GetProjectDetailsUseCase(
+            project_repo, application_repo, delivery_repo, authorization_service, profile_repo, category_supervisor_repo
+        )
+        result = await use_case.execute(GetProjectDetailsQuery(actor_id="freelancer-1", project_id="project-1"))
+        assert result.project.project_id == "project-1"
+
+    async def test_public_read_does_not_allow_private_or_closed_projects(
+        self, project_repo, application_repo, delivery_repo, category_supervisor_repo, profile_repo, make_project
+    ):
+        authorization_service = FakeAuthorizationService()
+        authorization_service.grant("freelancer-1", "project.read_public")
+        use_case = GetProjectDetailsUseCase(
+            project_repo, application_repo, delivery_repo, authorization_service, profile_repo, category_supervisor_repo
+        )
+        await make_project(project_id="private", status=ProjectStatus.PUBLISHED, visibility=ProjectVisibility.PRIVATE)
+        await make_project(project_id="closed", status=ProjectStatus.COMPLETED)
+        with pytest.raises(PermissionDeniedError):
+            await use_case.execute(GetProjectDetailsQuery(actor_id="freelancer-1", project_id="private"))
+        with pytest.raises(PermissionDeniedError):
+            await use_case.execute(GetProjectDetailsQuery(actor_id="freelancer-1", project_id="closed"))
+
     async def test_details_include_applications_and_deliveries(
         self, project_repo, application_repo, delivery_repo, category_supervisor_repo, clock, make_project
     ):
@@ -148,17 +177,15 @@ class TestListVisibleProjectsUseCase:
     async def test_customer_and_supervisor_see_only_related_projects(
         self, project_repo, authorization_service, make_project
     ):
-        await make_project(project_id="owned", customer_user_id="user-1", assigned_supervisor_user_id=None)
+        await make_project(project_id="owned", customer_user_id="user-1",)
         await make_project(
             project_id="supervised",
             customer_user_id="customer-2",
-            assigned_supervisor_user_id="user-1",
             project_code=ProjectCode("PRJ-2026-002"),
         )
         await make_project(
             project_id="unrelated",
             customer_user_id="customer-3",
-            assigned_supervisor_user_id=None,
             project_code=ProjectCode("PRJ-2026-003"),
         )
         authorization_service.assign_role("user-1", "customer")

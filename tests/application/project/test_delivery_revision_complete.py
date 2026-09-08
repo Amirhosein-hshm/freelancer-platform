@@ -11,6 +11,7 @@ from app.application.project.use_cases.complete_project import CompleteProjectUs
 from app.application.project.use_cases.request_revision import RequestRevisionUseCase
 from app.application.project.use_cases.submit_delivery import SubmitDeliveryUseCase
 from app.application.shared.exceptions import PermissionDeniedError
+from app.domain.category.entities import CategorySupervisor
 from app.domain.project.entities import ProjectApplication, ProjectDelivery, ProjectRevisionRequest
 from app.domain.project.enums import (
     DeliveryStatus,
@@ -20,6 +21,7 @@ from app.domain.project.enums import (
 )
 from app.domain.project.exceptions import MaxRevisionsExceededError
 from app.domain.review.enums import ReviewStatus
+from tests.fakes.fake_project_revision_request_repository import FakeProjectRevisionRequestRepository
 
 
 async def add_application(application_repo, app_id: str = "app-1", now=None) -> ProjectApplication:
@@ -78,6 +80,8 @@ def build_submit(
     id_generator,
     clock,
     uow,
+    category_repo=None,
+    category_supervisor_repo=None,
 ) -> SubmitDeliveryUseCase:
     return SubmitDeliveryUseCase(
         project_repo=project_repo,
@@ -86,10 +90,13 @@ def build_submit(
         status_history_repo=status_history_repo,
         profile_repo=profile_repo,
         review_repo=review_repo,
+        revision_repo=FakeProjectRevisionRequestRepository(),
         file_storage=file_storage,
         id_generator=id_generator,
         clock=clock,
         uow=uow,
+        category_repo=category_repo,
+        category_supervisor_repo=category_supervisor_repo,
     )
 
 
@@ -108,10 +115,26 @@ class TestSubmitDeliveryUseCase:
         uow,
         make_project,
         make_profile,
+        make_category,
+        category_repo,
+        category_supervisor_repo,
     ):
         await make_project(project_id="project-1", status=ProjectStatus.IN_PROGRESS, selected_application_id="app-1")
         await make_profile(profile_id="profile-1", user_id="freelancer-1")
         await add_application(application_repo, now=await clock.now())
+        await make_category(category_repo)
+        await category_supervisor_repo.add(
+            CategorySupervisor(
+                id="link-1",
+                category_id="cat-1",
+                supervisor_user_id="supervisor-1",
+                assigned_by_user_id="admin-1",
+                is_primary=True,
+                is_active=True,
+                assigned_at=await clock.now(),
+                created_at=await clock.now(),
+            )
+        )
         use_case = build_submit(
             project_repo,
             application_repo,
@@ -123,6 +146,8 @@ class TestSubmitDeliveryUseCase:
             id_generator,
             clock,
             uow,
+            category_repo,
+            category_supervisor_repo,
         )
 
         result = await use_case.execute(
@@ -157,7 +182,6 @@ class TestSubmitDeliveryUseCase:
             project_id="project-1",
             status=ProjectStatus.IN_PROGRESS,
             selected_application_id="app-1",
-            assigned_supervisor_user_id=None,
         )
         await make_profile(profile_id="profile-1", user_id="freelancer-1")
         await add_application(application_repo, now=await clock.now())
@@ -193,6 +217,9 @@ class TestSubmitDeliveryUseCase:
         uow,
         make_project,
         make_profile,
+        make_category,
+        category_repo,
+        category_supervisor_repo,
     ):
         await make_project(
             project_id="project-1",
@@ -201,6 +228,19 @@ class TestSubmitDeliveryUseCase:
         )
         await make_profile(profile_id="profile-1", user_id="freelancer-1")
         await add_application(application_repo, now=await clock.now())
+        await make_category(category_repo)
+        await category_supervisor_repo.add(
+            CategorySupervisor(
+                id="link-1",
+                category_id="cat-1",
+                supervisor_user_id="supervisor-1",
+                assigned_by_user_id="admin-1",
+                is_primary=True,
+                is_active=True,
+                assigned_at=await clock.now(),
+                created_at=await clock.now(),
+            )
+        )
         await add_delivery(delivery_repo, now=await clock.now(), status=DeliveryStatus.REVISED)
         use_case = build_submit(
             project_repo,
@@ -213,6 +253,8 @@ class TestSubmitDeliveryUseCase:
             id_generator,
             clock,
             uow,
+            category_repo,
+            category_supervisor_repo,
         )
 
         result = await use_case.execute(SubmitDeliveryCommand(actor_id="freelancer-1", project_id="project-1"))

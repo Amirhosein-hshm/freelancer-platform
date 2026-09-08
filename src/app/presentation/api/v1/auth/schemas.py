@@ -27,6 +27,12 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8)
 
 
+class UpdateOwnProfileRequest(BaseModel):
+    first_name: str | None = None
+    last_name: str | None = None
+    phone: str | None = None
+
+
 class ForgotPasswordRequest(BaseModel):
     email: str
 
@@ -56,6 +62,9 @@ class RefreshResponse(BaseModel):
 class UserMeResponse(BaseModel):
     user_id: str
     email: str
+    first_name: str
+    last_name: str
+    phone: str | None = None
     roles: list[str]
     permissions: list[str]
     freelancer_profile_id: str | None = None

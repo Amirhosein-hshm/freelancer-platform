@@ -3,7 +3,8 @@ from app.application.review.use_cases.review_workflow import decide_delivery_rev
 from app.application.shared.authorization import IAuthorizationService
 from app.application.shared.ports import IClock, IIdGenerator, IUnitOfWork
 from app.application.shared.use_case import UseCase
-from app.domain.category.repositories import ICategorySupervisorRepository
+from app.domain.category.repositories import ICategoryRepository, ICategorySupervisorRepository
+from app.domain.iam.repositories import IUserRepository
 from app.domain.project.repositories import (
     IProjectDeliveryRepository,
     IProjectRepository,
@@ -27,6 +28,8 @@ class RejectDeliveryUseCase(UseCase[RejectDeliveryCommand, ReviewDeliveryResult]
         id_generator: IIdGenerator,
         clock: IClock,
         uow: IUnitOfWork,
+        category_repo: ICategoryRepository | None = None,
+        user_repo: IUserRepository | None = None,
     ) -> None:
         self._authorization_service = authorization_service
         self._delivery_repo = delivery_repo
@@ -38,6 +41,8 @@ class RejectDeliveryUseCase(UseCase[RejectDeliveryCommand, ReviewDeliveryResult]
         self._id_generator = id_generator
         self._clock = clock
         self._uow = uow
+        self._category_repo = category_repo
+        self._user_repo = user_repo
 
     async def execute(self, request: RejectDeliveryCommand) -> ReviewDeliveryResult:
         return await decide_delivery_review(
@@ -56,4 +61,6 @@ class RejectDeliveryUseCase(UseCase[RejectDeliveryCommand, ReviewDeliveryResult]
             decision=ReviewStatus.REJECTED,
             notes=None,
             reject_reason=request.reason,
+            category_repo=self._category_repo,
+            user_repo=self._user_repo,
         )

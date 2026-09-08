@@ -9,6 +9,7 @@ from app.application.iam.dto import (
     LogoutUserCommand,
     RefreshTokenCommand,
     RegisterUserCommand,
+    UpdateOwnProfileCommand,
 )
 from app.application.iam.use_cases.change_password import ChangePasswordUseCase
 from app.application.iam.use_cases.forgot_password import ForgotPasswordUseCase
@@ -16,6 +17,7 @@ from app.application.iam.use_cases.login_user import LoginUserUseCase
 from app.application.iam.use_cases.logout_user import LogoutUserUseCase
 from app.application.iam.use_cases.refresh_token import RefreshTokenUseCase
 from app.application.iam.use_cases.register_user import RegisterUserUseCase
+from app.application.iam.use_cases.update_own_profile import UpdateOwnProfileUseCase
 from app.application.shared.authorization import IAuthorizationService
 from app.domain.freelancer.exceptions import FreelancerProfileNotFoundError
 from app.domain.freelancer.repositories import IFreelancerProfileRepository
@@ -31,6 +33,7 @@ from app.presentation.api.v1.auth.schemas import (
     RegisterRequest,
     RegisterResponse,
     UserMeResponse,
+    UpdateOwnProfileRequest,
 )
 from app.presentation.core.envelope import SuccessEnvelope
 from app.presentation.core.providers import (
@@ -43,6 +46,7 @@ from app.presentation.core.providers import (
     get_refresh_token_use_case,
     get_register_user_use_case,
     get_user_repository,
+    get_update_own_profile_use_case,
 )
 from app.presentation.core.routes import DocumentedAPIRoute
 from app.presentation.core.security import get_current_user
@@ -167,6 +171,9 @@ async def get_me(
         data=UserMeResponse(
             user_id=user.id,
             email=user.email.value,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            phone=user.phone.value if user.phone else None,
             roles=current_user.roles,
             permissions=permissions,
             freelancer_profile_id=profile.id if profile else None,
@@ -174,4 +181,29 @@ async def get_me(
             freelancer_approval_status=profile.approval_status.value if profile else None,
             freelancer_level=profile.current_level.value if profile and profile.current_level else None,
         ),
+    )
+
+
+@router.patch("/me", response_model=SuccessEnvelope[dict], operation_id="update_own_profile")
+async def update_own_profile(
+    payload: UpdateOwnProfileRequest,
+    current_user=Depends(get_current_user),
+    use_case: UpdateOwnProfileUseCase = Depends(get_update_own_profile_use_case),
+) -> SuccessEnvelope[dict]:
+    result = await use_case.execute(
+        UpdateOwnProfileCommand(
+            actor_id=current_user.user_id,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            phone=payload.phone,
+        )
+    )
+    return SuccessEnvelope(
+        message="Profile updated.",
+        data={
+            "user_id": result.user_id,
+            "first_name": result.first_name,
+            "last_name": result.last_name,
+            "phone": result.phone,
+        },
     )

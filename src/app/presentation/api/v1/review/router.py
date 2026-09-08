@@ -44,17 +44,29 @@ def _to_project_response(result: ProjectResult) -> ProjectResponse:
         project_code=result.project_code,
         customer_user_id=result.customer_user_id,
         category_id=result.category_id,
+        form_template_id=result.form_template_id,
+        form_values=[{"field_id": value.field_id, "value": value.value} for value in result.form_values],
+        required_level=result.required_level,
         title=result.title,
         description=result.description,
         status=result.status,
         visibility=result.visibility,
         priority=result.priority,
         budget=_to_budget_response(result.budget),
-        assigned_supervisor_user_id=result.assigned_supervisor_user_id,
         selected_application_id=result.selected_application_id,
         application_deadline=result.application_deadline,
         created_by_user_id=result.created_by_user_id,
         created_at=result.created_at,
+        supervisor=(
+            {
+                "user_id": result.supervisor.user_id,
+                "email": result.supervisor.email,
+                "first_name": result.supervisor.first_name,
+                "last_name": result.supervisor.last_name,
+            }
+            if result.supervisor
+            else None
+        ),
     )
 
 

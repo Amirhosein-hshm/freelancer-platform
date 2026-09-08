@@ -127,11 +127,18 @@ class ProjectResponse(BaseModel):
     visibility: ProjectVisibility
     priority: ProjectPriority
     budget: BudgetResponse
-    assigned_supervisor_user_id: str | None
     selected_application_id: str | None
     application_deadline: datetime | None
     created_by_user_id: str | None
     created_at: datetime
+    supervisor: "SupervisorResponse | None" = None
+
+
+class SupervisorResponse(BaseModel):
+    user_id: str
+    email: str
+    first_name: str
+    last_name: str
 
 
 class ApplicationResponse(BaseModel):

@@ -31,5 +31,8 @@ class FakeSupervisorReviewRepository(ISupervisorReviewRepository):
             if review.supervisor_user_id == supervisor_user_id and review.decision == ReviewStatus.PENDING
         ]
 
+    async def count_pending_for_supervisor(self, supervisor_user_id: EntityId) -> int:
+        return len(await self.list_pending_for_supervisor(supervisor_user_id))
+
     async def update(self, review: SupervisorReview) -> None:
         self._store[review.id] = review

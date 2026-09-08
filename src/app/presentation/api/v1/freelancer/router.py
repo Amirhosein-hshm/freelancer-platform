@@ -451,7 +451,7 @@ def _to_history_response(result: FreelancerLevelHistoryResponse) -> FreelancerLe
         new_level=result.new_level,
         assigned_by_user_id=result.assigned_by_user_id,
         reason=result.reason,
-        assigned_at=result.assigned_at,
+        assigned_at=result.assigned_at.isoformat(),
     )
 
 

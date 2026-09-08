@@ -10,7 +10,7 @@ import asyncio
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.infrastructure.config import get_settings
@@ -74,6 +74,21 @@ async def _seed_role_permissions(session, now: datetime) -> None:
                 )
                 .on_conflict_do_nothing(index_elements=["role_id", "permission_id"])
             )
+
+    # Supervisor ticket access is party-scoped. Remove broad permissions that may
+    # have been installed by an earlier seed version; the normal inserts above
+    # are intentionally additive for all other role-permission assignments.
+    supervisor_role_id = roles.get("supervisor")
+    broad_ticket_permission_ids = [
+        permissions[key] for key in ("ticket.read_any", "ticket.close_any") if key in permissions
+    ]
+    if supervisor_role_id and broad_ticket_permission_ids:
+        await session.execute(
+            delete(RolePermissionModel).where(
+                RolePermissionModel.role_id == supervisor_role_id,
+                RolePermissionModel.permission_id.in_(broad_ticket_permission_ids),
+            )
+        )
 
 
 async def _seed_admin_user(session, now: datetime) -> None:

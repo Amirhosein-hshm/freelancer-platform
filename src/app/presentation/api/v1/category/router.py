@@ -81,7 +81,6 @@ def _project_response(result) -> ProjectResponse:
         visibility=result.visibility.value,
         priority=result.priority.value,
         budget=result.budget,
-        assigned_supervisor_user_id=result.assigned_supervisor_user_id,
         selected_application_id=result.selected_application_id,
         application_deadline=result.application_deadline,
         created_by_user_id=result.created_by_user_id,

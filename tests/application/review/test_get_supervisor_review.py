@@ -13,12 +13,20 @@ class TestGetSupervisorReviewUseCase:
         delivery_repo,
         review_repo,
         category_supervisor_repo,
+        category_repo,
+        user_repo,
         seed_supervisor_flow,
     ):
         await seed_supervisor_flow()
         authorization_service.grant("supervisor-1", "review.decide_own")
         use_case = GetSupervisorReviewUseCase(
-            project_repo, delivery_repo, review_repo, category_supervisor_repo, authorization_service
+            project_repo,
+            delivery_repo,
+            review_repo,
+            category_supervisor_repo,
+            authorization_service,
+            category_repo,
+            user_repo,
         )
 
         result = await use_case.execute(
@@ -34,12 +42,20 @@ class TestGetSupervisorReviewUseCase:
         delivery_repo,
         review_repo,
         category_supervisor_repo,
+        category_repo,
+        user_repo,
         seed_supervisor_flow,
     ):
         await seed_supervisor_flow()
         authorization_service.grant("customer-1", "project.manage_own")
         use_case = GetSupervisorReviewUseCase(
-            project_repo, delivery_repo, review_repo, category_supervisor_repo, authorization_service
+            project_repo,
+            delivery_repo,
+            review_repo,
+            category_supervisor_repo,
+            authorization_service,
+            category_repo,
+            user_repo,
         )
 
         result = await use_case.execute(
@@ -55,11 +71,19 @@ class TestGetSupervisorReviewUseCase:
         delivery_repo,
         review_repo,
         category_supervisor_repo,
+        category_repo,
+        user_repo,
         seed_supervisor_flow,
     ):
         await seed_supervisor_flow()
         use_case = GetSupervisorReviewUseCase(
-            project_repo, delivery_repo, review_repo, category_supervisor_repo, authorization_service
+            project_repo,
+            delivery_repo,
+            review_repo,
+            category_supervisor_repo,
+            authorization_service,
+            category_repo,
+            user_repo,
         )
 
         with pytest.raises(PermissionDeniedError):
