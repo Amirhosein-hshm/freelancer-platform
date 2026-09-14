@@ -6,6 +6,7 @@ import {
   REFRESH_TOKEN_COOKIE,
   applySessionCookies,
   clearSessionCookies,
+  getSessionCookieOptions,
   isAccessTokenExpired,
 } from '@/lib/api/session';
 
@@ -19,6 +20,12 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
   const { pathname } = request.nextUrl;
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
+
+  const isHttps =
+    request.nextUrl.protocol === 'https:' ||
+    request.headers.get('x-forwarded-proto') === 'https' ||
+    Boolean(request.headers.get('host')?.includes('.e2b.app'));
+  const cookieOptions = getSessionCookieOptions(isHttps);
 
   const action = resolveGuardAction({
     pathname,
@@ -34,7 +41,7 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
       const loginUrl = new URL('/login', request.nextUrl);
       loginUrl.searchParams.set('expired', '1');
       const response = NextResponse.redirect(loginUrl);
-      clearSessionCookies(response);
+      clearSessionCookies(response, cookieOptions);
       return response;
     }
 
@@ -45,18 +52,18 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
       const tokens = await refreshSession(refreshToken);
       if (tokens) {
         const response = NextResponse.next();
-        applySessionCookies(response, tokens);
+        applySessionCookies(response, tokens, cookieOptions);
         return response;
       }
       if (isPublicRoute(pathname)) {
         const response = NextResponse.next();
-        clearSessionCookies(response);
+        clearSessionCookies(response, cookieOptions);
         return response;
       }
       const loginUrl = new URL('/login', request.nextUrl);
       loginUrl.searchParams.set('expired', '1');
       const response = NextResponse.redirect(loginUrl);
-      clearSessionCookies(response);
+      clearSessionCookies(response, cookieOptions);
       return response;
     }
   }

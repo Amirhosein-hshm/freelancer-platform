@@ -6,6 +6,7 @@ import {
   REFRESH_TOKEN_COOKIE,
   applySessionCookies,
   clearSessionCookies,
+  getSessionCookieOptions,
   type SessionTokens,
 } from '@/lib/api/session';
 
@@ -55,6 +56,12 @@ async function handleProxy(request: NextRequest, context: RouteContext): Promise
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
 
+  const isHttps =
+    request.nextUrl.protocol === 'https:' ||
+    request.headers.get('x-forwarded-proto') === 'https' ||
+    Boolean(request.headers.get('host')?.includes('.e2b.app'));
+  const cookieOptions = getSessionCookieOptions(isHttps);
+
   const makeBackendRequest = (
     token: string | null,
     body: ArrayBuffer | null,
@@ -86,7 +93,7 @@ async function handleProxy(request: NextRequest, context: RouteContext): Promise
         JSON_CONTENT_TYPE,
       );
       const payload = await readBody(response);
-      return finalize(payload, response.status, (next) => clearSessionCookies(next));
+      return finalize(payload, response.status, (next) => clearSessionCookies(next, cookieOptions));
     }
 
     // Client-driven refresh: use the HTTP-only cookie, never a client-provided token.
@@ -100,10 +107,10 @@ async function handleProxy(request: NextRequest, context: RouteContext): Promise
       if (response.ok) {
         const tokens = extractTokens(payload);
         if (tokens) {
-          return finalize(sanitizeTokens(payload), response.status, (next) => applySessionCookies(next, tokens));
+          return finalize(sanitizeTokens(payload), response.status, (next) => applySessionCookies(next, tokens, cookieOptions));
         }
       }
-      return finalize(payload, response.status, (next) => clearSessionCookies(next));
+      return finalize(payload, response.status, (next) => clearSessionCookies(next, cookieOptions));
     }
 
     let response = await makeBackendRequest(accessToken ?? null, rawBody);
@@ -114,10 +121,10 @@ async function handleProxy(request: NextRequest, context: RouteContext): Promise
       if (tokens) {
         response = await makeBackendRequest(tokens.access_token, rawBody);
         const payload = await readBody(response);
-        return finalize(payload, response.status, (next) => applySessionCookies(next, tokens));
+        return finalize(payload, response.status, (next) => applySessionCookies(next, tokens, cookieOptions));
       }
       const payload = await readBody(response);
-      return finalize(payload, response.status, (next) => clearSessionCookies(next));
+      return finalize(payload, response.status, (next) => clearSessionCookies(next, cookieOptions));
     }
 
     const payload = await readBody(response);
@@ -126,7 +133,7 @@ async function handleProxy(request: NextRequest, context: RouteContext): Promise
     if (joined === TOKEN_LOGIN_PATH && response.ok) {
       const tokens = extractTokens(payload);
       if (tokens) {
-        return finalize(sanitizeTokens(payload), response.status, (next) => applySessionCookies(next, tokens));
+        return finalize(sanitizeTokens(payload), response.status, (next) => applySessionCookies(next, tokens, cookieOptions));
       }
     }
 

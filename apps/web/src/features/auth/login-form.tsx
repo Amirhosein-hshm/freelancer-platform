@@ -15,6 +15,7 @@ import { loginSchema, type LoginValues } from './schemas';
 export function LoginForm() {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
@@ -23,11 +24,14 @@ export function LoginForm() {
   const login = useLoginUser<ApiError>({
     mutation: {
       onSuccess: () => {
-        // Cookies were rotated by the same-origin proxy; re-render server tree.
+        setIsRedirecting(true);
         router.replace('/dashboard');
-        router.refresh();
+        if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
+          window.location.href = '/dashboard';
+        }
       },
       onError: (error) => {
+        setIsRedirecting(false);
         const normalized = getApiError(error);
         setFormError(normalized.message);
         for (const [field, message] of Object.entries(normalized.fields)) {
@@ -43,6 +47,8 @@ export function LoginForm() {
     setFormError(null);
     login.mutate({ data: { email: values.email, password: values.password } });
   });
+
+  const isBusy = login.isPending || isRedirecting;
 
   return (
     <FormProvider {...form}>
@@ -61,7 +67,7 @@ export function LoginForm() {
           ltr
           placeholder="name@example.com"
           autoComplete="email"
-          disabled={login.isPending}
+          disabled={isBusy}
         />
         <TextField
           label="رمز عبور"
@@ -70,12 +76,12 @@ export function LoginForm() {
           ltr
           placeholder="••••••••"
           autoComplete="current-password"
-          disabled={login.isPending}
+          disabled={isBusy}
         />
 
-        <Button type="submit" size="lg" disabled={login.isPending} className="min-h-11 w-full">
-          {login.isPending ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
-          {login.isPending ? 'در حال ورود…' : 'ورود'}
+        <Button type="submit" size="lg" disabled={isBusy} className="min-h-11 w-full">
+          {isBusy ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
+          {isBusy ? 'در حال ورود…' : 'ورود'}
         </Button>
       </form>
     </FormProvider>

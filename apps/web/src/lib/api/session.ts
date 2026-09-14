@@ -9,26 +9,49 @@ export interface SessionTokens {
   refresh_token_jti?: string;
 }
 
-const BASE_COOKIE_OPTIONS = {
+const isSecureEnv =
+  process.env.NODE_ENV === 'production' ||
+  process.env.E2B_SANDBOX === 'true' ||
+  Boolean(process.env.E2B_SANDBOX_ID);
+
+export const BASE_COOKIE_OPTIONS = {
   httpOnly: true,
-  sameSite: 'lax' as const,
-  // Secure cookies break plain-HTTP non-localhost hosts; mirror the runtime env.
-  secure: process.env.NODE_ENV === 'production',
+  sameSite: (isSecureEnv ? 'none' : 'lax') as 'none' | 'lax',
+  secure: isSecureEnv,
   path: '/',
+  ...(isSecureEnv ? { partitioned: true } : {}),
 };
+
+export function getSessionCookieOptions(isHttps?: boolean) {
+  const secure = isSecureEnv || isHttps === true;
+  return {
+    httpOnly: true,
+    sameSite: (secure ? 'none' : 'lax') as 'none' | 'lax',
+    secure,
+    path: '/',
+    ...(secure ? { partitioned: true } : {}),
+  };
+}
 
 /**
  * Applies rotated session cookies to a browser-facing response.
  * Used by the API proxy route and proxy.ts only.
  */
-export function applySessionCookies(response: NextResponse, tokens: SessionTokens): void {
-  response.cookies.set(ACCESS_TOKEN_COOKIE, tokens.access_token, BASE_COOKIE_OPTIONS);
-  response.cookies.set(REFRESH_TOKEN_COOKIE, tokens.refresh_token, BASE_COOKIE_OPTIONS);
+export function applySessionCookies(
+  response: NextResponse,
+  tokens: SessionTokens,
+  cookieOptions = BASE_COOKIE_OPTIONS,
+): void {
+  response.cookies.set(ACCESS_TOKEN_COOKIE, tokens.access_token, cookieOptions);
+  response.cookies.set(REFRESH_TOKEN_COOKIE, tokens.refresh_token, cookieOptions);
 }
 
-export function clearSessionCookies(response: NextResponse): void {
-  response.cookies.set(ACCESS_TOKEN_COOKIE, '', { ...BASE_COOKIE_OPTIONS, maxAge: 0 });
-  response.cookies.set(REFRESH_TOKEN_COOKIE, '', { ...BASE_COOKIE_OPTIONS, maxAge: 0 });
+export function clearSessionCookies(
+  response: NextResponse,
+  cookieOptions = BASE_COOKIE_OPTIONS,
+): void {
+  response.cookies.set(ACCESS_TOKEN_COOKIE, '', { ...cookieOptions, maxAge: 0 });
+  response.cookies.set(REFRESH_TOKEN_COOKIE, '', { ...cookieOptions, maxAge: 0 });
 }
 
 /**
