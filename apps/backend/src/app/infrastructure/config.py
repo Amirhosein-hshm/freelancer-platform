@@ -5,17 +5,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    database_url: str
-    jwt_secret: str
+    database_url: str = "sqlite+aiosqlite:///storage/app.db"
+    jwt_secret: str = "change_me_to_a_long_random_string_secret"
     jwt_access_ttl_minutes: int = 15
     jwt_refresh_ttl_days: int = 30
-    admin_email: str
-    admin_password: str
+    admin_email: str = "admin@example.com"
+    admin_password: str = "admin1234"
     cors_allowed_origins: str = "http://localhost:3000"
 
     # File storage backend: "local" (default, interim production backend) or "s3".
     file_storage_backend: str = "local"
-    file_storage_root: str = "/app/storage/files"
+    file_storage_root: str = "storage/files"
     file_storage_max_size_mb: int = 50
 
     # S3-compatible storage (only used when FILE_STORAGE_BACKEND=s3).

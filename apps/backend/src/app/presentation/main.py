@@ -39,11 +39,15 @@ API_PREFIX = "/api/v1"
 DEFAULT_CORS_ORIGINS = ["http://localhost:3000"]
 
 
-def create_app(cors_origins: Sequence[str] | None = None) -> FastAPI:
+def create_app(
+    cors_origins: Sequence[str] | None = None,
+    lifespan=None,
+) -> FastAPI:
     app = FastAPI(
         title="Freelance Platform API",
         version="0.1.0",
         route_class=DocumentedAPIRoute,
+        lifespan=lifespan,
     )
     app.add_middleware(
         CORSMiddleware,

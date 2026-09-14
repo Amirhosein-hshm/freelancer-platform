@@ -5,7 +5,7 @@
   "sourceRoot": "apps/backend/src",
   "targets": {
     "dev": {
-      "command": "python -m uvicorn app.bootstrap.run:app --reload --host 0.0.0.0 --port 8000",
+      "command": "PYTHONPATH=src python3 -m uvicorn app.bootstrap.run:app --reload --host 0.0.0.0 --port 8000",
       "options": {
         "cwd": "apps/backend"
       }
@@ -35,7 +35,7 @@
       }
     },
     "seed": {
-      "command": "python -m app.infrastructure.seed.run_seed",
+      "command": "PYTHONPATH=src python3 -m app.infrastructure.seed.run_seed",
       "options": {
         "cwd": "apps/backend"
       }

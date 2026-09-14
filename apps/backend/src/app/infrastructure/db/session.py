@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -12,9 +13,17 @@ from app.infrastructure.config import get_settings
 
 def create_engine(url: str | None = None) -> AsyncEngine:
     settings = get_settings()
+    db_url = url or settings.database_url
+    connect_args = {}
+    if db_url.startswith("sqlite"):
+        connect_args["check_same_thread"] = False
+        clean_path = db_url.split("sqlite+aiosqlite:///")[-1].split("?")[0]
+        if clean_path and not clean_path.startswith(":memory:"):
+            Path(clean_path).parent.mkdir(parents=True, exist_ok=True)
     return create_async_engine(
-        url or settings.database_url,
+        db_url,
         pool_pre_ping=True,
+        connect_args=connect_args,
     )
 
 

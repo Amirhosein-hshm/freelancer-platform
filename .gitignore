@@ -32,6 +32,8 @@ next-env.d.ts
 # Environment & Secrets
 .env
 .env*.local
+storage/
+*.db
 
 # System & IDE
 .DS_Store

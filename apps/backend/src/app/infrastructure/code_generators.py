@@ -1,4 +1,5 @@
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.shared.ports import IProjectCodeGenerator, ITicketCodeGenerator
@@ -8,6 +9,17 @@ _CODE_TEMPLATE = "{prefix}-{year}-{value:03d}"
 
 
 def _increment_sequence(session: AsyncSession, prefix: str, year: int):
+    bind = session.get_bind()
+    if bind and bind.dialect.name == "sqlite":
+        return (
+            sqlite_insert(CodeSequenceModel)
+            .values(year=year, prefix=prefix, last_value=1)
+            .on_conflict_do_update(
+                index_elements=["year", "prefix"],
+                set_={"last_value": CodeSequenceModel.last_value + 1},
+            )
+            .returning(CodeSequenceModel.last_value)
+        )
     return (
         pg_insert(CodeSequenceModel)
         .values(year=year, prefix=prefix, last_value=1)

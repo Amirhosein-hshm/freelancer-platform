@@ -1,9 +1,8 @@
 """Idempotent seeding of RBAC roles/permissions and the primary admin user.
 
 Safe to run many times: every role/permission insert uses ``ON CONFLICT DO
-NOTHING`` and the admin user is only created when ``admin_email`` is not yet
-present. Credentials come from ``infrastructure/config.Settings`` (env vars),
-never from code.
+NOTHING`` and the admin user is created or updated from ``infrastructure/config.Settings``
+(env vars), never from code.
 """
 
 import asyncio
@@ -12,8 +11,11 @@ from uuid import uuid4
 
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from app.infrastructure.config import get_settings
+from app.infrastructure.db import models  # noqa: F401
+from app.infrastructure.db.base import Base
 from app.infrastructure.db.models.iam_models import (
     PermissionModel,
     RoleModel,
@@ -21,17 +23,24 @@ from app.infrastructure.db.models.iam_models import (
     UserModel,
     UserRoleModel,
 )
-from app.infrastructure.db.session import get_session_factory
+from app.infrastructure.db.session import get_engine, get_session_factory
 from app.infrastructure.security.password_hasher import Argon2PasswordHasher
 from app.infrastructure.seed.seed_data import ADMIN_PERMISSION_KEYS, PERMISSIONS, ROLE_PERMISSIONS, ROLES
 
 ADMIN_ROLE_KEY = "admin"
 
 
+def _insert(session, model):
+    bind = session.get_bind()
+    if bind and bind.dialect.name == "sqlite":
+        return sqlite_insert(model)
+    return pg_insert(model)
+
+
 async def _seed_roles(session, now: datetime) -> None:
     for role in ROLES:
         await session.execute(
-            pg_insert(RoleModel)
+            _insert(session, RoleModel)
             .values(id=str(uuid4()), created_at=now, **role)
             .on_conflict_do_nothing(index_elements=["role_key"])
         )
@@ -40,7 +49,7 @@ async def _seed_roles(session, now: datetime) -> None:
 async def _seed_permissions(session, now: datetime) -> None:
     for permission in PERMISSIONS:
         await session.execute(
-            pg_insert(PermissionModel)
+            _insert(session, PermissionModel)
             .values(id=str(uuid4()), created_at=now, **permission)
             .on_conflict_do_nothing(index_elements=["permission_key"])
         )
@@ -64,7 +73,7 @@ async def _seed_role_permissions(session, now: datetime) -> None:
             if permission_id is None:
                 continue
             await session.execute(
-                pg_insert(RolePermissionModel)
+                _insert(session, RolePermissionModel)
                 .values(
                     id=str(uuid4()),
                     role_id=role_id,
@@ -93,13 +102,17 @@ async def _seed_role_permissions(session, now: datetime) -> None:
 
 async def _seed_admin_user(session, now: datetime) -> None:
     settings = get_settings()
-    existing = await session.execute(select(UserModel).where(UserModel.email == settings.admin_email))
-    if existing.scalar_one_or_none() is not None:
+    hasher = Argon2PasswordHasher()
+    existing = (await session.execute(select(UserModel).where(UserModel.email == settings.admin_email))).scalar_one_or_none()
+    if existing is not None:
+        if not await hasher.verify(settings.admin_password, existing.password_hash):
+            existing.password_hash = await hasher.hash(settings.admin_password)
+            existing.password_changed_at = now
         return
+
     admin_role_id = (
         (await session.execute(select(RoleModel).where(RoleModel.role_key == ADMIN_ROLE_KEY))).scalar_one().id
     )
-    hasher = Argon2PasswordHasher()
     admin_user = UserModel(
         id=str(uuid4()),
         email=settings.admin_email,
@@ -132,6 +145,11 @@ async def _seed_admin_user(session, now: datetime) -> None:
 
 
 async def run_seed() -> None:
+    engine = get_engine()
+    if engine.dialect.name == "sqlite":
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
     session_factory = get_session_factory()
     async with session_factory() as session:
         now = datetime.now(UTC)

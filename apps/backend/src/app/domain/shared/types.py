@@ -1,1 +1,3 @@
-type EntityId = str
+from typing import TypeAlias
+
+EntityId: TypeAlias = str

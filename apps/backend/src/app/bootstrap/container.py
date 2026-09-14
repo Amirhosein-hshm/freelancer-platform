@@ -1,3 +1,6 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI
 
 from app.application.shared.file_access_policy import DomainFileAccessPolicy
@@ -86,9 +89,17 @@ from app.presentation.core import providers
 from app.presentation.main import create_app
 
 
+@asynccontextmanager
+async def _app_lifespan(app: FastAPI) -> AsyncIterator[None]:
+    from app.infrastructure.seed.run_seed import run_seed
+
+    await run_seed()
+    yield
+
+
 def build_app() -> FastAPI:
     settings = get_settings()
-    app = create_app(cors_origins=settings.cors_origins)
+    app = create_app(cors_origins=settings.cors_origins, lifespan=_app_lifespan)
 
     password_hasher = Argon2PasswordHasher()
     id_generator = UuidIdGenerator()
