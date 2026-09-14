@@ -1,0 +1,8 @@
+packages:
+  - 'apps/*'
+
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true
+  nx: true
+  '@nx/nx-linux-x64-gnu': true

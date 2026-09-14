@@ -1,0 +1,44 @@
+{
+  "name": "backend",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/backend/src",
+  "targets": {
+    "dev": {
+      "command": "python -m uvicorn app.bootstrap.run:app --reload --host 0.0.0.0 --port 8000",
+      "options": {
+        "cwd": "apps/backend"
+      }
+    },
+    "test": {
+      "command": "pytest --cov=app.domain --cov=app.application --cov-report=term-missing",
+      "options": {
+        "cwd": "apps/backend"
+      }
+    },
+    "lint": {
+      "command": "ruff check .",
+      "options": {
+        "cwd": "apps/backend"
+      }
+    },
+    "typecheck": {
+      "command": "mypy src/app/domain src/app/application",
+      "options": {
+        "cwd": "apps/backend"
+      }
+    },
+    "migrate": {
+      "command": "alembic upgrade head",
+      "options": {
+        "cwd": "apps/backend"
+      }
+    },
+    "seed": {
+      "command": "python -m app.infrastructure.seed.run_seed",
+      "options": {
+        "cwd": "apps/backend"
+      }
+    }
+  }
+}

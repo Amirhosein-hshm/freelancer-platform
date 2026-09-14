@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+
+.pnpm-store/
+
+# curl cookie jars from manual API testing — these hold real session tokens
+.txt
+*.cookies
+cookies.txt

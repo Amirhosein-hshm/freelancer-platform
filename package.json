@@ -1,0 +1,26 @@
+{
+  "name": "freelancer-platform",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "nx dev web",
+    "dev:all": "nx run-many -t dev",
+    "dev:backend": "nx dev backend",
+    "dev:web": "nx dev web",
+    "build": "nx build web",
+    "build:all": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "test:web": "nx test web",
+    "test:backend": "nx test backend",
+    "lint": "nx run-many -t lint",
+    "lint:web": "nx lint web",
+    "lint:backend": "nx lint backend",
+    "typecheck": "nx run-many -t typecheck",
+    "typecheck:web": "nx typecheck web",
+    "typecheck:backend": "nx typecheck backend"
+  },
+  "packageManager": "pnpm@12.4.1",
+  "devDependencies": {
+    "nx": "^23.2.1"
+  }
+}
