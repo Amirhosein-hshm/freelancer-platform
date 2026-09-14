@@ -38,5 +38,4 @@ next-env.d.ts
 .idea/
 .vscode/
 .codegraph/
-.agents/
-skills-lock.json
+.claude/

@@ -4,6 +4,7 @@ This file is the source of truth for every agent/tool that works on this reposit
 (opencode, Claude Code, or any other LLM). Before writing any line of code, read this file
 and the following files:
 
+0. `MULTI_AGENT_SKILLS.md` — Multi-Agent System Architecture, Dynamic Web Design Intelligence & Installed Skills Protocol
 1. `ARCHITECTURE.md` — layers, dependency rules, folder structure (5 packages:
    `domain`, `application`, `infrastructure`, `presentation`, `bootstrap`)
 2. `DOMAIN.md` — Entities, Value Objects, Repository Interfaces per bounded context
