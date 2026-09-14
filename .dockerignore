@@ -1,0 +1,9 @@
+node_modules
+.next
+.nx
+.git
+.pnpm-store
+.env
+.env*.local
+storage
+*.db

@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   reactStrictMode: true,
   allowedDevOrigins: ['*.e2b.app', 'localhost', '127.0.0.1'],
 };
