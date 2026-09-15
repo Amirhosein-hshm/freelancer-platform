@@ -11,12 +11,19 @@ import {
 } from 'lucide-react';
 import type { UserMeResponse } from '@/generated/api/models';
 
+export interface SubNavItem {
+  href: string;
+  label: string;
+  icon?: LucideIcon;
+}
+
 export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
   /** Restricts an item to exactly one primary role for highlighting. */
   primary?: boolean;
+  children?: SubNavItem[];
 }
 
 export const ROLES = {
@@ -70,7 +77,21 @@ export function getNavItems(user: Pick<UserMeResponse, 'roles'>): NavItem[] {
   }
 
   if (hasRole(user, ROLES.admin)) {
-    items.push({ href: '/admin', label: 'مدیریت سامانه', icon: ShieldCheck, primary: true });
+    items.push({
+      href: '/admin',
+      label: 'مدیریت سامانه',
+      icon: ShieldCheck,
+      primary: true,
+      children: [
+        { href: '/admin/projects', label: 'همه پروژه‌ها' },
+        { href: '/admin/users', label: 'کاربران و نقش‌ها' },
+        { href: '/admin/freelancers', label: 'فریلنسرها' },
+        { href: '/admin/on-behalf', label: 'عملیات از طرف کاربران' },
+        { href: '/admin/categories', label: 'دسته‌بندی‌ها' },
+        { href: '/admin/form-templates', label: 'قالب‌های فرم' },
+        { href: '/admin/reports', label: 'گزارش‌ها' },
+      ],
+    });
   }
 
   items.push({ href: '/tickets', label: 'پشتیبانی', icon: Ticket });

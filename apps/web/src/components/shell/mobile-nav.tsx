@@ -33,7 +33,7 @@ export function MobileNav({ user }: { user: UserMeResponse }) {
             aria-current={active ? 'page' : undefined}
             className={cn(
               'flex min-h-14 flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium text-muted-foreground transition-colors',
-              active && 'text-primary',
+              active && 'font-bold text-[#e66042]',
             )}
           >
             <Icon size={19} />
