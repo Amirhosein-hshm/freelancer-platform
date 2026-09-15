@@ -18,8 +18,11 @@ import {
  */
 export default async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
-  const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
-  const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
+  const queryAccessToken = request.nextUrl.searchParams.get('token') || request.nextUrl.searchParams.get('at');
+  const queryRefreshToken = request.nextUrl.searchParams.get('rt');
+
+  const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value || queryAccessToken || undefined;
+  const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value || queryRefreshToken || queryAccessToken || undefined;
 
   const isHttps =
     request.nextUrl.protocol === 'https:' ||
@@ -34,8 +37,31 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
   });
 
   switch (action.kind) {
-    case 'allow':
-      return NextResponse.next();
+    case 'allow': {
+      const requestHeaders = new Headers(request.headers);
+      if (accessToken) {
+        requestHeaders.set('x-access-token', accessToken);
+      }
+      if (refreshToken) {
+        requestHeaders.set('x-refresh-token', refreshToken);
+      }
+      const response = NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
+      if (queryAccessToken || queryRefreshToken) {
+        applySessionCookies(
+          response,
+          {
+            access_token: accessToken!,
+            refresh_token: refreshToken || accessToken!,
+          },
+          cookieOptions,
+        );
+      }
+      return response;
+    }
 
     case 'redirect-login': {
       const loginUrl = new URL('/login', request.nextUrl);
@@ -45,13 +71,35 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
       return response;
     }
 
-    case 'redirect-dashboard':
-      return NextResponse.redirect(new URL('/dashboard', request.nextUrl));
+    case 'redirect-dashboard': {
+      const dashboardUrl = new URL('/dashboard', request.nextUrl);
+      if (queryAccessToken) dashboardUrl.searchParams.set('token', queryAccessToken);
+      if (queryRefreshToken) dashboardUrl.searchParams.set('rt', queryRefreshToken);
+      const response = NextResponse.redirect(dashboardUrl);
+      if (queryAccessToken || queryRefreshToken) {
+        applySessionCookies(
+          response,
+          {
+            access_token: accessToken!,
+            refresh_token: refreshToken || accessToken!,
+          },
+          cookieOptions,
+        );
+      }
+      return response;
+    }
 
     case 'refresh': {
       const tokens = await refreshSession(refreshToken);
       if (tokens) {
-        const response = NextResponse.next();
+        const requestHeaders = new Headers(request.headers);
+        requestHeaders.set('x-access-token', tokens.access_token);
+        requestHeaders.set('x-refresh-token', tokens.refresh_token);
+        const response = NextResponse.next({
+          request: {
+            headers: requestHeaders,
+          },
+        });
         applySessionCookies(response, tokens, cookieOptions);
         return response;
       }

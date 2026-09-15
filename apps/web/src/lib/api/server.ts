@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { PaginationMeta, UserMeResponse } from '@/generated/api/models';
 import { backendUrl, BACKEND_TIMEOUT_MS } from './config';
@@ -91,7 +91,8 @@ async function requestEnvelope<T>(
   params?: Record<string, QueryValue>,
 ): Promise<Envelope<T>> {
   const jar = await cookies();
-  const accessToken = jar.get(ACCESS_TOKEN_COOKIE)?.value;
+  const headerList = await headers();
+  const accessToken = jar.get(ACCESS_TOKEN_COOKIE)?.value || headerList.get('x-access-token');
   if (!accessToken) {
     redirect('/login?expired=1');
   }

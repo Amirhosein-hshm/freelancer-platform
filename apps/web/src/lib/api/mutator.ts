@@ -8,10 +8,21 @@ import { ApiError, NETWORK_ERROR_MESSAGE, parseErrorBody } from './errors';
  * `{ data, status, headers }`; failures throw ApiError.
  */
 export async function customFetch<T>(url: string, options?: RequestInit): Promise<T> {
+  const headers = new Headers(options?.headers);
+  if (typeof window !== 'undefined' && !headers.has('Authorization')) {
+    try {
+      const token = localStorage.getItem('didar_at');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+    } catch {}
+  }
+
   let response: Response;
   try {
     response = await fetch(url, {
       ...options,
+      headers,
       credentials: 'same-origin',
     });
   } catch {

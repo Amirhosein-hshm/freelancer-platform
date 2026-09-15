@@ -14,7 +14,15 @@ const isSecureEnv =
   process.env.E2B_SANDBOX === 'true' ||
   Boolean(process.env.E2B_SANDBOX_ID);
 
-export const BASE_COOKIE_OPTIONS = {
+export type CookieOptions = {
+  httpOnly: boolean;
+  sameSite: 'none' | 'lax';
+  secure: boolean;
+  path: string;
+  partitioned?: boolean;
+};
+
+export const BASE_COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
   sameSite: (isSecureEnv ? 'none' : 'lax') as 'none' | 'lax',
   secure: isSecureEnv,
@@ -22,11 +30,11 @@ export const BASE_COOKIE_OPTIONS = {
   ...(isSecureEnv ? { partitioned: true } : {}),
 };
 
-export function getSessionCookieOptions(isHttps?: boolean) {
-  const secure = isSecureEnv || isHttps === true;
+export function getSessionCookieOptions(isHttps?: boolean): CookieOptions {
+  const secure = isHttps === true;
   return {
     httpOnly: true,
-    sameSite: (secure ? 'none' : 'lax') as 'none' | 'lax',
+    sameSite: secure ? 'none' : 'lax',
     secure,
     path: '/',
     ...(secure ? { partitioned: true } : {}),

@@ -4,7 +4,7 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, LogIn } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useLoginUser } from '@/generated/api/auth/auth';
@@ -21,13 +21,47 @@ export function LoginForm() {
     defaultValues: { email: '', password: '' },
   });
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('expired') === '1') {
+        try {
+          localStorage.removeItem('didar_at');
+          localStorage.removeItem('didar_rt');
+        } catch {}
+        return;
+      }
+      const token = localStorage.getItem('didar_at');
+      const rt = localStorage.getItem('didar_rt');
+      if (token) {
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.href = `/dashboard?token=${encodeURIComponent(token)}${rt ? `&rt=${encodeURIComponent(rt)}` : ''}`;
+      }
+    }
+  }, []);
+
   const login = useLoginUser<ApiError>({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (res) => {
         setIsRedirecting(true);
         router.replace('/dashboard');
         if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
-          window.location.href = '/dashboard';
+          const envelope = res as { data?: { access_token?: string; refresh_token?: string } };
+          const token = envelope?.data?.access_token;
+          const rt = envelope?.data?.refresh_token;
+          if (token) {
+            try {
+              localStorage.setItem('didar_at', token);
+              if (rt) localStorage.setItem('didar_rt', rt);
+              document.cookie = `didar_at=${token}; path=/; SameSite=Lax`;
+              if (rt) document.cookie = `didar_rt=${rt}; path=/; SameSite=Lax`;
+            } catch {}
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+            window.location.href = `/dashboard?token=${encodeURIComponent(token)}${rt ? `&rt=${encodeURIComponent(rt)}` : ''}`;
+          } else {
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+            window.location.href = '/dashboard';
+          }
         }
       },
       onError: (error) => {
@@ -52,7 +86,15 @@ export function LoginForm() {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} noValidate className="grid gap-5">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit(e);
+        }}
+        method="POST"
+        noValidate
+        className="grid gap-5"
+      >
         {formError ? (
           <Alert variant="destructive" role="alert">
             <AlertTitle>ورود ناموفق بود</AlertTitle>

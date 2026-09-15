@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import type { UserMeResponse } from '@/generated/api/models';
 import { getNavItems } from '@/lib/auth/navigation';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,11 @@ const MAX_ITEMS = 5;
 
 export function MobileNav({ user }: { user: UserMeResponse }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token');
+  const rt = searchParams.get('rt');
+  const tokenQuery = token ? `?token=${encodeURIComponent(token)}${rt ? `&rt=${encodeURIComponent(rt)}` : ''}` : '';
+
   const items = getNavItems(user).slice(0, MAX_ITEMS);
 
   return (
@@ -20,10 +25,11 @@ export function MobileNav({ user }: { user: UserMeResponse }) {
       {items.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
+        const href = `${item.href}${tokenQuery}`;
         return (
           <Link
             key={item.href}
-            href={item.href}
+            href={href}
             aria-current={active ? 'page' : undefined}
             className={cn(
               'flex min-h-14 flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium text-muted-foreground transition-colors',

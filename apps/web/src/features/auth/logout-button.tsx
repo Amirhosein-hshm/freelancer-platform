@@ -12,10 +12,19 @@ export function LogoutButton() {
   const logout = async () => {
     setPending(true);
     try {
+      try {
+        localStorage.removeItem('didar_at');
+        localStorage.removeItem('didar_rt');
+      } catch {}
       await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'same-origin' });
     } finally {
-      router.replace('/login');
-      router.refresh();
+      if (typeof window !== 'undefined') {
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.href = '/login';
+      } else {
+        router.replace('/login');
+        router.refresh();
+      }
     }
   };
 

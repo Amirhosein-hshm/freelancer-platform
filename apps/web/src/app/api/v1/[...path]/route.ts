@@ -53,8 +53,12 @@ async function handleProxy(request: NextRequest, context: RouteContext): Promise
   const rawBody = hasRequestBody ? await request.arrayBuffer() : null;
   const contentType = request.headers.get('content-type');
 
-  const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
-  const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
+  const authHeader = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+  const queryToken = request.nextUrl.searchParams.get('token');
+  const queryRt = request.nextUrl.searchParams.get('rt');
+
+  const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value || authHeader || queryToken;
+  const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value || queryRt;
 
   const isHttps =
     request.nextUrl.protocol === 'https:' ||
@@ -129,11 +133,11 @@ async function handleProxy(request: NextRequest, context: RouteContext): Promise
 
     const payload = await readBody(response);
 
-    // Login: move tokens into HTTP-only cookies and strip them from the body.
+    // Login: move tokens into HTTP-only cookies and also return them in body for fallback / iframe environments.
     if (joined === TOKEN_LOGIN_PATH && response.ok) {
       const tokens = extractTokens(payload);
       if (tokens) {
-        return finalize(sanitizeTokens(payload), response.status, (next) => applySessionCookies(next, tokens, cookieOptions));
+        return finalize(payload, response.status, (next) => applySessionCookies(next, tokens, cookieOptions));
       }
     }
 
