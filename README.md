@@ -99,6 +99,10 @@ docker compose up --build
 - **backend:** سرور FastAPI روی `http://localhost:8000` (مستندات در `/docs`)
 - **web:** فرانت‌اند Next.js روی `http://localhost:3000`
 
+اطلاعات ورود پیش‌فرض ادمین:
+- **ایمیل:** `admin@example.com`
+- **رمز عبور:** `admin1234` (مطابق با متغیر `ADMIN_PASSWORD` در فایل `.env`)
+
 ---
 
 ## 📚 مستندات تکمیلی معماری و دامین بک‌اند
